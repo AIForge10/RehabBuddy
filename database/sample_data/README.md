@@ -35,7 +35,11 @@ psql "$DATABASE_URL" -f schema.sql
 psql "$DATABASE_URL" -f load.sql
 ```
 (No `psql`? Paste `schema.sql` into the Tiger console SQL editor, then use `brew install libpq`
-for `load.sql`, because `\copy` needs psql.)
+for `load.sql`, because `\copy` needs psql. Or run `python database/sample_data/load_to_tiger.py`
+from the repo root, which does both.)
+
+`schema.sql` also makes the `session_angle_1m` continuous aggregate real-time and adds a policy
+that materializes it every minute, so sessions saved by the app show up in it without a manual refresh.
 
 ## Proposed API additions
 `POST /sessions` in `api_examples.json` includes 3 **proposed** fields not yet in the frontend's
