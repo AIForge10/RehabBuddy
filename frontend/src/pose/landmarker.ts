@@ -2,14 +2,25 @@
 // instance holds its own WebGL context, so screens share one instead of making
 // (and leaking) a new one on every mount. Asking for a different model/delegate
 // closes the old instance first.
-import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult } from '@mediapipe/tasks-vision'
+import {
+  FilesetResolver,
+  HandLandmarker,
+  PoseLandmarker,
+  type HandLandmarkerResult,
+  type PoseLandmarkerResult,
+} from '@mediapipe/tasks-vision'
 import { bundledPose } from '../lib/native'
 
-// The mobile app ships the runtime and its model inside the app; the web fetches them.
+// The mobile app ships the runtime and its models inside the app; the web fetches them.
 const WASM_URL = bundledPose?.wasm ?? 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
 const modelUrl = (m: PoseModel) =>
   bundledPose?.models[m] ??
   `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/latest/pose_landmarker_${m}.task`
+// The pose model places the hand with three rough points; the hand model (≈ 8 MB)
+// places 21, well enough to measure the wrist by. Only loaded for the wrist joint.
+const HAND_MODEL_URL =
+  bundledPose?.models.hand ??
+  'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task'
 
 // lite ≈ 5 MB, fastest, noticeably jumpier. full ≈ 9 MB, the accuracy/speed sweet spot.
 // heavy ≈ 30 MB, most accurate, too slow for older phones.
@@ -79,9 +90,53 @@ export function setThresholds(loaded: LoadedLandmarker, t: Thresholds) {
     .catch(() => {})
 }
 
-/** Start the download early (e.g. on the setup screen) so tracking is ready when the session starts. */
-export function preloadPose() {
+export interface LoadedHandLandmarker {
+  landmarker: HandLandmarker
+  delegate: PoseDelegate
+}
+
+let currentHand: { key: string; promise: Promise<LoadedHandLandmarker> } | null = null
+
+/** One HandLandmarker for the app, shared and swapped like the pose one. */
+export function loadHandLandmarker(delegate: PoseDelegate = 'GPU'): Promise<LoadedHandLandmarker> {
+  if (currentHand?.key === delegate) return currentHand.promise
+
+  const previous = currentHand?.promise
+  const promise = (async () => {
+    await previous?.then((p) => p.landmarker.close()).catch(() => {})
+    fileset ??= FilesetResolver.forVisionTasks(WASM_URL)
+    const vision = await fileset
+    const create = (d: PoseDelegate) =>
+      HandLandmarker.createFromOptions(vision, {
+        baseOptions: { modelAssetPath: HAND_MODEL_URL, delegate: d },
+        runningMode: 'VIDEO',
+        // Both hands may be in frame; the tracker keeps the one at the wrist it follows.
+        numHands: 2,
+        minHandDetectionConfidence: 0.5,
+        minHandPresenceConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      })
+    try {
+      return { landmarker: await create(delegate), delegate }
+    } catch (e) {
+      if (delegate === 'CPU') throw e
+      return { landmarker: await create('CPU'), delegate: 'CPU' as const }
+    }
+  })()
+  currentHand = { key: delegate, promise }
+  promise.catch(() => {
+    if (currentHand?.promise === promise) currentHand = null
+  })
+  return promise
+}
+
+/**
+ * Start the downloads early (e.g. on the setup screen) so tracking is ready when
+ * the session starts. Pass the joint to fetch the hand model too for the wrist.
+ */
+export function preloadPose(joint?: string) {
   void loadLandmarker().catch(() => {})
+  if (joint === 'wrist') void loadHandLandmarker().catch(() => {})
 }
 
 // VIDEO mode rejects a timestamp that isn't strictly greater than the last one
@@ -90,4 +145,10 @@ let lastTs = 0
 export function detect(landmarker: PoseLandmarker, video: HTMLVideoElement): PoseLandmarkerResult {
   lastTs = Math.max(performance.now(), lastTs + 1)
   return landmarker.detectForVideo(video, lastTs)
+}
+
+let lastHandTs = 0
+export function detectHand(landmarker: HandLandmarker, video: HTMLVideoElement): HandLandmarkerResult {
+  lastHandTs = Math.max(performance.now(), lastHandTs + 1)
+  return landmarker.detectForVideo(video, lastHandTs)
 }
