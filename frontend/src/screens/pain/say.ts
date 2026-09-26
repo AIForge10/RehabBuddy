@@ -16,8 +16,9 @@ import type { Language } from '../../types/session'
 export const MIC = VOICE_ANSWERS && canRecord
 
 /** What the coach asks as the pain check opens, in the exercise's own words. */
-export function painQuestion(exercise: Exercise, lang: Language, stopped: boolean): string {
-  return t(lang).painAsk(exercise.copy[lang].painTitle, MIC, stopped)
+/** `mic`: whether the screen offers a spoken answer (off for a demo session, which has nothing to transcribe against). */
+export function painQuestion(exercise: Exercise, lang: Language, stopped: boolean, mic: boolean = MIC): string {
+  return t(lang).painAsk(exercise.copy[lang].painTitle, mic, stopped)
 }
 
 const VOICE_WAIT_MS = 4000

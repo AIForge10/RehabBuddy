@@ -104,6 +104,16 @@ def main():
         conn.execute("CALL refresh_continuous_aggregate('session_angle_1m', NULL, NULL)")
         print("Continuous aggregate refreshed ✅")
 
+        # Compress the demo data's older chunks now rather than waiting for the hourly job,
+        # so the storage numbers (GET /therapist/{id}/storage) show it straight away.
+        try:
+            done = conn.execute(
+                "SELECT count(compress_chunk(c)) FROM show_chunks('angle_samples', older_than => INTERVAL '1 day') c"
+            ).fetchone()[0]
+            print(f"Compressed {done} chunk(s) older than a day ✅")
+        except psycopg.Error as e:
+            print(f"Compression skipped: {e}")
+
         flag = conn.execute("select count(*) from pain_checkins where flagged").fetchone()[0]
         trend = conn.execute(
             "select time_bucket('1 day', a.time)::date, max(a.angle) from angle_samples a "

@@ -15,7 +15,7 @@ def hash_password(pw: str, salt: bytes, iterations: int = 200_000) -> str:
 
 OUT = "sample_data"
 os.makedirs(f"{OUT}/tables", exist_ok=True)
-NOW = datetime(2026, 9, 26, 12, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 9, 27, 12, 0, tzinfo=timezone.utc)  # judging day: the demo reads 'yesterday', 'this week' right
 TODAY = NOW.replace(hour=0, minute=0)
 iso = lambda d: d.isoformat().replace("+00:00", "Z")
 
