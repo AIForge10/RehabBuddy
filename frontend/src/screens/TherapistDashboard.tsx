@@ -133,7 +133,7 @@ export default function TherapistDashboard() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur-xl">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 pt-[env(safe-area-inset-top)] backdrop-blur-xl">
         <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-3 px-5">
           <Logo to="/therapist" suffix="Clinic" />
           <div className="flex items-center gap-4">

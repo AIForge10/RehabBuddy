@@ -22,7 +22,8 @@ export function useCamera(enabled: boolean) {
     let cancelled = false
     queueMicrotask(() => !cancelled && setStatus('starting'))
     navigator.mediaDevices
-      .getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      // Front camera on phones and tablets: the patient watches themselves on the screen.
+      .getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       .then((s) => {
         if (cancelled) return s.getTracks().forEach((tr) => tr.stop())
         setStream(s)

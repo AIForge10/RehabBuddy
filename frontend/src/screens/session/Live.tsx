@@ -10,6 +10,7 @@ import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { warningCue, warningLabel } from '../../lib/formWarnings'
 import { useLanguage } from '../../lib/language'
+import { darkStatusBar } from '../../lib/native'
 import { useLivePublisher } from '../../lib/useLivePublisher'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import type { CameraStatus } from '../../lib/useCamera'
@@ -219,6 +220,12 @@ export function Live({
 
   useEffect(() => stopCoach, [])
 
+  // The stage is always dark, whatever the phone's theme.
+  useEffect(() => {
+    void darkStatusBar(true)
+    return () => void darkStatusBar(false)
+  }, [])
+
   const angle = pose.angle
   const reached = angle != null && angle >= target - 2
   const exit = () => {
@@ -249,8 +256,8 @@ export function Live({
       <div className="pointer-events-none absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/60 to-transparent" />
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-72 bg-gradient-to-t from-black/70 to-transparent" />
 
-      {/* Top bar */}
-      <header className="absolute inset-x-0 top-0 flex items-center justify-between gap-3 p-4 sm:p-5">
+      {/* Top bar. The insets keep it clear of the notch and Dynamic Island in the mobile app; they're 0 in a browser tab. */}
+      <header className="absolute left-[env(safe-area-inset-left)] right-[env(safe-area-inset-right)] top-[env(safe-area-inset-top)] flex items-center justify-between gap-3 p-4 sm:p-5">
         <div className="flex min-w-0 items-center gap-3">
           <button
             onClick={exit}
@@ -316,8 +323,8 @@ export function Live({
         </div>
       )}
 
-      {/* Bottom HUD */}
-      <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
+      {/* Bottom HUD, above the home indicator */}
+      <div className="absolute bottom-[env(safe-area-inset-bottom)] left-[env(safe-area-inset-left)] right-[env(safe-area-inset-right)] p-4 sm:p-5">
         <div className="mb-4 flex flex-col items-center gap-2 lg:pr-[360px]">
           {pose.form_warning && phase !== 'countdown' && (
             <div className="flex animate-rise items-center gap-2 rounded-full bg-warn-soft px-4 py-2 text-sm font-semibold text-warn shadow-lg">

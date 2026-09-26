@@ -34,6 +34,9 @@ class Settings(BaseSettings):
         "http://localhost:5174",
         "http://127.0.0.1:5173",
         "http://127.0.0.1:5174",
+        # The iOS and Android apps (mobile/): their web views load the app from these origins.
+        "capacitor://localhost",
+        "https://localhost",
     ]  # Make sure to add frontend url once in prod
     
     @property

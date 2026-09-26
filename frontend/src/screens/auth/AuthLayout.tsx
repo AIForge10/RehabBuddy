@@ -4,6 +4,7 @@ import { AngleGauge } from '../../components/AngleGauge'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { LimbLattice } from '../../components/LimbLattice'
 import { Logo } from '../../components/Logo'
+import { StatusBarScrim } from '../../components/Screen'
 import { useJointTour, toward } from '../../lib/useJointTour'
 import { useLanguage } from '../../lib/language'
 import { useReducedMotion } from '../../lib/useReducedMotion'
@@ -15,6 +16,7 @@ export function AuthLayout({ title, sub, children, footer }: { title: string; su
   const { s } = useLanguage()
   return (
     <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <StatusBarScrim />
       <div className="flex flex-col px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-[max(1.25rem,env(safe-area-inset-top))] sm:px-8">
         <header className="flex items-center justify-between gap-3">
           <Logo to="/welcome" />

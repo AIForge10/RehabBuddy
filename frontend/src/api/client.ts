@@ -30,6 +30,7 @@ import type {
   UUID,
   WeeklyRecapResponse,
 } from '../types/session'
+import { saveToken } from '../lib/native'
 import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
 
 /** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
@@ -51,6 +52,8 @@ export class ApiError extends Error {
 
 // --- Auth token --------------------------------------------------------------
 // Kept in memory and in sessionStorage, so it survives a reload but not the tab.
+// The mobile app also keeps it in the Keychain/Keystore (lib/native.ts), and
+// main.tsx puts it back here before the first render.
 
 const TOKEN_KEY = 'rehabbuddy.token.v1'
 
@@ -68,6 +71,7 @@ export const hasAuthToken = () => token != null
 
 export function setAuthToken(next: string | null) {
   token = next
+  void saveToken(next)
   try {
     if (next) sessionStorage.setItem(TOKEN_KEY, next)
     else sessionStorage.removeItem(TOKEN_KEY)

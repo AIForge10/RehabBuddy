@@ -3,9 +3,12 @@
 // (and leaking) a new one on every mount. Asking for a different model/delegate
 // closes the old instance first.
 import { FilesetResolver, PoseLandmarker, type PoseLandmarkerResult } from '@mediapipe/tasks-vision'
+import { bundledPose } from '../lib/native'
 
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
+// The mobile app ships the runtime and its model inside the app; the web fetches them.
+const WASM_URL = bundledPose?.wasm ?? 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
 const modelUrl = (m: PoseModel) =>
+  bundledPose?.models[m] ??
   `https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_${m}/float16/latest/pose_landmarker_${m}.task`
 
 // lite ≈ 5 MB, fastest, noticeably jumpier. full ≈ 9 MB, the accuracy/speed sweet spot.
