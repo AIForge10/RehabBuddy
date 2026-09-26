@@ -11,7 +11,8 @@
 // Cue ids below are the file-name contract with Shan. Three cues name the
 // movement (start, bend_deeper, knee_in), so for exercises other than the knee
 // their text comes from the exercise and the clip is {cue}_{part}.mp3, e.g.
-// start_shoulder.mp3.
+// start_shoulder.mp3. knee_in kept its first name but is each exercise's form
+// cue (`cues.form`): lib/formWarnings.ts decides which warning plays which cue.
 
 import type { Exercise } from './exercises'
 import type { Language } from '../types/session'

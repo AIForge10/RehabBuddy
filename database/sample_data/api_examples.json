@@ -18,6 +18,30 @@
       "401": "wrong email or password"
     }
   },
+  "POST /auth/signup": {
+    "request": {
+      "full_name": "Ana Ruiz",
+      "email": "ana@example.com",
+      "password": "at-least-8",
+      "role": "patient",
+      "language": "es"
+    },
+    "response": {
+      "access_token": "<JWT>",
+      "token_type": "bearer",
+      "user": {
+        "id": "p-3f6c1a2e7b8d",
+        "full_name": "Ana Ruiz",
+        "role": "patient",
+        "language": "es"
+      }
+    },
+    "notes": "201. A patient starts on seated knee bends (10 x 90°, 5x/week) in SIGNUP_THERAPIST_ID's caseload (default t-lee).",
+    "errors": {
+      "409": "email already has an account",
+      "422": "missing name, bad email, or password under 8 characters"
+    }
+  },
   "GET /auth/me": {
     "headers": {
       "Authorization": "Bearer <JWT>"
@@ -30,11 +54,13 @@
     }
   },
   "_access_rules": {
-    "all endpoints except /auth/login and /health": "require header Authorization: Bearer <JWT>, else 401",
+    "all endpoints except /auth/login, /auth/signup and /health": "require header Authorization: Bearer <JWT>, else 401",
     "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
     "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
     "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
-    "POST /summary": "same rule as /patients/{id}"
+    "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient; unknown session 404",
+    "POST /summary": "same rule as /patients/{id}",
+    "PATCH /assignments/{id}": "therapist only, for their assigned patients; else 403"
   },
   "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
   "GET /patients/{patient_id}/assignment": {
@@ -83,39 +109,94 @@
         {
           "id": "s-p-maria-1",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-25T18:22:00Z",
           "reps_done": 10,
           "max_angle": 86.5,
           "form_warnings": [],
           "duration_sec": 181,
           "pain_score": 4,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              82,
+              85,
+              85,
+              85,
+              82,
+              83,
+              84,
+              80,
+              85,
+              86
+            ],
+            "fade": 0,
+            "end_range_sec": 5.5,
+            "longest_hold_sec": 1.0
+          }
         },
         {
           "id": "s-p-maria-2",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-24T18:28:00Z",
           "reps_done": 10,
           "max_angle": 83.1,
           "form_warnings": [],
           "duration_sec": 270,
           "pain_score": 3,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              83,
+              82,
+              80,
+              82,
+              79,
+              79,
+              78,
+              82,
+              81,
+              79
+            ],
+            "fade": 1,
+            "end_range_sec": 5.0,
+            "longest_hold_sec": 0.5
+          }
         },
         {
           "id": "s-p-maria-4",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-22T18:56:00Z",
           "reps_done": 10,
           "max_angle": 80.3,
           "form_warnings": [],
           "duration_sec": 262,
           "pain_score": 2,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              78,
+              75,
+              74,
+              78,
+              77,
+              75,
+              77,
+              79,
+              75,
+              79
+            ],
+            "fade": -2,
+            "end_range_sec": 7.0,
+            "longest_hold_sec": 1.0
+          }
         },
         {
           "id": "s-p-maria-5",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-21T19:31:00Z",
           "reps_done": 10,
           "max_angle": 78.7,
@@ -125,33 +206,87 @@
           ],
           "duration_sec": 234,
           "pain_score": 3,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              78,
+              78,
+              78,
+              77,
+              76,
+              77,
+              73,
+              77,
+              75,
+              77
+            ],
+            "fade": 2,
+            "end_range_sec": 5.5,
+            "longest_hold_sec": 1.0
+          }
         },
         {
           "id": "s-p-maria-7",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-19T19:31:00Z",
           "reps_done": 10,
           "max_angle": 76.1,
           "form_warnings": [],
           "duration_sec": 215,
           "pain_score": 3,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              75,
+              71,
+              73,
+              74,
+              73,
+              73,
+              75,
+              71,
+              71,
+              73
+            ],
+            "fade": 1,
+            "end_range_sec": 5.0,
+            "longest_hold_sec": 0.5
+          }
         },
         {
           "id": "s-p-maria-8",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-18T18:42:00Z",
           "reps_done": 10,
           "max_angle": 74.0,
           "form_warnings": [],
           "duration_sec": 291,
           "pain_score": 4,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              71,
+              73,
+              73,
+              69,
+              71,
+              73,
+              71,
+              72,
+              70,
+              73
+            ],
+            "fade": 1,
+            "end_range_sec": 7.0,
+            "longest_hold_sec": 1.0
+          }
         },
         {
           "id": "s-p-maria-9",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-17T17:46:00Z",
           "reps_done": 8,
           "max_angle": 72.6,
@@ -160,11 +295,27 @@
           ],
           "duration_sec": 203,
           "pain_score": 4,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              72,
+              71,
+              71,
+              69,
+              72,
+              71,
+              69,
+              71
+            ],
+            "fade": 1,
+            "end_range_sec": 5.0,
+            "longest_hold_sec": 1.0
+          }
         },
         {
           "id": "s-p-maria-10",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-16T19:07:00Z",
           "reps_done": 10,
           "max_angle": 70.6,
@@ -173,11 +324,29 @@
           ],
           "duration_sec": 266,
           "pain_score": 2,
-          "flagged": false
+          "flagged": false,
+          "stats": {
+            "rep_peaks": [
+              66,
+              66,
+              69,
+              66,
+              67,
+              67,
+              67,
+              69,
+              67,
+              69
+            ],
+            "fade": -1,
+            "end_range_sec": 6.5,
+            "longest_hold_sec": 1.0
+          }
         }
       ],
       "red_flags": [],
-      "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+      "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.",
+      "latest_summary_is_ai": false
     }
   },
   "GET /therapist/{therapist_id}/dashboard": {
@@ -212,39 +381,94 @@
             {
               "id": "s-p-maria-1",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-25T18:22:00Z",
               "reps_done": 10,
               "max_angle": 86.5,
               "form_warnings": [],
               "duration_sec": 181,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  82,
+                  85,
+                  85,
+                  85,
+                  82,
+                  83,
+                  84,
+                  80,
+                  85,
+                  86
+                ],
+                "fade": 0,
+                "end_range_sec": 5.5,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-maria-2",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-24T18:28:00Z",
               "reps_done": 10,
               "max_angle": 83.1,
               "form_warnings": [],
               "duration_sec": 270,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  83,
+                  82,
+                  80,
+                  82,
+                  79,
+                  79,
+                  78,
+                  82,
+                  81,
+                  79
+                ],
+                "fade": 1,
+                "end_range_sec": 5.0,
+                "longest_hold_sec": 0.5
+              }
             },
             {
               "id": "s-p-maria-4",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-22T18:56:00Z",
               "reps_done": 10,
               "max_angle": 80.3,
               "form_warnings": [],
               "duration_sec": 262,
               "pain_score": 2,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  78,
+                  75,
+                  74,
+                  78,
+                  77,
+                  75,
+                  77,
+                  79,
+                  75,
+                  79
+                ],
+                "fade": -2,
+                "end_range_sec": 7.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-maria-5",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-21T19:31:00Z",
               "reps_done": 10,
               "max_angle": 78.7,
@@ -254,33 +478,87 @@
               ],
               "duration_sec": 234,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  78,
+                  78,
+                  78,
+                  77,
+                  76,
+                  77,
+                  73,
+                  77,
+                  75,
+                  77
+                ],
+                "fade": 2,
+                "end_range_sec": 5.5,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-maria-7",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-19T19:31:00Z",
               "reps_done": 10,
               "max_angle": 76.1,
               "form_warnings": [],
               "duration_sec": 215,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  75,
+                  71,
+                  73,
+                  74,
+                  73,
+                  73,
+                  75,
+                  71,
+                  71,
+                  73
+                ],
+                "fade": 1,
+                "end_range_sec": 5.0,
+                "longest_hold_sec": 0.5
+              }
             },
             {
               "id": "s-p-maria-8",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-18T18:42:00Z",
               "reps_done": 10,
               "max_angle": 74.0,
               "form_warnings": [],
               "duration_sec": 291,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  71,
+                  73,
+                  73,
+                  69,
+                  71,
+                  73,
+                  71,
+                  72,
+                  70,
+                  73
+                ],
+                "fade": 1,
+                "end_range_sec": 7.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-maria-9",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-17T17:46:00Z",
               "reps_done": 8,
               "max_angle": 72.6,
@@ -289,11 +567,27 @@
               ],
               "duration_sec": 203,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  72,
+                  71,
+                  71,
+                  69,
+                  72,
+                  71,
+                  69,
+                  71
+                ],
+                "fade": 1,
+                "end_range_sec": 5.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-maria-10",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-16T19:07:00Z",
               "reps_done": 10,
               "max_angle": 70.6,
@@ -302,11 +596,29 @@
               ],
               "duration_sec": 266,
               "pain_score": 2,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  66,
+                  66,
+                  69,
+                  66,
+                  67,
+                  67,
+                  67,
+                  69,
+                  67,
+                  69
+                ],
+                "fade": -1,
+                "end_range_sec": 6.5,
+                "longest_hold_sec": 1.0
+              }
             }
           ],
           "red_flags": [],
-          "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+          "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.",
+          "latest_summary_is_ai": false
         },
         {
           "patient": {
@@ -335,6 +647,7 @@
             {
               "id": "s-p-james-1",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-25T17:10:00Z",
               "reps_done": 10,
               "max_angle": 79.9,
@@ -343,11 +656,29 @@
               ],
               "duration_sec": 272,
               "pain_score": 8,
-              "flagged": true
+              "flagged": true,
+              "stats": {
+                "rep_peaks": [
+                  78,
+                  75,
+                  77,
+                  77,
+                  73,
+                  76,
+                  76,
+                  75,
+                  77,
+                  79
+                ],
+                "fade": 0,
+                "end_range_sec": 6.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-james-4",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-22T19:53:00Z",
               "reps_done": 10,
               "max_angle": 75.7,
@@ -356,11 +687,29 @@
               ],
               "duration_sec": 205,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  73,
+                  75,
+                  73,
+                  75,
+                  71,
+                  72,
+                  70,
+                  73,
+                  71,
+                  71
+                ],
+                "fade": 2,
+                "end_range_sec": 5.0,
+                "longest_hold_sec": 0.5
+              }
             },
             {
               "id": "s-p-james-8",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-18T18:12:00Z",
               "reps_done": 10,
               "max_angle": 69.1,
@@ -369,7 +718,24 @@
               ],
               "duration_sec": 251,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  67,
+                  64,
+                  68,
+                  66,
+                  63,
+                  68,
+                  68,
+                  68,
+                  62,
+                  65
+                ],
+                "fade": 1,
+                "end_range_sec": 6.0,
+                "longest_hold_sec": 1.0
+              }
             }
           ],
           "red_flags": [
@@ -381,7 +747,8 @@
               "reason": "“Sharp, on the inside of the knee.”"
             }
           ],
-          "latest_summary": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing."
+          "latest_summary": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing.",
+          "latest_summary_is_ai": false
         },
         {
           "patient": {
@@ -410,6 +777,7 @@
             {
               "id": "s-p-aisha-1",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-25T19:00:00Z",
               "reps_done": 10,
               "max_angle": 88.0,
@@ -418,44 +786,114 @@
               ],
               "duration_sec": 284,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  85,
+                  86,
+                  83,
+                  87,
+                  84,
+                  86,
+                  85,
+                  84,
+                  82,
+                  86
+                ],
+                "fade": 1,
+                "end_range_sec": 6.5,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-aisha-3",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-23T17:05:00Z",
               "reps_done": 8,
               "max_angle": 83.5,
               "form_warnings": [],
               "duration_sec": 230,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  81,
+                  79,
+                  79,
+                  81,
+                  78,
+                  80,
+                  82,
+                  81
+                ],
+                "fade": -1,
+                "end_range_sec": 5.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-aisha-4",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-22T19:07:00Z",
               "reps_done": 10,
               "max_angle": 82.5,
               "form_warnings": [],
               "duration_sec": 275,
               "pain_score": 3,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  80,
+                  81,
+                  79,
+                  78,
+                  81,
+                  80,
+                  77,
+                  78,
+                  82,
+                  77
+                ],
+                "fade": 1,
+                "end_range_sec": 4.0,
+                "longest_hold_sec": 0.5
+              }
             },
             {
               "id": "s-p-aisha-6",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-20T19:20:00Z",
               "reps_done": 10,
               "max_angle": 80.7,
               "form_warnings": [],
               "duration_sec": 278,
               "pain_score": 4,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  76,
+                  78,
+                  76,
+                  78,
+                  80,
+                  76,
+                  76,
+                  79,
+                  80,
+                  79
+                ],
+                "fade": -3,
+                "end_range_sec": 7.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-aisha-7",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-19T19:14:00Z",
               "reps_done": 10,
               "max_angle": 78.9,
@@ -464,33 +902,85 @@
               ],
               "duration_sec": 201,
               "pain_score": 2,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  78,
+                  75,
+                  76,
+                  77,
+                  76,
+                  74,
+                  75,
+                  76,
+                  76,
+                  75
+                ],
+                "fade": 1,
+                "end_range_sec": 8.0,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-aisha-8",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-18T18:37:00Z",
               "reps_done": 10,
               "max_angle": 75.0,
               "form_warnings": [],
               "duration_sec": 222,
               "pain_score": 2,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  73,
+                  73,
+                  74,
+                  72,
+                  72,
+                  72,
+                  72,
+                  70,
+                  71,
+                  71
+                ],
+                "fade": 3,
+                "end_range_sec": 7.5,
+                "longest_hold_sec": 1.0
+              }
             },
             {
               "id": "s-p-aisha-9",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-17T17:37:00Z",
               "reps_done": 8,
               "max_angle": 73.5,
               "form_warnings": [],
               "duration_sec": 206,
               "pain_score": 2,
-              "flagged": false
+              "flagged": false,
+              "stats": {
+                "rep_peaks": [
+                  68,
+                  71,
+                  74,
+                  71,
+                  68,
+                  71,
+                  68,
+                  70
+                ],
+                "fade": 1,
+                "end_range_sec": 3.0,
+                "longest_hold_sec": 1.0
+              }
             }
           ],
           "red_flags": [],
-          "latest_summary": "Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target."
+          "latest_summary": "Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target.",
+          "latest_summary_is_ai": false
         }
       ],
       "generated_at": "2026-09-26T12:00:00Z"
@@ -574,6 +1064,88 @@
     "request_notes": "assignment_id, joint and angle_samples are PROPOSED additions (not yet in the frontend's CreateSessionRequest). angle_samples feed the Tiger Data hypertable; one array per session, ~2–30 samples/sec.",
     "response": {
       "session_id": "s-3f6c1a2e-7b8d-4c9e-a1f2-0d3e4b5c6a7f"
+    }
+  },
+  "GET /sessions/{session_id}/samples": {
+    "example_url": "/sessions/s-p-maria-1/samples",
+    "response_notes": "The whole session, oldest first, averaged into 100 ms buckets (time_bucket); first rows shown.",
+    "response": [
+      {
+        "time": "2026-09-25T18:22:00Z",
+        "angle": 5.2
+      },
+      {
+        "time": "2026-09-25T18:22:00.500000Z",
+        "angle": 3.2
+      },
+      {
+        "time": "2026-09-25T18:22:01Z",
+        "angle": 3.3
+      },
+      {
+        "time": "2026-09-25T18:22:01.500000Z",
+        "angle": 3.9
+      },
+      {
+        "time": "2026-09-25T18:22:02Z",
+        "angle": 5.5
+      },
+      {
+        "time": "2026-09-25T18:22:02.500000Z",
+        "angle": 5.7
+      },
+      {
+        "time": "2026-09-25T18:22:03Z",
+        "angle": 4.0
+      },
+      {
+        "time": "2026-09-25T18:22:03.500000Z",
+        "angle": 5.9
+      },
+      {
+        "time": "2026-09-25T18:22:04Z",
+        "angle": 3.8
+      },
+      {
+        "time": "2026-09-25T18:22:04.500000Z",
+        "angle": 4.8
+      },
+      {
+        "time": "2026-09-25T18:22:05Z",
+        "angle": 3.6
+      },
+      {
+        "time": "2026-09-25T18:22:05.500000Z",
+        "angle": 32.5
+      }
+    ]
+  },
+  "PATCH /assignments/{assignment_id}": {
+    "example_url": "/assignments/a-p-maria",
+    "request": {
+      "joint": "shoulder",
+      "target_angle": 140,
+      "reps": 10,
+      "times_per_week": 5
+    },
+    "response": {
+      "id": "a-p-maria",
+      "patient_id": "p-maria",
+      "therapist_id": "t-lee",
+      "exercise": {
+        "id": "ex-shoulder-raise",
+        "name": "Seated arm raises",
+        "joint": "shoulder",
+        "instructions": "Sit tall, side-on to the camera, arm straight down. Raise your straight arm forward as high as is comfortable, then lower it."
+      },
+      "target_angle": 140,
+      "reps": 10,
+      "times_per_week": 5
+    },
+    "notes": "Every field is sent. joint picks that joint's exercise; overview then lists only that joint's sessions.",
+    "errors": {
+      "404": "no such assignment",
+      "422": "no exercise for that joint, or a value out of range"
     }
   },
   "POST /pain-check": {

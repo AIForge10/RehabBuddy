@@ -86,7 +86,7 @@
   },
   "en/knee_in": {
     "model": "eleven_multilingual_v2",
-    "text": "Keep your knee in line with your foot.",
+    "text": "Keep your thigh still on the chair.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/knee_in_elbow": {
@@ -281,7 +281,7 @@
   },
   "es/knee_in": {
     "model": "eleven_multilingual_v2",
-    "text": "Mantén la rodilla alineada con el pie.",
+    "text": "Mantén el muslo quieto sobre la silla.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/knee_in_elbow": {

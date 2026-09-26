@@ -1,10 +1,9 @@
 // Accounts, sign-in and sign-up. The Account shape is the `profiles` row
 // (id, full_name, role, language) plus the email.
 //
-// Real backend: signIn posts to /auth/login and hands the bearer token to
-// client.ts, which sends it on every call (docs/AUTH.md). The demo buttons log
-// in as the seeded demo accounts. The backend has no sign-up endpoint yet, so
-// signUp only works in mock mode.
+// Real backend: signIn posts to /auth/login and signUp to /auth/signup; both
+// hand the bearer token to client.ts, which sends it on every call
+// (docs/AUTH.md). The demo buttons log in as the seeded demo accounts.
 //
 // Mock mode (VITE_USE_MOCKS=true): a FRONTEND-ONLY STAND-IN. Accounts live in
 // this browser's localStorage and every account plays the demo data: a patient
@@ -16,8 +15,8 @@
 // tab side by side for the demo. The real backend's token is per tab, so a new
 // tab there logs in again.
 
-import type { Language, Role, UUID } from '../types/session'
-import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, hasAuthToken, login, setAuthToken } from './client'
+import type { Language, LoginResponse, Role, SignupRequest, UUID } from '../types/session'
+import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, hasAuthToken, login, setAuthToken, signup } from './client'
 
 export interface Account {
   id: UUID
@@ -102,15 +101,28 @@ function remember(account: Account | null) {
   write(localStorage, SESSION_KEY, account)
 }
 
+/** Keeps the token and the account from a login or sign-up response. */
+function start(res: LoginResponse, email: string): Account {
+  setAuthToken(res.access_token)
+  const account: Account = { ...res.user, email }
+  remember(account)
+  return account
+}
+
 async function backendSignIn(email: string, password: string): Promise<Account> {
   try {
-    const res = await login({ email: normalise(email), password })
-    setAuthToken(res.access_token)
-    const account: Account = { ...res.user, email: normalise(email) }
-    remember(account)
-    return account
+    return start(await login({ email: normalise(email), password }), normalise(email))
   } catch (err) {
     throw err instanceof ApiError && err.status === 401 ? new AuthError('invalid') : err
+  }
+}
+
+async function backendSignUp(input: SignupRequest): Promise<Account> {
+  const email = normalise(input.email)
+  try {
+    return start(await signup({ ...input, full_name: input.full_name.trim(), email }), email)
+  } catch (err) {
+    throw err instanceof ApiError && err.status === 409 ? new AuthError('taken') : err
   }
 }
 
@@ -124,8 +136,8 @@ export async function signIn(email: string, password: string): Promise<Account> 
   return account
 }
 
-export async function signUp(input: { full_name: string; email: string; password: string; role: Role; language: Language }): Promise<Account> {
-  if (!USE_MOCKS) throw new Error('The backend has no sign-up endpoint yet')
+export async function signUp(input: SignupRequest): Promise<Account> {
+  if (!USE_MOCKS) return backendSignUp(input)
   await settle()
   const email = normalise(input.email)
   const list = accounts()

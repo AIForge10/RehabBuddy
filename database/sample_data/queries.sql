@@ -28,7 +28,7 @@ WHERE s.patient_id = :'pid' AND pc.flagged
 ORDER BY pc.created_at DESC;
 
 -- latest_summary
-SELECT summary_text FROM ai_summaries WHERE patient_id = :'pid' ORDER BY week_start DESC LIMIT 1;
+SELECT summary_text, source FROM ai_summaries WHERE patient_id = :'pid' ORDER BY week_start DESC, created_at DESC LIMIT 1;
 
 -- GET /therapist/{tid}/dashboard → run the overview queries for each of these patients
 SELECT patient_id FROM therapist_patients WHERE therapist_id = :'tid';
@@ -42,3 +42,11 @@ GROUP BY day ORDER BY day;
 -- ★ Tiger Data: one session's angle curve, from the continuous aggregate
 SELECT bucket, max_angle, avg_angle FROM session_angle_1m
 WHERE session_id = :'sid' ORDER BY bucket;
+
+-- ★ Tiger Data: GET /sessions/{sid}/samples → the therapist's replay, every frame averaged to 10 Hz
+SELECT time_bucket('100 milliseconds', time) AS time, round(avg(angle), 1) AS angle
+FROM angle_samples WHERE session_id = :'sid'
+GROUP BY 1 ORDER BY 1;
+
+-- ★ Tiger Data: each overview session's stats (rep peaks, fade, time at end range) are
+-- SESSION_STATS in backend/api/data/queries.py: window functions over that same 10 Hz trace.

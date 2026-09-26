@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { DegreeScale } from '../../components/DegreeScale'
+import { FormNotes } from '../../components/FormNotes'
 import { PainDot, Row, Rows, Section } from '../../components/Ledger'
 import type { Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
@@ -47,7 +48,6 @@ export function Recap({ sessions, target, reps, exercise }: { sessions: SessionR
   const delta = prev ? cur.max_angle - prev.max_angle : 0
   const hit = cur.max_angle >= target
   const gain = ordered[n - 1].max_angle - ordered[0].max_angle
-  const warnings = cur.form_warnings
   const shortDate = (iso: string) => new Date(iso).toLocaleDateString(s.locale, { month: 'short', day: 'numeric' })
 
   return (
@@ -78,14 +78,7 @@ export function Recap({ sessions, target, reps, exercise }: { sessions: SessionR
             <span className="font-medium text-muted"> / {reps}</span>
           </Row>
           <Row label={s.doneForm}>
-            {warnings.length ? (
-              <span className="text-warn" title={warnings.join('\n')}>
-                {warnings[0]}
-                {warnings.length > 1 && <span className="text-muted"> +{warnings.length - 1}</span>}
-              </span>
-            ) : (
-              <span className="text-good">{s.doneFormClean}</span>
-            )}
+            <FormNotes warnings={cur.form_warnings} />
           </Row>
           <Row label={s.pain}>
             {cur.pain_score == null ? (

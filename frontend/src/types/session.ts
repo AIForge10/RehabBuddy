@@ -35,7 +35,8 @@ export interface SessionResult {
   reps_done: number
   /** Deepest flexion reached in the session, degrees. */
   max_angle: number
-  /** Human-readable form cues triggered, e.g. "Knee caving inward". One entry per occurrence. */
+  /** Form warning codes, e.g. "too_fast" (lib/formWarnings.ts has them all). One entry per occurrence.
+   *  Sessions saved before the codes may hold free text. */
   form_warnings: string[]
   duration_sec: number
   /** Every tracked frame, from the pose engine's finish() → angle_samples hypertable. */
@@ -47,7 +48,9 @@ export interface LivePoseState {
   /** Current smoothed flexion in degrees, or null when the leg isn't visible. */
   angle: number | null
   reps: number
-  /** Latest form cue, null when form is fine. */
+  /** Warning codes on the latest completed rep ("not_deep_enough", "too_fast"); replaced when the next rep lands. */
+  rep_warnings: string[]
+  /** Form fault code the camera sees right now (e.g. "leaning_back"), null when form is fine. */
   form_warning: string | null
   /** Pose detection confidence 0–1. */
   confidence: number
@@ -88,7 +91,8 @@ export interface Patient {
   id: UUID
   full_name: string
   language: Language
-  injury: string
+  /** null for a patient who signed up themselves, until their therapist records it. */
+  injury: string | null
   start_date: ISODateString
 }
 
@@ -115,6 +119,16 @@ export interface LoginResponse {
   access_token: string
   token_type: 'bearer'
   user: { id: UUID; full_name: string; role: Role; language: Language }
+}
+
+// POST /auth/signup → LoginResponse (201). 409 when the email already has an account.
+// A new patient starts on seated knee bends in the demo therapist's caseload.
+export interface SignupRequest {
+  full_name: string
+  email: string
+  password: string
+  role: Role
+  language: Language
 }
 
 // POST /pain-check
@@ -144,7 +158,19 @@ export interface SummaryRequest {
 export interface SummaryResponse {
   summary_text: string
   week_start: ISODateString
-  /** true when Gemini failed and the backend returned the template fallback. */
+  /** true when the text comes from the template, not Gemini (Gemini failed, or mock mode). */
+  is_fallback: boolean
+}
+
+// GET /patients/{patient_id}/weekly-recap?language=es
+// The coach's recap of the patient's own last 7 days, for their home screen.
+export interface WeeklyRecapResponse {
+  /** Two or three sentences in `language`: sessions vs the plan, the trend vs the target, a next step. */
+  text: string
+  language: Language
+  /** Where `text` streams as speech, like PainCheckResponse.audio_url. null → browser speech. */
+  audio_url: string | null
+  /** true when Gemini failed or was slow and the template was used. */
   is_fallback: boolean
 }
 
@@ -171,6 +197,24 @@ export interface SessionRecord {
   flagged: boolean
   /** See CreateSessionRequest.joint. */
   joint?: string
+  /** From the session's angle_samples; null when no trace was recorded. Only on overview sessions. */
+  stats?: SessionStats | null
+}
+
+/**
+ * Worked out in SQL over every angle sample (backend/api/data/queries.py
+ * SESSION_STATS), or by lib/replay.ts sessionStats in mock mode, on the same
+ * 10 Hz trace and with the same rep thresholds as the replay.
+ */
+export interface SessionStats {
+  /** Each complete rep's peak, in order, whole degrees. */
+  rep_peaks: number[]
+  /** First 3 reps' average peak minus the last 3's, degrees; positive = the later reps fell short. null under 6 reps. */
+  fade: number | null
+  /** Seconds within 5° of the session's deepest bend. */
+  end_range_sec: number
+  /** The longest unbroken stretch of end_range_sec. */
+  longest_hold_sec: number
 }
 
 // GET /sessions/{session_id}/samples → AngleSampleRow[]
@@ -194,6 +238,8 @@ export interface PatientOverview {
   sessions: SessionRecord[]
   red_flags: RedFlag[]
   latest_summary: string | null
+  /** true only when Gemini drafted latest_summary; false for the template. */
+  latest_summary_is_ai: boolean
 }
 
 export interface DashboardResponse {

@@ -8,7 +8,9 @@ import { ExerciseFigure } from '../../components/ExerciseFigure'
 import { playCue, preloadCues, stopCoach, type CoachCue,  } from '../../lib/coach'
 import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
+import { warningCue, warningLabel } from '../../lib/formWarnings'
 import { useLanguage } from '../../lib/language'
+import { useLivePublisher } from '../../lib/useLivePublisher'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import { useRandomSelector } from '../../lib/useRandomSelector'
 import type { CameraStatus } from '../../lib/useCamera'
@@ -72,7 +74,8 @@ export function Live({
   const trackedPose: LivePoseState = {
     angle: trackedSession.angle,
     reps: trackedSession.reps,
-    form_warning: trackedSession.lastRep?.warnings[0] ?? null,
+    rep_warnings: trackedSession.lastRep?.warnings ?? [],
+    form_warning: trackedSession.fault,
     confidence: trackedSession.confidence,
   }
 
@@ -87,6 +90,23 @@ export function Live({
     exerciseRef.current = exercise
   })
   const rec = useRef({ startedAt: new Date(), t0: 0, samples: [] as AngleSample[], max: 0, repPeak: 0, warnings: [] as string[] })
+
+  // The therapist can watch from their dashboard while this runs: angles, reps and cues, never video.
+  const { connected: liveShared, end: endLive } = useLivePublisher({
+    patientId: assignment.patient_id,
+    joint: exercise.part,
+    target,
+    goal,
+    active: phase !== 'countdown',
+    read: () => ({
+      startedAt: rec.current.startedAt,
+      elapsedMs: performance.now() - rec.current.t0,
+      samples: rec.current.samples,
+      reps: poseRef.current.reps,
+      maxAngle: rec.current.max,
+      warning: poseRef.current.form_warning,
+    }),
+  })
 
   const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current, exerciseRef.current)), [])
 
@@ -152,12 +172,13 @@ export function Live({
         started_at: r.startedAt.toISOString(),
         joint: exercise.part,
       })
+      endLive('finished') // after the save, so the therapist's dashboard can already load it
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment } })
     } catch {
       setSaveError(true)
       setPhase('running')
     }
-  }, [assignment, exercise, navigate, finishPose])
+  }, [assignment, exercise, navigate, finishPose, endLive])
 
   const getRandomEncouragement = useRandomSelector<CoachCue>([
     'good_rep',
@@ -192,6 +213,10 @@ export function Live({
     lastReps.current = pose.reps
     const peak = rec.current.repPeak
     rec.current.repPeak = 0
+    // Read through the ref: as a dependency, a new array every render would rerun
+    // this effect and cancel the finish timer below.
+    const warnings = poseRef.current.rep_warnings
+    rec.current.warnings.push(...warnings)
     if (pose.reps >= goal) {
       say(getRandomFinish())
       const id = setTimeout(finish, 1500)
@@ -237,16 +262,19 @@ export function Live({
     }
   }, [pose.angle, pose.confidence, phase, camera, say])
 
-  // ...and to each new form problem.
+  // ...and to each form fault as it appears. A fault that clears and comes back
+  // counts again; one seen before "go" (getting into position) or after the
+  // last rep (it would cut off "Session complete") doesn't count.
   const lastWarning = useRef<string | null>(null)
   useEffect(() => {
     const w = pose.form_warning
-    if (w && w !== lastWarning.current) {
-      rec.current.warnings.push(w)
-      say('knee_in')
-    }
+    const fresh = w != null && w !== lastWarning.current
     lastWarning.current = w
-  }, [pose.form_warning, say])
+    if (!fresh || phase !== 'running' || pose.reps >= goal) return
+    rec.current.warnings.push(w)
+    const cue = warningCue(w)
+    if (cue) say(cue)
+  }, [pose.form_warning, pose.reps, goal, phase, say])
 
   useEffect(() => stopCoach, [])
 
@@ -254,6 +282,7 @@ export function Live({
   const reached = angle != null && angle >= target - 2
   const exit = () => {
     stopCoach()
+    endLive('exited')
     navigate('/')
   }
 
@@ -297,6 +326,7 @@ export function Live({
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
               {simulated && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.simulated}</span>}
+              {liveShared && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.liveShared}</span>}
             </p>
           </div>
         </div>
@@ -348,13 +378,13 @@ export function Live({
       {/* Bottom HUD */}
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
         <div className="mb-4 flex flex-col items-center gap-2 lg:pr-[360px]">
-          {pose.form_warning && (
+          {pose.form_warning && phase !== 'countdown' && (
             <div className="flex animate-rise items-center gap-2 rounded-full bg-warn-soft px-4 py-2 text-sm font-semibold text-warn shadow-lg">
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
                 <path d="M8 1.5 15 14H1L8 1.5Z" fill="currentColor" />
                 <path d="M8 6v3.5M8 11.5v.5" className="stroke-warn-soft" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
-              {pose.form_warning}
+              {warningLabel(pose.form_warning, lang)}
             </div>
           )}
           {saveError && (

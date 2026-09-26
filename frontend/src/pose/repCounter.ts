@@ -9,14 +9,17 @@ export interface RepCounterConfig {
   debounceMs: number        // wait time after finishing rep before starting a new one (e.g. 350ms)
 }
 
+/** Saved with the session as these codes (lib/formWarnings.ts turns them into words). */
+export type RepWarning = 'not_deep_enough' | 'too_fast'
+
 export type RepEvent =
-  | { type: 'rep'; count: number; peak: number; warnings: string[] }
+  | { type: 'rep'; count: number; peak: number; warnings: RepWarning[] }
   | { type: 'none' }
 
 export class RepCounter {
   count = 0
   maxAngle = 0
-  warnings: string[] = []
+  warnings: RepWarning[] = []
   private bent = false
   get isBent() {
     return this.bent
@@ -72,7 +75,7 @@ export class RepCounter {
         }
 
         this.count += 1
-        const repWarnings: string[] = []
+        const repWarnings: RepWarning[] = []
         if (this.repPeak < this.cfg.targetAngle - 10) repWarnings.push('not_deep_enough')
         if (duration < this.cfg.minRepMs) repWarnings.push('too_fast')
         this.warnings.push(...repWarnings)

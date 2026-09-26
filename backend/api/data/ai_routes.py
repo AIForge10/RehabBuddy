@@ -60,8 +60,9 @@ def summary(body: SummaryRequest, user: CurrentUser = Depends(get_current_user))
             f"recommended action. Be factual; use only this data: {facts}",
             system="You are a concise clinical assistant for physical therapists.", max_tokens=220)
         text = ai or _template_summary(o)
-        conn.execute("""INSERT INTO ai_summaries (id, patient_id, week_start, summary_text)
-                        VALUES (%s, %s, %s, %s)""", (f"sum-{uuid.uuid4()}", body.patient_id, week_start, text))
+        conn.execute("""INSERT INTO ai_summaries (id, patient_id, week_start, summary_text, source)
+                        VALUES (%s, %s, %s, %s, %s)""",
+                     (f"sum-{uuid.uuid4()}", body.patient_id, week_start, text, "gemini" if ai else "template"))
     return {"summary_text": text, "week_start": week_start.isoformat(), "is_fallback": ai is None}
 
 

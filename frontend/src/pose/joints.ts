@@ -5,6 +5,9 @@
 // mode 'raw':     angle = theta (arm at side ≈ 0, raised = up) -> shoulder
 export type JointName = 'knee' | 'hip' | 'elbow' | 'shoulder' | 'wrist'
 
+/** Form faults the camera can see (see form.ts). Saved with the session as these codes. */
+export type FormFault = 'thigh_moving' | 'leaning_back' | 'elbow_drifting' | 'shrugging'
+
 export interface JointConfig {
   label: string
   a: [number, number]
@@ -15,6 +18,8 @@ export interface JointConfig {
   straight: number
   target: number
   tip: string
+  /** The one form fault checked for this joint, if any. Browser only (not in the Python prototype). */
+  fault?: FormFault
 }
 
 export const JOINTS: Record<JointName, JointConfig> = {
@@ -22,21 +27,25 @@ export const JOINTS: Record<JointName, JointConfig> = {
     label: 'Knee', a: [23, 24], joint: [25, 26], b: [27, 28], mode: 'flexion',
     bent: 45, straight: 20, target: 90,
     tip: 'Stand side-on, whole leg in frame, bend your knee',
+    fault: 'thigh_moving',
   },
   hip: {
     label: 'Hip', a: [11, 12], joint: [23, 24], b: [25, 26], mode: 'flexion',
     bent: 40, straight: 15, target: 90,
     tip: 'Stand side-on, lift your knee towards your chest',
+    fault: 'leaning_back',
   },
   elbow: {
     label: 'Elbow', a: [11, 12], joint: [13, 14], b: [15, 16], mode: 'flexion',
     bent: 60, straight: 25, target: 130,
     tip: 'Sit side-on, arm straight down, curl your forearm up',
+    fault: 'elbow_drifting',
   },
   shoulder: {
     label: 'Shoulder', a: [23, 24], joint: [11, 12], b: [13, 14], mode: 'raw',
     bent: 60, straight: 30, target: 90,
     tip: 'Face the camera, arm at your side, raise it out sideways',
+    fault: 'shrugging',
   },
   wrist: {
     label: 'Wrist (experimental)', a: [13, 14], joint: [15, 16], b: [19, 20], mode: 'flexion',

@@ -13,6 +13,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   DashboardResponse,
+  Language,
   Patient,
   PainCheckRequest,
   PainCheckResponse,
@@ -22,8 +23,11 @@ import type {
   SummaryResponse,
   UpdateAssignmentRequest,
   UUID,
+  WeeklyRecapResponse,
 } from '../types/session'
 import { assignmentFor, exerciseFor } from '../lib/exercises'
+import { warningCounts } from '../lib/formWarnings'
+import { sessionStats } from '../lib/replay'
 
 const STORAGE_KEY = 'rehabbuddy.mock.v6'
 const TRACES_KEY = 'rehabbuddy.mock.traces.v1'
@@ -94,7 +98,9 @@ function seed(): MockDb {
       const progress = (plan.days - d) / (plan.days - 1)
       const started = startOfToday - d * DAY_MS + (17 + Math.floor(rand() * 3)) * 3_600_000
       const max_angle = Math.round(plan.from + (plan.to - plan.from) * progress + (rand() - 0.5) * 3)
-      const warnings = rand() < 0.35 ? ['Knee caving inward'] : []
+      // Codes, as real sessions store them: below 80° every rep fell short of the 90° target.
+      const fast = rand() < 0.2
+      const warnings = [...(max_angle < 80 ? ['not_deep_enough'] : []), ...(fast ? ['too_fast'] : [])]
       const pain = 2 + Math.floor(rand() * 3)
       const reps_done = rand() < 0.2 ? 8 : 10
       sessions.push({
@@ -306,6 +312,78 @@ export function fallbackSummary(): SummaryResponse {
   }
 }
 
+// Same wording as TEMPLATE in backend/api/services/weekly_recap_service.py.
+const RECAP_TEMPLATE = {
+  en: {
+    first: 'Your first session is waiting. Once it’s done, I’ll recap your week here.',
+    none: (plan: number) => `You haven’t done any of your ${plan} planned sessions in the past 7 days.`,
+    done: (n: number, plan: number) => `You did ${n} of ${plan} planned sessions in the past 7 days.`,
+    extra: (n: number, plan: number) => `You did ${n} sessions in the past 7 days, more than the ${plan} planned.`,
+    went: (best: string, a: number, b: number) => `Your ${best} went from ${a}° to ${b}°`,
+    was: (best: string, b: number) => `Your ${best} was ${b}°`,
+    last: (best: string, b: number) => `Your ${best} last time was ${b}°`,
+    hit: (target: number) => `, reaching your ${target}° goal.`,
+    gap: (gap: number, target: number) => `, ${gap}° from your ${target}° goal.`,
+    flag: 'You reported pain after a recent session, so please talk to your therapist before your next one.',
+    restart: 'A short session today is a good way to get back on track.',
+    keep: 'Keep the same rhythm over the next 7 days.',
+    aim: (plan: number) => `Aim for ${plan} sessions over the next 7 days to keep building.`,
+  },
+  es: {
+    first: 'Tu primera sesión te espera. Cuando la termines, aquí te haré un resumen de tu semana.',
+    none: (plan: number) => `En los últimos 7 días no has hecho ninguna de tus ${plan} sesiones previstas.`,
+    done: (n: number, plan: number) => `Hiciste ${n} de ${plan} sesiones previstas en los últimos 7 días.`,
+    extra: (n: number, plan: number) => `Hiciste ${n} sesiones en los últimos 7 días, más de las ${plan} previstas.`,
+    went: (best: string, a: number, b: number) => `Tu ${best} pasó de ${a}° a ${b}°`,
+    was: (best: string, b: number) => `Tu ${best} fue de ${b}°`,
+    last: (best: string, b: number) => `Tu ${best} la última vez fue de ${b}°`,
+    hit: (target: number) => `, así que alcanzaste tu meta de ${target}°.`,
+    gap: (gap: number, target: number) => `, a ${gap}° de tu meta de ${target}°.`,
+    flag: 'Me contaste que sentiste dolor después de una sesión reciente, así que habla con tu terapeuta antes de la próxima.',
+    restart: 'Una sesión corta hoy es una buena forma de retomar el ritmo.',
+    keep: 'Mantén el mismo ritmo los próximos 7 días.',
+    aim: (plan: number) => `Intenta hacer ${plan} sesiones en los próximos 7 días para seguir avanzando.`,
+  },
+}
+
+/**
+ * The weekly recap without the AI: sessions against the plan, the trend
+ * against the target, and one next step, or a pointer to the therapist after
+ * a red flag. Built from the overview, so the home screen has one even when
+ * the backend is down.
+ */
+function templateWeeklyRecap(o: PatientOverview, lang: Language): string {
+  const t = RECAP_TEMPLATE[lang]
+  const ordered = [...o.sessions].sort((a, b) => a.started_at.localeCompare(b.started_at))
+  if (ordered.length === 0) return t.first
+  // The past 7 days: today and the 6 before it, as the backend counts them.
+  const since = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
+  const recent = ordered.filter((s) => Date.parse(s.started_at) >= since)
+  const before = ordered.filter((s) => Date.parse(s.started_at) < since)
+  const angle = (s: SessionRecord) => Math.round(s.max_angle)
+  const n = recent.length
+  const plan = o.assignment.times_per_week
+  const target = Math.round(o.assignment.target_angle)
+  const best = exerciseFor(o.assignment.exercise.joint).copy[lang].best.toLowerCase()
+
+  const sessions = n === 0 ? t.none(plan) : n <= plan ? t.done(n, plan) : t.extra(n, plan)
+  // From the first session of the 7 days (or the one before, if there was only
+  // one) to the latest. With no session in the 7 days, just the last one.
+  const latest = angle(n === 0 ? ordered[ordered.length - 1] : recent[n - 1])
+  const start = n > 1 ? angle(recent[0]) : n === 1 && before.length ? angle(before[before.length - 1]) : null
+  const trend =
+    (n === 0 ? t.last(best, latest) : start == null || start === latest ? t.was(best, latest) : t.went(best, start, latest)) +
+    (latest >= target ? t.hit(target) : t.gap(target - latest, target))
+  const flagged = o.red_flags.some((f) => Date.parse(f.created_at) >= since)
+  const step = flagged ? t.flag : n === 0 ? t.restart : n >= plan ? t.keep : t.aim(plan)
+  return `${sessions} ${trend} ${step}`
+}
+
+/** Used by client.ts when GET /weekly-recap fails; the browser reads it aloud. */
+export function fallbackWeeklyRecap(o: PatientOverview, lang: Language): WeeklyRecapResponse {
+  return { text: templateWeeklyRecap(o, lang), language: lang, audio_url: null, is_fallback: true }
+}
+
 /** Seeded sessions and ones saved before sessions carried a joint were all knee bends. */
 const jointOf = (s: SessionRecord) => s.joint ?? 'knee'
 
@@ -324,10 +402,30 @@ function templateSummary(db: MockDb, patientId: UUID): string {
   const firstName = p.full_name.split(' ')[0]
   let text = `${firstName} completed ${week} session${week === 1 ? '' : 's'} this week against a plan of ${plan.times_per_week}. ${ex.copy.en.best} improved from ${first}° to ${last}° (target ${plan.target_angle}°).`
   const warn = s.filter((x) => x.form_warnings.length > 0).length
-  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly ${ex.formWarning.toLowerCase()}.`
+  const common = warningCounts(s.flatMap((x) => x.form_warnings), 'en')[0]
+  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly ${common.label.toLowerCase()}.`
   if (flags.length) text += ` ⚠ Reported pain ${flags.at(-1)!.pain_score}/10 after the latest session — recommend a check-in call before progressing load.`
   else text += ' No concerning pain reports; consider progressing the target.'
   return text
+}
+
+/** A trace never changes, so each session's stats are worked out once per target, like the backend's cache. */
+const statsCache = new Map<string, SessionRecord['stats']>()
+
+/** Sessions with the stats the backend works out in SQL, from their traces here. */
+function withStats(sessions: SessionRecord[], target: number): SessionRecord[] {
+  let traces: Record<UUID, Trace> | undefined
+  return sessions.map((s) => {
+    const key = `${s.id}:${target}`
+    if (!statsCache.has(key)) {
+      traces ??= readTraces()
+      const trace = traces[s.id]
+      // Not cached when missing: another tab may still be writing it.
+      if (!trace?.length) return { ...s, stats: null }
+      statsCache.set(key, sessionStats(trace.map(([t, angle]) => ({ t, angle })), target))
+    }
+    return { ...s, stats: statsCache.get(key) }
+  })
 }
 
 function overview(db: MockDb, assignment: Assignment): PatientOverview {
@@ -342,9 +440,10 @@ function overview(db: MockDb, assignment: Assignment): PatientOverview {
     patient,
     assignment,
     adherence_7d: recent / assignment.times_per_week,
-    sessions,
+    sessions: withStats(sessions, assignment.target_angle),
     red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
     latest_summary: templateSummary(db, patient.id),
+    latest_summary_is_ai: false,
   }
 }
 
@@ -408,14 +507,23 @@ export const mockBackend = {
   },
 
   async getSummary(patientId: UUID): Promise<SummaryResponse> {
+    // The mock has no Gemini: its summary is always the template.
     return delay(
       {
         summary_text: templateSummary(load(), patientId),
         week_start: new Date(Date.now() - 7 * DAY_MS).toISOString(),
-        is_fallback: false,
+        is_fallback: true,
       },
       400,
     )
+  },
+
+  // No Gemini or ElevenLabs in mock mode: the template, read by the browser's speech.
+  async getWeeklyRecap(patientId: UUID, language: Language): Promise<WeeklyRecapResponse> {
+    const db = load()
+    const assignment = db.assignments.find((a) => a.patient_id === patientId)
+    if (!assignment) throw new Error(`No assignment for patient ${patientId}`)
+    return delay({ text: templateWeeklyRecap(overview(db, assignment), language), language, audio_url: null, is_fallback: false }, 500)
   },
 
   async getPatientOverview(patientId: UUID): Promise<PatientOverview> {
