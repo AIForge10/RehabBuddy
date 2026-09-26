@@ -1,0 +1,12 @@
+elevenlabs==2.69.0
+fastapi==0.141.1
+google-genai==2.25.0
+httpx==0.28.1
+psycopg[binary]==3.3.6
+psycopg-binary==3.3.6
+psycopg-pool==3.3.3
+pydantic==2.13.5
+pydantic-settings==2.15.0
+pyjwt==2.15.0
+python-dotenv==1.2.3
+uvicorn[standard]==0.54.0
