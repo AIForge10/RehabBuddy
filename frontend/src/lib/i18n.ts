@@ -190,6 +190,7 @@ const strings = {
     doneProgress: 'Your progress',
     doneProgressSub: 'Deepest bend, each session',
     doneSent: 'Results sent to your therapist.',
+    demoNotSaved: 'Demo session · simulated angles, not saved to your record.',
     backHome: 'Done',
     // After a flagged pain check: calm, no celebration.
     doneRestTitle: 'Rest for today',
@@ -265,7 +266,7 @@ const strings = {
     orDemo: 'or try the demo',
     demoAs: {
       patient: { title: 'Patient', sub: 'Maria · ACL rehab' },
-      therapist: { title: 'Therapist', sub: 'Dr. Lee · 3 patients' },
+      therapist: { title: 'Therapist', sub: 'Dr. Lee · therapist dashboard' },
     },
     signupTitle: 'Create your account',
     signupSub: 'Takes a minute. Your therapist sees your progress from day one.',
@@ -472,6 +473,7 @@ const strings = {
     doneProgress: 'Tu progreso',
     doneProgressSub: 'Flexión máxima por sesión',
     doneSent: 'Resultados enviados a tu terapeuta.',
+    demoNotSaved: 'Sesión de demostración · ángulos simulados, no se guarda en tu historial.',
     backHome: 'Listo',
     doneRestTitle: 'Descansa por hoy',
     doneRestSub: 'Hemos avisado a tu terapeuta. No hagas más ejercicios hoy.',
@@ -543,7 +545,7 @@ const strings = {
     orDemo: 'o prueba la demo',
     demoAs: {
       patient: { title: 'Paciente', sub: 'Maria · rehabilitación de LCA' },
-      therapist: { title: 'Terapeuta', sub: 'Dr. Lee · 3 pacientes' },
+      therapist: { title: 'Terapeuta', sub: 'Dr. Lee · panel de terapeuta' },
     },
     signupTitle: 'Crea tu cuenta',
     signupSub: 'Toma un minuto. Tu terapeuta ve tu progreso desde el primer día.',

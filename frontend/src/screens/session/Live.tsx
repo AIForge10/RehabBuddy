@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createSession } from '../../api/client'
+import { USE_MOCKS, createSession } from '../../api/client'
 import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
@@ -98,9 +98,12 @@ export function Live({
 
   const poseRef = useRef(pose)
   const langRef = useRef(lang)
+  // Read at finish time: whether this session ran on simulated angles (no camera).
+  const simulatedRef = useRef(false)
   const exerciseRef = useRef(exercise)
   useEffect(() => {
     poseRef.current = pose
+    simulatedRef.current = simulated
     langRef.current = lang
     exerciseRef.current = exercise
   })
@@ -201,18 +204,27 @@ export function Live({
         : r.samples.map((p) => ({ time: new Date(r.startedAt.getTime() + p.t_ms).toISOString(), angle: p.angle })),
     }
     try {
-      const { session_id } = await createSession({
-        ...result,
-        assignment_id: assignment.id,
-        patient_id: assignment.patient_id,
-        started_at: r.startedAt.toISOString(),
-        joint: exercise.part,
-      })
+      // Demo mode (no camera) runs on simulated angles. It is shown and streamed
+      // live, but never saved against the real backend: a fake 92° session would
+      // change what the therapist sees for everyone. Mock mode keeps saving, since
+      // its data lives in this browser only.
+      const demo = simulatedRef.current && !USE_MOCKS
+      const session_id = demo
+        ? `demo-${r.startedAt.getTime()}`
+        : (
+            await createSession({
+              ...result,
+              assignment_id: assignment.id,
+              patient_id: assignment.patient_id,
+              started_at: r.startedAt.toISOString(),
+              joint: exercise.part,
+            })
+          ).session_id
       const pain = stoppedForPain.current
       endLive(pain ? 'pain' : 'finished') // after the save, so the therapist's dashboard can already load it
       // The coach's last line ("Session complete", or stopping for pain) ends before the pain check speaks.
       await untilCoachQuiet()
-      navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain } })
+      navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain, demo } })
     } catch {
       saving.current = false
       setSaveError(true)
@@ -434,7 +446,7 @@ export function Live({
             <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm tabular-nums text-white/65">
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
-              {simulated && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.simulated}</span>}
+              {simulated && <span className="label-mono ml-1.5 inline rounded-full bg-white/10 px-2 py-0.5 text-[10px]">{s.simulated}</span>}
               {liveShared && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.liveShared}</span>}
               {listening && (
                 <span className="inline-flex max-w-full animate-rise items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80 sm:ml-1.5">

@@ -138,7 +138,8 @@ export default function SessionDone() {
           </Section>
 
           <div className="space-y-4">
-            {pain && (
+            {flow.demo && <p className="label-mono text-muted">{s.demoNotSaved}</p>}
+            {pain && !flow.demo && (
               <p
                 className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-[15px] font-bold ring-1 ${
                   pain.response.flagged ? 'bg-critical-soft text-critical ring-critical/20' : 'bg-brand-soft text-brand-ink ring-brand/20'

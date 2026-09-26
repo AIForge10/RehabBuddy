@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { USE_MOCKS, getDashboard, getSummary, updateAssignment } from '../api/client'
 import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
@@ -21,6 +21,8 @@ import { SessionReplay } from './therapist/SessionReplay'
 import { EndRange, RepPeaks } from './therapist/SessionStats'
 
 const POLL_MS = 3000
+/** Patients whose template summary this page load already asked Gemini to redraft. */
+const autoDrafted = new Set<string>()
 const DAY_MS = 86_400_000
 const FLAG_WINDOW_MS = 3 * DAY_MS
 const HIGHLIGHT_MS = 8000
@@ -110,7 +112,15 @@ export default function TherapistDashboard() {
     }
   }, [therapistId])
 
-  const patients = data?.patients ?? []
+  // Most recent session first, so the patient shown by default has data; new
+  // sign-ups without a session yet go last (the backend lists by id).
+  const patients = useMemo(
+    () =>
+      [...(data?.patients ?? [])].sort((a, b) =>
+        (b.sessions[0]?.started_at ?? '').localeCompare(a.sessions[0]?.started_at ?? ''),
+      ),
+    [data],
+  )
   // Who's exercising right now. A session that begins brings its patient up;
   // one that ends polls at once, so the saved session shows up (and replays)
   // without waiting for the next poll.
@@ -407,7 +417,7 @@ function PatientDetail({
   const first = sessions.at(-1)
   const latest = sessions[0]
   const done = Math.round(p.adherence_7d * assignment.times_per_week)
-  const gain = latest && first ? latest.max_angle - first.max_angle : 0
+  const gain = latest && first ? Math.round((latest.max_angle - first.max_angle) * 10) / 10 : 0
   const latestPain = sessions.find((s) => s.pain_score != null)
   const rehabDay = Math.max(1, Math.round((now - Date.parse(patient.start_date)) / DAY_MS))
   const flagged = recentFlags(p, now).length > 0
@@ -432,6 +442,16 @@ function PatientDetail({
   const summaryText = summary ? summary.summary_text : p.latest_summary
   // Credit Gemini only for text it wrote, not the template it falls back to.
   const byGemini = summary ? !summary.is_fallback : p.latest_summary_is_ai
+
+  // A patient with sessions but only a template summary (seed data, or Gemini
+  // was down when it was written) gets a Gemini draft once per page load, so the
+  // dashboard doesn't open on "not Gemini" while Gemini is up.
+  useEffect(() => {
+    if (USE_MOCKS || byGemini || !sessions.length || autoDrafted.has(patient.id)) return
+    autoDrafted.add(patient.id)
+    void regenerate()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [patient.id, byGemini, sessions.length])
 
   // A new plan went out, from the editor or an approved suggestion.
   const planSent = () => {

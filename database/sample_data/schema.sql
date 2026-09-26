@@ -61,6 +61,13 @@ CREATE TABLE IF NOT EXISTS angle_samples (
 );
 SELECT create_hypertable('angle_samples', 'time', if_not_exists => TRUE);
 CREATE INDEX IF NOT EXISTS angle_samples_session ON angle_samples (session_id, time DESC);
+-- Columnstore compression: a session's samples sit together (segment by session_id, ordered by
+-- time), so replay reads one segment and yesterday's data costs ~1/7 of the space. Chunks compress
+-- once they are a day old; the hourly job picks them up. (Applied by a --reset too.)
+ALTER TABLE angle_samples SET (timescaledb.compress,
+  timescaledb.compress_segmentby = 'session_id', timescaledb.compress_orderby = 'time');
+SELECT add_compression_policy('angle_samples', INTERVAL '1 day',
+  schedule_interval => INTERVAL '1 hour', if_not_exists => TRUE);
 
 CREATE TABLE IF NOT EXISTS pain_checkins (
   id         TEXT PRIMARY KEY,

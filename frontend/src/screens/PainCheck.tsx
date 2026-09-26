@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { painCheck, VOICE_ANSWERS } from '../api/client'
+import { fallbackPainCheck } from '../api/mock'
 import { LogoMark } from '../components/Logo'
 import { ArrowRight, Button, PageHeader, PatientScreen } from '../components/Screen'
 import { sayText, unlockAudio } from '../lib/coach'
@@ -17,6 +18,8 @@ export interface SessionFlowState {
   assignment: Assignment
   /** The patient stopped mid-way by saying it hurts (Live). The check-in leads with it and it's always flagged. */
   stoppedForPain?: boolean
+  /** A demo-mode session (simulated angles): nothing was saved, so the check-in stays on this device too. */
+  demo?: boolean
   pain?: { score: number; response: PainCheckResponse }
 }
 
@@ -58,18 +61,21 @@ export default function PainCheck() {
   const spokenNote = useRef('')
 
   const stopped = Boolean(flow?.stoppedForPain)
+  const demo = Boolean(flow?.demo)
+  // A spoken answer is transcribed against the saved session, which a demo session doesn't have.
+  const mic = MIC && !demo
   const painTitle = flow ? exerciseFor(flow.assignment.exercise.joint).copy[lang].painTitle : ''
   const answered = response != null
 
   // The coach asks the question out loud, in the exercise's own words.
   useEffect(() => {
     if (!painTitle || answered || talking) return
-    const timer = setTimeout(() => say(s.painAsk(painTitle, MIC, stopped), lang), stopped ? ASK_AFTER_STOP_MS : ASK_AFTER_MS)
+    const timer = setTimeout(() => say(s.painAsk(painTitle, mic, stopped), lang), stopped ? ASK_AFTER_STOP_MS : ASK_AFTER_MS)
     return () => {
       clearTimeout(timer)
       skipPending()
     }
-  }, [painTitle, stopped, answered, talking, lang, s])
+  }, [painTitle, stopped, answered, talking, lang, s, mic])
 
   if (!flow) return <Navigate to="/" replace />
 
@@ -92,7 +98,8 @@ export default function PainCheck() {
     unlockAudio() // the reply plays after the request, outside this tap
     setSending(true)
     const text = [...chips.map((i) => s.painChips[i]), notes.trim()].filter(Boolean).join('. ')
-    const res = await painCheck({ session_id: flow.sessionId, pain_score: score, notes: text, language: lang, stopped_for_pain: stopped })
+    const body = { session_id: flow.sessionId, pain_score: score, notes: text, language: lang, stopped_for_pain: stopped }
+    const res = demo ? fallbackPainCheck(body) : await painCheck(body)
     setResponse(res)
     setSending(false)
     skipPending()
@@ -114,12 +121,12 @@ export default function PainCheck() {
           )
         }
         title={painTitle}
-        sub={stopped ? s.painStoppedSub : MIC ? s.painSubVoice : s.painSub}
+        sub={stopped ? s.painStoppedSub : mic ? s.painSubVoice : s.painSub}
       />
 
       <fieldset className="mt-8" disabled={locked}>
         <legend className="sr-only">{painTitle}</legend>
-        {MIC && (
+        {mic && (
           <div className="mb-6">
             <VoiceAnswer sessionId={flow.sessionId} disabled={locked} onStart={() => setTalking(true)} onAnswer={heard} />
           </div>
