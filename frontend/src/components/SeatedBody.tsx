@@ -288,8 +288,8 @@ export function SeatedBody({
       </g>
     </>
   )
-  const nearShin = (node: ReactNode, extra?: { opacity?: string }) => (
-    <g transform={thigh} {...extra}>
+  const nearShin = (node: ReactNode) => (
+    <g transform={thigh}>
       <g {...turn}>{node}</g>
     </g>
   )
@@ -399,21 +399,11 @@ export function SeatedBody({
           )}
           {farLeg && <g opacity="0.12">{farShapes}</g>}
         </g>
+        {/* One layer, shoe included, so overlapping parts don't stack their opacity */}
         <g opacity="0.3">
           {torsoShapes}
-          {nearShin(
-            <>
-              <path d={SHIN_SKIN} />
-              <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} />
-            </>,
-          )}
+          {nearShin(shinShapes)}
         </g>
-        {nearShin(
-          <g transform={SHOE_AT}>
-            <path d={SHOE} />
-          </g>,
-          { opacity: '0.5' },
-        )}
       </g>
     )
   }
