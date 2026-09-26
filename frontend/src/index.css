@@ -1,1 +1,37 @@
 @import "tailwindcss";
+
+/* Design tokens: the only place colors live. Clinical calm: warm paper,
+   near-black ink, one deep-teal accent, status colors reserved for state. */
+@theme {
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  --color-canvas: #f6f5f1;
+  --color-surface: #fdfdfc;
+  --color-ink: #151716;
+  --color-ink-2: #4f524f;
+  --color-muted: #858680;
+  --color-line: #e3e1da;
+  --color-line-strong: #c9c6bc;
+
+  --color-accent: #0e6b66;
+  --color-accent-strong: #0a524e;
+  --color-accent-soft: #e3efed;
+
+  --color-critical: #c23a3a;
+  --color-critical-soft: #fbecea;
+  --color-warn: #9a6408;
+  --color-warn-soft: #fbf1df;
+  --color-good: #1d7a3a;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-canvas text-ink font-sans;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
