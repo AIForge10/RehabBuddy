@@ -1,7 +1,26 @@
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
+import { fileURLToPath } from 'node:url'
+import { defineConfig, type Plugin } from 'vite'
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-})
+const WEB_NATIVE = fileURLToPath(new URL('./src/lib/native.ts', import.meta.url))
+const APP_NATIVE = fileURLToPath(new URL('../mobile/src/native.ts', import.meta.url))
+
+/** The iOS/Android build (`--mode native`, run by ../mobile) swaps src/lib/native.ts for the Capacitor version. */
+function nativeApp(): Plugin {
+  return {
+    name: 'native-app',
+    enforce: 'pre',
+    async resolveId(source, importer, options) {
+      if (!source.endsWith('/native')) return null
+      const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
+      return resolved?.id === WEB_NATIVE ? APP_NATIVE : null
+    },
+  }
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), tailwindcss(), mode === 'native' && nativeApp()],
+  // The app has its own settings (which backend, mocks or not): mobile/.env.
+  envDir: mode === 'native' ? '../mobile' : undefined,
+}))

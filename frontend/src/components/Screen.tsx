@@ -17,7 +17,8 @@ export const TITLE = 'font-display text-[34px] leading-[1.06] sm:text-[44px]'
 export function PatientScreen({ children, wide = false, right }: { children: ReactNode; wide?: boolean; right?: ReactNode }) {
   return (
     <div className="min-h-dvh pb-[env(safe-area-inset-bottom)]">
-      <header className="mx-auto flex h-[72px] max-w-6xl items-center justify-between gap-4 px-5 pt-[env(safe-area-inset-top)]">
+      <StatusBarScrim />
+      <header className="mx-auto flex h-[calc(72px+env(safe-area-inset-top))] max-w-6xl items-center justify-between gap-4 px-5 pt-[env(safe-area-inset-top)]">
         <Logo />
         <div className="flex items-center gap-3">
           <LanguageToggle />
@@ -30,6 +31,14 @@ export function PatientScreen({ children, wide = false, right }: { children: Rea
       </main>
     </div>
   )
+}
+
+/**
+ * Edge to edge (the mobile app), a page scrolls under the status bar; this
+ * keeps the clock readable over it. It is 0 tall in a browser tab.
+ */
+export function StatusBarScrim() {
+  return <div aria-hidden="true" className="pointer-events-none fixed inset-x-0 top-0 z-30 h-[env(safe-area-inset-top)] bg-canvas/85 backdrop-blur-xl" />
 }
 
 /** Title block for a screen: optional kicker line, the h1 and one sentence under it. */

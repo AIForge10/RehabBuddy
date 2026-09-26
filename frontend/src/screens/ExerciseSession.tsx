@@ -4,6 +4,7 @@ import { getAssignment } from '../api/client'
 import { useAuth } from '../lib/auth'
 import { unlockAudio } from '../lib/coach'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
+import { keepAwake } from '../lib/native'
 import { useCamera } from '../lib/useCamera'
 import { preloadPose } from '../pose'
 import type { Assignment } from '../types/session'
@@ -31,6 +32,14 @@ export default function ExerciseSession() {
 
   // The pose model takes a few seconds to download; fetch it while they read the brief.
   useEffect(preloadPose, [])
+
+  // From setup on, the phone sits across the room: it must not dim or lock.
+  const filming = step !== 'brief'
+  useEffect(() => {
+    if (!filming) return
+    void keepAwake(true)
+    return () => void keepAwake(false)
+  }, [filming])
 
   useEffect(() => {
     if (!assignment) getAssignment(patientId).then(setAssignment).catch(() => navigate('/'))

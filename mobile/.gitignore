@@ -1,0 +1,5 @@
+node_modules
+# Build output: scripts/build-web.mjs rebuilds it from ../frontend
+www
+# The downloaded pose model
+.cache

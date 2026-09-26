@@ -1,4 +1,5 @@
 import type { Language } from '../types/session'
+import { isNativeApp } from './native'
 
 // Patient-facing copy. The therapist dashboard is English-only.
 const strings = {
@@ -488,6 +489,31 @@ const strings = {
 
 export type Strings = (typeof strings)['en']
 
+// The mobile app runs these same screens, where a browser and a webcam would be
+// the wrong things to talk about.
+const inApp: Record<Language, Partial<Strings>> = {
+  en: {
+    cameraDenied: 'Camera is blocked. Allow it for bendwith.us in your phone’s Settings, or use demo mode.',
+    heroSub: 'Knee, hip, shoulder, elbow or wrist: prop up your phone and do your exercises in front of it. We measure every movement to the degree, coach you out loud, and send your therapist the results.',
+    heroPoints: ['Free', 'No video uploaded', 'Just your phone'],
+    forPatientsList: strings.en.forPatientsList.map((line, i) => (i === 1 ? 'Three minutes, just your phone' : line)),
+    privacyBody: 'Tracking runs on your phone. Only numbers like angles, reps and your pain score reach your therapist.',
+    localNote: 'Preview: accounts are kept on this phone only.',
+  },
+  es: {
+    cameraDenied: 'La cámara está bloqueada. Permite el acceso a bendwith.us en los Ajustes del teléfono, o usa el modo demo.',
+    heroSub: 'Rodilla, cadera, hombro, codo o muñeca: apoya tu teléfono y haz tus ejercicios frente a él. Medimos cada movimiento al grado, te guiamos en voz alta y enviamos los resultados a tu terapeuta.',
+    heroPoints: ['Gratis', 'Sin subir video', 'Solo tu teléfono'],
+    forPatientsList: strings.es.forPatientsList.map((line, i) => (i === 1 ? 'Tres minutos, solo tu teléfono' : line)),
+    privacyBody: 'El seguimiento se hace en tu teléfono. Solo llegan a tu terapeuta los números: ángulos, repeticiones y tu nivel de dolor.',
+    localNote: 'Vista previa: las cuentas se guardan solo en este teléfono.',
+  },
+}
+
+const current: Record<Language, Strings> = isNativeApp
+  ? { en: { ...strings.en, ...inApp.en }, es: { ...strings.es, ...inApp.es } }
+  : strings
+
 export function t(lang: Language): Strings {
-  return strings[lang]
+  return current[lang]
 }
