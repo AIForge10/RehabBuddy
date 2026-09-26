@@ -22,6 +22,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
+# Support both direct endpoints (frontend default) and versioned /api/v1 endpoints
+app.include_router(auth_router)
+app.include_router(data_router)
 app.include_router(api_router, prefix=settings.API_V1_STR)
 app.include_router(auth_router, prefix=settings.API_V1_STR)
 app.include_router(data_router, prefix=settings.API_V1_STR)
