@@ -1,4 +1,4 @@
-// Satyabrata — everything Daniel's exercise screen needs, in one hook.
+// everything an exercise screen needs, in one hook.
 // Camera + MediaPipe + angle + rep counting + session result.
 //
 //   const pose = usePoseSession({ joint: 'knee', targetAngle: 90, targetReps: 10,

@@ -1,4 +1,4 @@
-// Satyabrata — drop-in camera view for Daniel's screens.
+// drop-in camera view for the app screens.
 //   const pose = usePoseSession({ joint: 'knee', targetAngle: 90 })
 //   <PoseCamera pose={pose} className="rounded-3xl" />
 // Style the wrapper however you like (className). Video + skeleton overlay are mirrored.

@@ -1,4 +1,4 @@
-// Satyabrata — rep counting with hysteresis + form checks.
+// rep counting with hysteresis + form checks.
 // Flexion convention: 0° = straight leg, bigger = more bent.
 export interface RepCounterConfig {
   bentThreshold: number     // rep "starts" when flexion goes above this

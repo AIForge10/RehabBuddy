@@ -1,4 +1,4 @@
-// Satyabrata — webcam + MediaPipe Pose Landmarker hook, works for any joint in joints.ts.
+// webcam + MediaPipe Pose Landmarker hook, works for any joint in joints.ts.
 import { useEffect, useRef, useState } from 'react'
 import { FilesetResolver, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision'
 import { jointAngle, Smoother } from './angle'

@@ -1,4 +1,4 @@
-// Satyabrata — angle math. SAME as angle_at / joint_angle in ml/angle_prototype.py.
+// angle math. SAME as angle_at / joint_angle in ml/angle_prototype.py.
 import type { JointConfig } from './joints'
 
 export type Point = { x: number; y: number }

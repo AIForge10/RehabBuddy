@@ -1,4 +1,4 @@
-// Satyabrata — joint library. SAME values as JOINTS in ml/angle_prototype.py.
+// joint library. SAME values as JOINTS in ml/angle_prototype.py.
 // Adding a new joint = adding one entry here.
 // a / joint / b: MediaPipe landmark indices as [left, right]
 // mode 'flexion': angle = 180 - theta (straight limb = 0)   -> knee, hip, elbow, wrist

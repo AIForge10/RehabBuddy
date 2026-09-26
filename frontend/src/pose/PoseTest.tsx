@@ -1,5 +1,5 @@
-// Satyabrata's private test page: http://localhost:5173/pose-test.html
-// Not part of the real app — Daniel's screens are untouched.
+// Private pose test page: http://localhost:5173/pose-test.html
+// Not part of the real app — app screens are untouched.
 import { useEffect, useRef, useState } from 'react'
 import { usePose, type PoseFrame } from './usePose'
 import { RepCounter } from './repCounter'
