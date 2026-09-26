@@ -1,9 +1,16 @@
+from pathlib import Path
 from typing import List
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+ENV_FILE = ROOT_DIR / ".env"
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "RehabBuddy API"
     API_V1_STR: str = "/api/v1"
+    
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-3.6-flash"
     
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
@@ -21,7 +28,7 @@ class Settings(BaseSettings):
         return f"postgresql+asyncpg://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(ENV_FILE), ".env"),
         env_file_encoding="utf-8",
         extra="ignore"
     )
