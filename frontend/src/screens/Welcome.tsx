@@ -155,6 +155,15 @@ function PlayIcon() {
   )
 }
 
+/** The therapist's side: a chart on axes. */
+function TrendIcon({ size, className = '' }: { size: number; className?: string }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={className}>
+      <path d="M4 20V4m0 16h16M8 15l3.5-4 3 2.5L20 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  )
+}
+
 function Hero() {
   const { s } = useLanguage()
   const demo = useDemo()
@@ -176,7 +185,25 @@ function Hero() {
             {s.ctaDemo}
           </button>
         </div>
-        <p className="mt-5 text-[15px] text-ink-2 sm:hidden">
+        {/* The product has two sides; the therapist's gets its own way in, a step below the two buttons. */}
+        <button
+          type="button"
+          disabled={demo.pending != null}
+          onClick={() => demo.start('therapist')}
+          className="group mt-5 inline-flex items-center gap-3 rounded-xl py-1 pr-2 text-left text-[15px] leading-snug disabled:opacity-60"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-surface text-brand-ink ring-1 ring-line transition-colors group-hover:ring-line-strong">
+            {demo.pending === 'therapist' ? <Spinner /> : <TrendIcon size={18} />}
+          </span>
+          <span>
+            <span className="text-ink-2">{s.heroTherapistAsk}</span>{' '}
+            <span className="whitespace-nowrap font-bold text-brand-ink underline-offset-4 group-hover:underline">
+              {s.heroTherapist}
+              <ArrowRight size={15} className="ml-1 inline-block align-[-2px] transition-transform duration-200 group-hover:translate-x-0.5" />
+            </span>
+          </span>
+        </button>
+        <p className="mt-4 text-[15px] text-ink-2 sm:hidden">
           {s.haveAccount}{' '}
           <Link to="/login" className="font-bold text-brand-ink underline-offset-4 hover:underline">
             {s.navLogin}
@@ -336,9 +363,7 @@ function Audiences() {
       </div>
       <div className="relative isolate overflow-hidden rounded-3xl bg-hero p-7 text-on-hero ring-1 ring-white/8 sm:p-10">
         <LimbLattice opacity={0.3} />
-        <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" className="text-brand-light">
-          <path d="M4 20V4m0 16h16M8 15l3.5-4 3 2.5L20 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
+        <TrendIcon size={40} className="text-brand-light" />
         <h3 className="mt-6 font-display text-[30px] leading-tight">{s.forTherapists}</h3>
         <ul className="mt-6">
           {s.forTherapistsList.map((item) => (
