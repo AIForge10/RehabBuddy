@@ -1,18 +1,21 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
 import { Button, PatientScreen, TITLE } from '../components/Screen'
 import { exerciseFor } from '../lib/exercises'
 import { useAuth } from '../lib/auth'
 import { useLanguage } from '../lib/language'
+import { planChanges, planOf, type PlanField } from '../lib/plan'
 import { weekOf } from '../lib/week'
-import type { PatientOverview } from '../types/session'
+import type { Assignment, PatientOverview } from '../types/session'
 import { NextSession } from './home/NextSession'
+import { PlanNotice } from './home/PlanNotice'
 import { Recap } from './home/Recap'
 import { WeekStrip } from './home/WeekStrip'
 
 // Read top to bottom: where the week stands, what to do now, how it's going.
 const RECAP_GRID = 'mt-12 grid gap-x-12 gap-y-12 sm:mt-16 lg:grid-cols-12'
+const POLL_MS = 4000
 
 export default function Home() {
   const { s } = useLanguage()
@@ -20,17 +23,33 @@ export default function Home() {
   const navigate = useNavigate()
   const [data, setData] = useState<PatientOverview | null>(null)
   const [error, setError] = useState(false)
+  const shown = useRef<Assignment | null>(null) // the plan on screen, to notice a therapist's edit
+  const [updated, setUpdated] = useState<PlanField[] | null>(null)
 
   const load = useCallback(() => {
     getPatientOverview(DEMO_PATIENT_ID)
       .then((d) => {
+        const changed = shown.current ? planChanges(planOf(shown.current), planOf(d.assignment)) : []
+        if (changed.length) setUpdated((u) => [...new Set([...(u ?? []), ...changed])])
+        shown.current = d.assignment
         setData(d)
         setError(false)
       })
-      .catch(() => setError(true))
+      // A failed refresh keeps the plan already on screen.
+      .catch(() => !shown.current && setError(true))
   }, [])
 
-  useEffect(load, [load])
+  // Refresh while the tab is visible, so a plan the therapist changes shows up without a reload.
+  useEffect(() => {
+    load()
+    const id = setInterval(() => !document.hidden && load(), POLL_MS)
+    const onVisible = () => !document.hidden && load()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [load])
 
   if (error) {
     return (
@@ -78,7 +97,8 @@ export default function Home() {
         <WeekStrip week={week} plan={plan} />
       </div>
 
-      <div className="mt-8 sm:mt-10">
+      <div className="mt-8 space-y-4 sm:mt-10">
+        {updated && <PlanNotice changed={updated} assignment={assignment} onDismiss={() => setUpdated(null)} />}
         <NextSession assignment={assignment} onStart={() => navigate('/session', { state: { assignment } })} />
       </div>
 

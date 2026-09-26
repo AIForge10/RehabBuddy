@@ -9,8 +9,10 @@ import { useLanguage } from '../lib/language'
 
 const LABEL = { en: 'Body part', es: 'Parte del cuerpo' }
 
-export function JointPicker({ value, onChange }: { value: BodyPart; onChange: (part: BodyPart) => void }) {
-  const { lang } = useLanguage()
+/** `english` for the English-only therapist view. */
+export function JointPicker({ value, onChange, english = false }: { value: BodyPart; onChange: (part: BodyPart) => void; english?: boolean }) {
+  const current = useLanguage().lang
+  const lang = english ? 'en' : current
   const { highlight, items: refs } = useHighlight<HTMLButtonElement>(BODY_PARTS.indexOf(value))
 
   const move = (from: number, step: number) => {

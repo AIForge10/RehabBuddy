@@ -17,8 +17,10 @@ import type {
   RedFlag,
   SessionRecord,
   SummaryResponse,
+  UpdateAssignmentRequest,
   UUID,
 } from '../types/session'
+import { assignmentFor, exerciseFor } from '../lib/exercises'
 
 const STORAGE_KEY = 'rehabbuddy.mock.v5'
 const THERAPIST_ID = 't-lee'
@@ -178,21 +180,25 @@ export function fallbackSummary(): SummaryResponse {
   }
 }
 
+/** Seeded sessions and ones saved before sessions carried a joint were all knee bends. */
+const jointOf = (s: SessionRecord) => s.joint ?? 'knee'
+
 function templateSummary(db: MockDb, patientId: UUID): string {
   const p = db.patients.find((x) => x.id === patientId)
-  const joint = db.assignments.find((a) => a.patient_id === patientId)?.exercise.joint
+  const plan = db.assignments.find((x) => x.patient_id === patientId)
   const s = db.sessions
-    .filter((x) => x.patient_id === patientId && (x.joint ?? joint) === joint)
+    .filter((x) => x.patient_id === patientId && jointOf(x) === plan?.exercise.joint)
     .sort((a, b) => a.started_at.localeCompare(b.started_at))
-  if (!p || s.length === 0) return 'No sessions recorded yet.'
+  if (!p || !plan || s.length === 0) return 'No sessions recorded yet.'
+  const ex = exerciseFor(plan.exercise.joint)
   const first = s[0].max_angle
   const last = s[s.length - 1].max_angle
   const week = s.filter((x) => Date.parse(x.started_at) >= new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS).length
   const flags = db.red_flags.filter((f) => f.patient_id === patientId)
   const firstName = p.full_name.split(' ')[0]
-  let text = `${firstName} completed ${week} session${week === 1 ? '' : 's'} this week against a plan of 5. Peak knee flexion improved from ${first}° to ${last}° (target 90°).`
+  let text = `${firstName} completed ${week} session${week === 1 ? '' : 's'} this week against a plan of ${plan.times_per_week}. ${ex.copy.en.best} improved from ${first}° to ${last}° (target ${plan.target_angle}°).`
   const warn = s.filter((x) => x.form_warnings.length > 0).length
-  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly knee valgus.`
+  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly ${ex.formWarning.toLowerCase()}.`
   if (flags.length) text += ` ⚠ Reported pain ${flags.at(-1)!.pain_score}/10 after the latest session — recommend a check-in call before progressing load.`
   else text += ' No concerning pain reports; consider progressing the target.'
   return text
@@ -202,9 +208,8 @@ function overview(db: MockDb, assignment: Assignment): PatientOverview {
   // "This week" = today plus the 6 days before it, matching the patient home screen.
   const weekAgo = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
   const patient = db.patients.find((p) => p.id === assignment.patient_id)!
-  const joint = assignment.exercise.joint
   const sessions = db.sessions
-    .filter((s) => s.patient_id === patient.id && (s.joint ?? joint) === joint)
+    .filter((s) => s.patient_id === patient.id && jointOf(s) === assignment.exercise.joint)
     .sort((a, b) => b.started_at.localeCompare(a.started_at))
   const recent = sessions.filter((s) => Date.parse(s.started_at) > weekAgo).length
   return {
@@ -286,5 +291,20 @@ export const mockBackend = {
     const db = load()
     const patients = db.assignments.filter((a) => a.therapist_id === therapistId).map((a) => overview(db, a))
     return delay({ therapist_id: therapistId, patients, generated_at: new Date().toISOString() }, 100)
+  },
+
+  async updateAssignment(assignmentId: UUID, body: UpdateAssignmentRequest): Promise<Assignment> {
+    const db = load()
+    const i = db.assignments.findIndex((a) => a.id === assignmentId)
+    if (i < 0) throw new Error(`No assignment ${assignmentId}`)
+    const updated: Assignment = {
+      ...assignmentFor(db.assignments[i], exerciseFor(body.joint)),
+      target_angle: body.target_angle,
+      reps: body.reps,
+      times_per_week: body.times_per_week,
+    }
+    db.assignments[i] = updated
+    save(db)
+    return delay(updated, 400)
   },
 }

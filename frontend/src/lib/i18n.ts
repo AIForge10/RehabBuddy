@@ -49,6 +49,9 @@ const strings = {
     loadError: 'Couldn’t load your plan. Check your connection and try again.',
     retry: 'Try again',
     therapistLink: 'I’m a therapist',
+    planUpdated: 'Your therapist updated your plan',
+    timesPerWeek: (n: number) => (n === 1 ? 'Once a week' : `${n} times a week`),
+    dismiss: 'Dismiss',
 
     stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
     briefTitle: 'How to do it',
@@ -264,6 +267,9 @@ const strings = {
     loadError: 'No se pudo cargar tu plan. Revisa tu conexión e inténtalo de nuevo.',
     retry: 'Reintentar',
     therapistLink: 'Soy terapeuta',
+    planUpdated: 'Tu terapeuta actualizó tu plan',
+    timesPerWeek: (n: number) => (n === 1 ? 'Una vez por semana' : `${n} veces por semana`),
+    dismiss: 'Cerrar',
 
     stepOf: (n: number, total: number) => `Paso ${n} de ${total}`,
     briefTitle: 'Cómo hacerlo',

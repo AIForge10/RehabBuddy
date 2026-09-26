@@ -1,18 +1,23 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEMO_THERAPIST_ID, USE_MOCKS, getDashboard, getSummary } from '../api/client'
+import { DEMO_THERAPIST_ID, USE_MOCKS, getDashboard, getSummary, updateAssignment } from '../api/client'
 import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
+import { ExerciseFigure } from '../components/ExerciseFigure'
+import { JointPicker } from '../components/JointPicker'
 import { Logo } from '../components/Logo'
 import { RomChart } from '../components/RomChart'
 import { TITLE, buttonClass } from '../components/Screen'
 import { useAuth } from '../lib/auth'
+import { EXERCISES, exerciseFor, type BodyPart } from '../lib/exercises'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
-import type { DashboardResponse, PatientOverview, RedFlag } from '../types/session'
+import { planChanges, planOf, type Plan } from '../lib/plan'
+import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag } from '../types/session'
 
 const POLL_MS = 3000
 const DAY_MS = 86_400_000
 const FLAG_WINDOW_MS = 3 * DAY_MS
 const HIGHLIGHT_MS = 8000
+const SENT_MS = 5000
 
 const recentFlags = (p: PatientOverview, now: number): RedFlag[] =>
   p.red_flags.filter((f) => now - Date.parse(f.created_at) < FLAG_WINDOW_MS)
@@ -38,17 +43,21 @@ export default function TherapistDashboard() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [fresh, setFresh] = useState<Record<string, number>>({}) // session id → highlight-until
   const seen = useRef<Set<string> | null>(null)
+  const reload = useRef(() => {})
 
   // Poll for the live-update effect; pause while the tab is hidden.
   useEffect(() => {
     let alive = true
-    const load = async () => {
-      if (document.hidden && seen.current) return
+    // `quiet` right after a plan edit: it runs even in a hidden tab, and a plan
+    // on another joint lists that joint's sessions, which are old even if this
+    // dashboard hasn't shown them.
+    const load = async (quiet = false) => {
+      if (document.hidden && seen.current && !quiet) return
       try {
         const res = await getDashboard(DEMO_THERAPIST_ID)
         if (!alive) return
         const ids = res.patients.flatMap((p) => p.sessions.map((s) => ({ id: s.id, patient: p.patient.id })))
-        if (seen.current) {
+        if (seen.current && !quiet) {
           const added = ids.filter((x) => !seen.current!.has(x.id))
           if (added.length) {
             const until = Date.now() + HIGHLIGHT_MS
@@ -56,7 +65,8 @@ export default function TherapistDashboard() {
             setSelectedId(added[added.length - 1].patient)
           }
         }
-        seen.current = new Set(ids.map((x) => x.id))
+        // Kept, not replaced: switching a plan's joint and back must not make its sessions "new".
+        seen.current = new Set([...(seen.current ?? []), ...ids.map((x) => x.id)])
         setData(res)
         setError(false)
         setLastOk(Date.now())
@@ -65,7 +75,8 @@ export default function TherapistDashboard() {
       }
     }
     load()
-    const id = setInterval(load, POLL_MS)
+    reload.current = () => void load(true)
+    const id = setInterval(() => load(), POLL_MS)
     const onVisible = () => !document.hidden && load()
     document.addEventListener('visibilitychange', onVisible)
     const clock = setInterval(() => setNow(Date.now()), 1000)
@@ -156,7 +167,7 @@ export default function TherapistDashboard() {
         {data && (
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
             <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={setSelectedId} now={now} fresh={fresh} />
-            {selected && <PatientDetail key={selected.patient.id} p={selected} fresh={fresh} now={now} />}
+            {selected && <PatientDetail key={selected.patient.id} p={selected} fresh={fresh} now={now} onPlanSaved={() => reload.current()} />}
           </div>
         )}
 
@@ -198,6 +209,14 @@ function FlagIcon() {
     <svg width="18" height="18" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-critical">
       <circle cx="8" cy="8" r="7" fill="currentColor" />
       <path d="M8 4.5v4.2M8 11v.3" className="stroke-critical-soft" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  )
+}
+
+function CheckIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden="true">
+      <path d="m3 8.5 3.2 3L13 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   )
 }
@@ -301,11 +320,24 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
   )
 }
 
-function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<string, number>; now: number }) {
+function PatientDetail({
+  p,
+  fresh,
+  now,
+  onPlanSaved,
+}: {
+  p: PatientOverview
+  fresh: Record<string, number>
+  now: number
+  onPlanSaved: () => void
+}) {
   const { patient, assignment, sessions } = p
   const [summary, setSummary] = useState<string | null>(null)
   const [regenerating, setRegenerating] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [sentAt, setSentAt] = useState(0)
 
+  const ex = exerciseFor(assignment.exercise.joint)
   const first = sessions.at(-1)
   const latest = sessions[0]
   const done = Math.round(p.adherence_7d * assignment.times_per_week)
@@ -337,17 +369,47 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
             </p>
           </div>
         </div>
-        <div className="text-right max-sm:text-left">
-          <p className="label-mono text-muted">Plan</p>
-          <p className="mt-1 text-[15px] text-ink-2">
-            <span className="font-bold text-ink">{assignment.exercise.name}</span> · {assignment.reps} × {assignment.target_angle}° · {assignment.times_per_week}×/wk
-          </p>
+        <div className="flex items-end gap-4 max-sm:w-full max-sm:justify-between">
+          <div className="text-right max-sm:text-left">
+            <p className="label-mono text-muted" aria-live="polite">
+              {now - sentAt < SENT_MS ? (
+                <span className="inline-flex items-center gap-1.5 text-brand-ink">
+                  <CheckIcon />
+                  Sent to {patient.full_name.split(' ')[0]}
+                </span>
+              ) : (
+                'Plan'
+              )}
+            </p>
+            <p className="mt-1 text-[15px] text-ink-2">
+              <span className="font-bold text-ink">{assignment.exercise.name}</span> · {assignment.reps} × {assignment.target_angle}° · {assignment.times_per_week}×/wk
+            </p>
+          </div>
+          <button onClick={() => setEditing(true)} className={`${buttonClass('secondary', 'md')} h-10 px-3.5 text-sm`}>
+            <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M10.5 2.5l3 3L6 13H3v-3l7.5-7.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+            </svg>
+            Edit plan
+          </button>
         </div>
       </div>
 
+      {editing && (
+        <PlanEditor
+          patient={patient}
+          assignment={assignment}
+          onClose={() => setEditing(false)}
+          onSaved={() => {
+            setSentAt(Date.now())
+            setSummary(null) // the drafted summary quotes the old plan
+            onPlanSaved()
+          }}
+        />
+      )}
+
       <dl className="grid grid-cols-2 overflow-hidden rounded-3xl bg-surface ring-1 ring-line sm:grid-cols-4 [&>div]:border-line max-sm:[&>div:nth-child(-n+2)]:border-b sm:[&>div:not(:first-child)]:border-l max-sm:[&>div:nth-child(2n)]:border-l">
         <Stat
-          label="Peak flexion"
+          label={ex.copy.en.best}
           value={latest ? `${latest.max_angle}°` : '—'}
           sub={latest ? `${gain >= 0 ? '+' : ''}${gain}° since first session` : undefined}
           tone={latest && latest.max_angle >= assignment.target_angle ? 'brand' : undefined}
@@ -366,7 +428,7 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
         <div className="flex items-baseline justify-between gap-4">
           <div>
             <h3 className="text-lg font-bold">Range of motion</h3>
-            <p className="mt-0.5 text-sm text-muted">Peak knee flexion per session</p>
+            <p className="mt-0.5 text-sm text-muted">{ex.copy.en.bestSub}</p>
           </div>
           {first && <p className="label-mono text-muted">Since {shortDate(first.started_at)}</p>}
         </div>
@@ -439,5 +501,223 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
         </div>
       </div>
     </section>
+  )
+}
+
+const ANGLE_STEP = 5
+const REPS = { min: 1, max: 30 }
+const WEEKLY = { min: 1, max: 7 }
+
+/**
+ * The plan in a modal: pick the exercise, then step the target, reps and
+ * sessions a week. The figure holds the pose being asked for and each changed
+ * field says what it was, so the therapist sees the change before sending it.
+ */
+function PlanEditor({
+  patient,
+  assignment,
+  onClose,
+  onSaved,
+}: {
+  patient: Patient
+  assignment: Assignment
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  // The plan as it was when the editor opened; the dashboard keeps polling underneath.
+  const [saved] = useState(() => planOf(assignment))
+  const [draft, setDraft] = useState(saved)
+  const [saving, setSaving] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  const ex = exerciseFor(draft.joint)
+  const sameJoint = draft.joint === saved.joint
+  const changes = planChanges(saved, draft)
+  // Below the resting angle the target would ask for no movement at all.
+  const lowest = Math.max(ex.min, ex.rest) + ANGLE_STEP
+
+  // Braces matter: the effect must not return what showModal returns. The open
+  // check covers StrictMode running the effect twice.
+  useEffect(() => {
+    if (!dialog.current?.open) dialog.current?.showModal()
+  }, [])
+
+  const close = () => dialog.current?.close()
+  const set = (field: keyof Plan) => (value: number) => setDraft((d) => ({ ...d, [field]: value }))
+  // A different exercise starts from its own default target; going back restores the saved one.
+  const pick = (joint: BodyPart) =>
+    setDraft((d) => ({ ...d, joint, target_angle: joint === saved.joint ? saved.target_angle : EXERCISES[joint].target }))
+
+  async function save() {
+    setSaving(true)
+    setFailed(false)
+    try {
+      await updateAssignment(assignment.id, draft)
+      onSaved()
+      close()
+    } catch {
+      setFailed(true)
+      setSaving(false)
+    }
+  }
+
+  return (
+    <dialog
+      ref={dialog}
+      aria-labelledby="plan-editor-title"
+      onClose={onClose}
+      onCancel={(e) => saving && e.preventDefault()}
+      // A click on the backdrop lands on the dialog itself; everything inside sits in the padded panel.
+      onClick={(e) => e.target === dialog.current && !saving && close()}
+      className="m-auto max-h-[calc(100dvh-32px)] w-[min(780px,calc(100vw-32px))] max-w-none overflow-y-auto rounded-3xl bg-surface text-ink shadow-lift ring-1 ring-line backdrop:bg-hero-2/60 backdrop:backdrop-blur-[2px]"
+    >
+      <div className="animate-rise p-5 sm:p-7">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="label-mono text-muted">{patient.full_name}</p>
+            <h2 id="plan-editor-title" className="mt-2 font-display text-[28px] leading-tight">
+              Edit plan
+            </h2>
+          </div>
+          <button
+            onClick={close}
+            disabled={saving}
+            aria-label="Close"
+            className="-mr-2 -mt-1 grid size-10 place-items-center rounded-xl text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:opacity-40"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+              <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="mt-6">
+          <JointPicker english value={ex.part} onChange={pick} />
+          <p className="mt-3 text-[15px] text-ink-2">
+            <span className="font-bold text-ink">{ex.copy.en.name}</span>
+            {!sameJoint && <span className="text-brand-ink"> · was {exerciseFor(saved.joint).copy.en.name}</span>}
+          </p>
+        </div>
+
+        <div className="mt-5 grid items-center gap-5 sm:grid-cols-2">
+          <div aria-hidden="true" className="aspect-[4/3] overflow-hidden rounded-2xl bg-stage">
+            <ExerciseFigure exercise={ex} angle={draft.target_angle} target={draft.target_angle} tracking={false} />
+          </div>
+          <div className="divide-y divide-line">
+            <Stepper
+              label="Target"
+              unit="°"
+              value={draft.target_angle}
+              min={lowest}
+              max={ex.max}
+              step={ANGLE_STEP}
+              changed={sameJoint && draft.target_angle !== saved.target_angle}
+              hint={sameJoint && draft.target_angle !== saved.target_angle ? `Was ${saved.target_angle}°` : `${lowest}–${ex.max}°`}
+              onChange={set('target_angle')}
+            />
+            <Stepper
+              label="Reps per session"
+              value={draft.reps}
+              {...REPS}
+              step={1}
+              changed={draft.reps !== saved.reps}
+              hint={draft.reps !== saved.reps ? `Was ${saved.reps}` : undefined}
+              onChange={set('reps')}
+            />
+            <Stepper
+              label="Sessions per week"
+              value={draft.times_per_week}
+              {...WEEKLY}
+              step={1}
+              changed={draft.times_per_week !== saved.times_per_week}
+              hint={draft.times_per_week !== saved.times_per_week ? `Was ${saved.times_per_week}` : undefined}
+              onChange={set('times_per_week')}
+            />
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-line pt-5">
+          <p role={failed ? 'alert' : undefined} className={`text-sm ${failed ? 'font-semibold text-critical' : 'text-ink-2'}`}>
+            {failed
+              ? 'Couldn’t save the plan. Try again.'
+              : changes.length
+                ? `${patient.full_name.split(' ')[0]}’s home screen updates when you save.`
+                : 'No changes yet.'}
+          </p>
+          <div className="flex gap-2 max-sm:w-full">
+            <button onClick={close} disabled={saving} className={`${buttonClass('secondary', 'md')} max-sm:flex-1`}>
+              Cancel
+            </button>
+            <button onClick={save} disabled={saving || changes.length === 0} className={`${buttonClass('primary', 'md')} max-sm:flex-1`}>
+              {saving ? 'Saving…' : 'Save plan'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </dialog>
+  )
+}
+
+/** A number the therapist nudges up or down; a step snaps to its multiples, so 88° goes to 90°, not 93°. */
+function Stepper({
+  label,
+  hint,
+  value,
+  unit = '',
+  min,
+  max,
+  step,
+  changed,
+  onChange,
+}: {
+  label: string
+  hint?: string
+  value: number
+  unit?: string
+  min: number
+  max: number
+  step: number
+  changed: boolean
+  onChange: (value: number) => void
+}) {
+  const clamp = (v: number) => Math.min(max, Math.max(min, v))
+  const button =
+    'grid size-10 place-items-center rounded-lg text-ink-2 transition-colors hover:bg-raised hover:text-ink disabled:pointer-events-none disabled:opacity-30'
+  return (
+    <div className="flex items-center justify-between gap-4 py-3.5 first:pt-0 last:pb-0">
+      <div className="min-w-0">
+        <p className="font-bold">{label}</p>
+        {hint && <p className={`mt-0.5 text-sm ${changed ? 'text-brand-ink' : 'text-muted'}`}>{hint}</p>}
+      </div>
+      <div role="group" aria-label={label} className="flex shrink-0 items-center rounded-xl p-0.5 ring-1 ring-line-strong">
+        <button
+          type="button"
+          aria-label={`Decrease ${label.toLowerCase()}`}
+          disabled={value <= min}
+          onClick={() => onChange(clamp(Math.ceil(value / step) * step - step))}
+          className={button}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 8h10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+        <output aria-live="polite" className={`w-14 text-center text-lg font-bold tabular-nums ${changed ? 'text-brand-ink' : ''}`}>
+          {value}
+          {unit}
+        </output>
+        <button
+          type="button"
+          aria-label={`Increase ${label.toLowerCase()}`}
+          disabled={value >= max}
+          onClick={() => onChange(clamp(Math.floor(value / step) * step + step))}
+          className={button}
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
   )
 }
