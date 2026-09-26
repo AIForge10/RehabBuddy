@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { DEMO_THERAPIST_ID, USE_MOCKS, getDashboard, getSummary } from '../api/client'
 import { resetMockData } from '../api/mock'
+import { AccountMenu } from '../components/AccountMenu'
 import { Logo } from '../components/Logo'
 import { RomChart } from '../components/RomChart'
+import { useAuth } from '../lib/auth'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
 import type { DashboardResponse, PatientOverview, RedFlag } from '../types/session'
 
@@ -27,6 +29,7 @@ function greeting() {
 }
 
 export default function TherapistDashboard() {
+  const { account } = useAuth()
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState(false)
   const [lastOk, setLastOk] = useState<number | null>(null)
@@ -88,16 +91,14 @@ export default function TherapistDashboard() {
           <Logo to="/therapist" suffix="Clinic" />
           <div className="flex items-center gap-4">
             <LiveIndicator error={error} lastOk={lastOk} now={now} />
-            <span className="grid size-10 place-items-center rounded-full bg-hero text-sm font-bold text-on-hero shadow-card" title="Dr. Lee">
-              DL
-            </span>
+            <AccountMenu english />
           </div>
         </div>
       </header>
 
       <main className="mx-auto max-w-7xl px-5 pb-16 pt-8">
         <div className="animate-rise">
-          <h1 className="font-display text-[36px] font-medium leading-tight tracking-tight">{greeting()}, Dr. Lee</h1>
+          <h1 className="font-display text-[36px] font-medium leading-tight tracking-tight">{greeting()}, {account?.full_name ?? 'Dr. Lee'}</h1>
           <ul className="mt-3 flex flex-wrap gap-2 text-sm font-semibold text-ink-2">
             <li className="rounded-full bg-surface px-3 py-1.5 shadow-card ring-1 ring-line">
               <span className="font-bold text-ink tabular-nums">{patients.length}</span> patients

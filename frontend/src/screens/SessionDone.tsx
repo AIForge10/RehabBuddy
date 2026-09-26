@@ -3,13 +3,14 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { getPatientOverview } from '../api/client'
 import { RomChart } from '../components/RomChart'
 import { Button, PatientScreen } from '../components/Screen'
+import { exerciseFor } from '../lib/exercises'
 import { formatDuration } from '../lib/format'
 import { useLanguage } from '../lib/language'
 import type { PatientOverview } from '../types/session'
 import type { SessionFlowState } from './PainCheck'
 
 export default function SessionDone() {
-  const { s } = useLanguage()
+  const { s, lang } = useLanguage()
   const navigate = useNavigate()
   const flow = useLocation().state as SessionFlowState | null
   const [overview, setOverview] = useState<PatientOverview | null>(null)
@@ -21,8 +22,12 @@ export default function SessionDone() {
   if (!flow) return <Navigate to="/" replace />
 
   const { result, assignment, pain, sessionId } = flow
+  const exercise = exerciseFor(assignment.exercise.joint)
+  const copy = exercise.copy[lang]
   const hitTarget = result.max_angle >= assignment.target_angle
-  const previous = overview?.sessions.find((x) => x.id !== sessionId)
+  // The overview covers the assigned joint; a session on another joint has no history to compare with.
+  const history = overview?.assignment.exercise.joint === assignment.exercise.joint ? overview : null
+  const previous = history?.sessions.find((x) => x.id !== sessionId)
   const delta = previous ? result.max_angle - previous.max_angle : null
   const uniqueWarnings = [...new Set(result.form_warnings)]
   const firstName = overview?.patient.full_name.split(' ')[0]
@@ -63,20 +68,20 @@ export default function SessionDone() {
 
       {/* Headline */}
       <section className="mt-8 rounded-[28px] bg-hero bg-[linear-gradient(135deg,var(--rb-hero)_0%,var(--rb-hero-2)_100%)] p-6 text-on-hero shadow-lift sm:p-7">
-        <p className="text-sm font-bold text-on-hero-2">{s.doneDeepest}</p>
+        <p className="text-sm font-bold text-on-hero-2">{copy.best}</p>
         <div className="mt-1 flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
           <p className="text-[72px] font-bold leading-none tracking-tighter tabular-nums">
             {result.max_angle}
             <span className="text-on-hero-2">°</span>
           </p>
-          {overview && (
+          {history && (
             <span className="mb-2 animate-rise whitespace-nowrap rounded-full bg-white/15 px-3 py-1.5 text-sm font-bold ring-1 ring-white/15">
               {delta == null ? s.doneFirst : s.doneVsLast(delta)}
             </span>
           )}
         </div>
         <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/15">
-          <div className="h-full origin-left animate-grow rounded-full bg-on-hero" style={{ width: `${Math.min(1, result.max_angle / assignment.target_angle) * 100}%` }} />
+          <div className="h-full origin-left animate-grow rounded-full bg-on-hero" style={{ width: `${Math.max(0, Math.min(1, (result.max_angle - exercise.rest) / (assignment.target_angle - exercise.rest))) * 100}%` }} />
         </div>
         <p className="mt-2.5 text-sm font-semibold text-on-hero-2">
           {hitTarget ? s.goalHit : s.toGo(assignment.target_angle - result.max_angle)} · {s.target} {assignment.target_angle}°
@@ -94,12 +99,12 @@ export default function SessionDone() {
         />
       </dl>
 
-      {overview && overview.sessions.length > 1 && (
+      {history && history.sessions.length > 1 && (
         <section className="mt-4 animate-rise rounded-[28px] bg-surface p-5 shadow-card ring-1 ring-line">
           <h2 className="text-lg font-bold">{s.doneProgress}</h2>
-          <p className="text-sm text-muted">{s.doneProgressSub}</p>
+          <p className="text-sm text-muted">{copy.bestSub}</p>
           <div className="mt-3">
-            <RomChart sessions={overview.sessions} target={assignment.target_angle} compact highlightLatest />
+            <RomChart sessions={history.sessions} target={assignment.target_angle} compact highlightLatest />
           </div>
         </section>
       )}

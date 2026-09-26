@@ -1,16 +1,16 @@
 import type { AngleSample } from '../types/session'
 
-// Rolling trace of the last WINDOW_MS of flexion, with the target line.
+// Rolling trace of the last WINDOW_MS of the reading, with the target line.
 const WINDOW_MS = 12_000
 const W = 300
 const H = 72
 
-export function AngleTrace({ samples, target, onDark = false }: { samples: AngleSample[]; target: number; onDark?: boolean }) {
+export function AngleTrace({ samples, target, min = 0, onDark = false }: { samples: AngleSample[]; target: number; min?: number; onDark?: boolean }) {
   const top = target + 20
   const now = samples.at(-1)?.t_ms ?? 0
   const visible = samples.filter((p) => p.t_ms >= now - WINDOW_MS)
   const x = (t: number) => W - ((now - t) / WINDOW_MS) * W
-  const y = (a: number) => H - (Math.min(a, top) / top) * (H - 4) - 2
+  const y = (a: number) => H - ((Math.min(Math.max(a, min), top) - min) / (top - min)) * (H - 4) - 2
   const line = visible.map((p, i) => `${i ? 'L' : 'M'} ${x(p.t_ms).toFixed(1)} ${y(p.angle).toFixed(1)}`).join(' ')
   const area = visible.length > 1 ? `${line} L ${x(visible.at(-1)!.t_ms)} ${H} L ${x(visible[0].t_ms)} ${H} Z` : ''
   const last = visible.at(-1)

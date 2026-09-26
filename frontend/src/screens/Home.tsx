@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
 import { Button, PatientScreen } from '../components/Screen'
+import { useAuth } from '../lib/auth'
 import { useLanguage } from '../lib/language'
+import { weekOf } from '../lib/week'
 import type { PatientOverview } from '../types/session'
 import { NextSession } from './home/NextSession'
 import { Recap } from './home/Recap'
+import { WeekStrip } from './home/WeekStrip'
 
-const DAY_MS = 86_400_000
-// Next session gets the wider column: it's the one thing to do here.
-const GRID = 'grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-6'
+// Read top to bottom: where the week stands, what to do now, how it's going.
+const RECAP_GRID = 'mt-12 grid gap-x-12 gap-y-12 sm:mt-16 lg:grid-cols-12'
 
 export default function Home() {
   const { s } = useLanguage()
+  const { account } = useAuth()
   const navigate = useNavigate()
   const [data, setData] = useState<PatientOverview | null>(null)
   const [error, setError] = useState(false)
@@ -31,8 +34,8 @@ export default function Home() {
   if (error) {
     return (
       <PatientScreen wide>
-        <div className="mx-auto mt-16 max-w-md rounded-3xl bg-surface p-8 text-center shadow-card ring-1 ring-line">
-          <p className="text-ink-2">{s.loadError}</p>
+        <div className="mt-16 max-w-md border-t-2 border-ink pt-5">
+          <p className="text-lg text-ink-2">{s.loadError}</p>
           <Button variant="secondary" size="md" className="mt-5" onClick={load}>
             {s.retry}
           </Button>
@@ -44,12 +47,14 @@ export default function Home() {
   if (!data) {
     return (
       <PatientScreen wide>
-        <div className="mt-6 sm:mt-10" aria-busy="true" aria-label={s.loading}>
-          <div className="h-4 w-44 animate-pulse rounded-md bg-line" />
-          <div className="mt-2.5 h-10 w-72 max-w-full animate-pulse rounded-xl bg-line" />
-          <div className={`mt-8 ${GRID}`}>
-            <div className="h-[340px] animate-pulse rounded-[32px] bg-line sm:h-[420px] lg:h-[520px]" />
-            <div className="h-[520px] animate-pulse rounded-[32px] bg-line" />
+        <div className="mt-8 sm:mt-12" aria-busy="true" aria-label={s.loading}>
+          <div className="h-4 w-40 animate-pulse rounded bg-line" />
+          <div className="mt-3 h-11 w-80 max-w-full animate-pulse rounded-lg bg-line" />
+          <div className="mt-3 h-5 w-96 max-w-full animate-pulse rounded bg-line" />
+          <div className="mt-10 h-[520px] animate-pulse rounded-[28px] bg-line sm:h-[560px] lg:h-[400px]" />
+          <div className={RECAP_GRID}>
+            <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-5 xl:col-span-4" />
+            <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-7 xl:col-span-8" />
           </div>
         </div>
       </PatientScreen>
@@ -58,52 +63,30 @@ export default function Home() {
 
   const { patient, assignment, sessions } = data
   const now = new Date()
-  const weekStart = new Date(now).setHours(0, 0, 0, 0) - 6 * DAY_MS
-  const thisWeek = sessions.filter((x) => Date.parse(x.started_at) >= weekStart).length
+  const week = weekOf(sessions, now, s.weekStartsOn)
+  const plan = assignment.times_per_week
 
   return (
     <PatientScreen wide>
-      <div className="mt-6 flex flex-wrap items-end justify-between gap-x-10 gap-y-4 sm:mt-10">
-        <div>
-          <p className="text-sm font-semibold text-muted first-letter:uppercase">
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-x-16 gap-y-8 sm:mt-12">
+        <div className="max-w-xl">
+          <p className="text-[15px] font-semibold text-muted first-letter:uppercase">
             {now.toLocaleDateString(s.locale, { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
-          <h1 className="mt-1 font-display text-[34px] leading-[1.08] sm:text-[44px]">{s.greeting(patient.full_name.split(' ')[0], now.getHours())}</h1>
+          <h1 className="mt-1 font-display text-[36px] leading-[1.06] sm:text-[48px]">{s.greeting((account?.full_name ?? patient.full_name).split(' ')[0], now.getHours())}</h1>
+          <p className="mt-3 text-lg text-ink-2 sm:text-xl">{s.weekLede(week.done, plan, week.daysLeft)}</p>
         </div>
-        <WeekProgress done={thisWeek} plan={assignment.times_per_week} />
+        <WeekStrip week={week} plan={plan} />
       </div>
 
-      <div className={`mt-6 sm:mt-8 ${GRID}`}>
+      <div className="mt-8 sm:mt-10">
         <NextSession assignment={assignment} onStart={() => navigate('/session', { state: { assignment } })} />
+      </div>
+
+      <div className={RECAP_GRID}>
         <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} />
       </div>
 
-      <p className="mt-10 text-center">
-        <Link
-          to="/therapist"
-          className="inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-muted transition-colors hover:bg-surface hover:text-ink hover:shadow-card"
-        >
-          {s.therapistLink}
-          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
-            <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </Link>
-      </p>
     </PatientScreen>
-  )
-}
-
-/** Sessions in the last 7 days against the weekly plan: one pip per planned session. */
-function WeekProgress({ done, plan }: { done: number; plan: number }) {
-  const { s } = useLanguage()
-  return (
-    <div className="flex items-center gap-3 pb-1.5">
-      <span className="flex gap-1" aria-hidden="true">
-        {Array.from({ length: plan }, (_, i) => (
-          <span key={i} className={`h-2 w-5 rounded-full ${i < done ? 'bg-brand' : 'bg-brand-track'}`} />
-        ))}
-      </span>
-      <p className="text-sm font-semibold text-ink-2">{s.weekLine(done, plan)}</p>
-    </div>
   )
 }

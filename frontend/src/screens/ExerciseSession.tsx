@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { DEMO_PATIENT_ID, getAssignment } from '../api/client'
+import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useCamera } from '../lib/useCamera'
 import type { Assignment } from '../types/session'
 import { Brief } from './session/Brief'
@@ -9,13 +10,18 @@ import { Setup } from './session/Setup'
 
 type Step = 'brief' | 'setup' | 'live'
 
-/** Pre-session briefing → camera setup → live session. One camera stream spans setup and live. */
+/**
+ * Pre-session briefing → camera setup → live session. One camera stream spans
+ * setup and live. The briefing's joint picker sets the exercise for the rest
+ * of the flow; it starts on the one the therapist assigned.
+ */
 export default function ExerciseSession() {
   const navigate = useNavigate()
   const location = useLocation()
   const [assignment, setAssignment] = useState<Assignment | null>(
     (location.state as { assignment?: Assignment } | null)?.assignment ?? null,
   )
+  const [part, setPart] = useState<BodyPart | null>(null)
   const [step, setStep] = useState<Step>('brief')
   const { attach, status } = useCamera(step !== 'brief')
 
@@ -28,7 +34,10 @@ export default function ExerciseSession() {
   }, [step])
 
   if (!assignment) return null
-  if (step === 'brief') return <Brief assignment={assignment} onNext={() => setStep('setup')} />
-  if (step === 'setup') return <Setup camera={status} attach={attach} onStart={() => setStep('live')} onBack={() => setStep('brief')} />
-  return <Live assignment={assignment} camera={status} attach={attach} />
+  const exercise = exerciseFor(part ?? assignment.exercise.joint)
+  const session = assignmentFor(assignment, exercise)
+  if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={() => setStep('setup')} />
+  if (step === 'setup')
+    return <Setup exercise={exercise} camera={status} attach={attach} onStart={() => setStep('live')} onBack={() => setStep('brief')} />
+  return <Live assignment={session} exercise={exercise} camera={status} attach={attach} />
 }

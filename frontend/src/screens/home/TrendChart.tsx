@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 
 // Deepest bend per session, oldest → newest, against the target line. It
 // doubles as the picker for the recap above it: hovering previews a session,
@@ -14,7 +14,7 @@ export interface TrendPoint {
   valueText: string
 }
 
-const PAD = { top: 34, right: 16, bottom: 26, left: 16 }
+const PAD = { top: 34, right: 6, bottom: 26, left: 6 }
 const STEP: Record<string, number> = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
 
@@ -70,7 +70,6 @@ export function TrendChart({
   const box = useRef<HTMLDivElement>(null)
   const drag = useRef<{ id: number; x: number; y: number; scrubbing: boolean } | null>(null)
   const [{ w, h }, setSize] = useState({ w: 480, h: 176 })
-  const wash = useId()
 
   useEffect(() => {
     const el = box.current
@@ -162,20 +161,12 @@ export function TrendChart({
       className={`relative cursor-crosshair touch-pan-y select-none rounded-2xl ${className}`}
     >
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="absolute inset-0 overflow-visible" aria-hidden="true">
-        <defs>
-          <linearGradient id={wash} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0" style={{ stopColor: 'var(--rb-brand)' }} stopOpacity="0.32" />
-            <stop offset="1" style={{ stopColor: 'var(--rb-brand)' }} stopOpacity="0" />
-          </linearGradient>
-        </defs>
-
         <line x1={PAD.left} x2={w - PAD.right} y1={base} y2={base} className="stroke-line" />
         <line x1={PAD.left} x2={w - PAD.right} y1={y(target)} y2={y(target)} className="stroke-ink-2" strokeOpacity={0.45} strokeDasharray="4 5" />
-        <text x={PAD.left} y={y(target) - 8} className="fill-ink-2 text-[11px] font-semibold">
+        <text x={w - PAD.right} y={y(target) - 8} textAnchor="end" className="fill-ink-2 text-[12px] font-semibold">
           {targetLabel}
         </text>
 
-        <path d={`${line} L ${pts[n - 1].x} ${base} L ${pts[0].x} ${base} Z`} fill={`url(#${wash})`} />
         <path
           d={line}
           fill="none"
@@ -190,32 +181,31 @@ export function TrendChart({
 
         {engaged && <line x1={a.x} x2={a.x} y1={PAD.top - 10} y2={base} className="stroke-ink" strokeOpacity={0.2} />}
         {pts.map((p, i) => (
-          <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-surface stroke-brand-ink" strokeWidth={2} />
+          <circle key={i} cx={p.x} cy={p.y} r={3} className="fill-canvas stroke-brand-ink" strokeWidth={2} />
         ))}
-        <circle cx={a.x} cy={a.y} r={14} className="fill-brand" fillOpacity={0.22} />
-        <circle cx={a.x} cy={a.y} r={7} className="fill-brand stroke-surface" strokeWidth={3} />
+        <circle cx={a.x} cy={a.y} r={6} className="fill-brand-ink stroke-canvas" strokeWidth={3} />
 
         {engaged && (
           <g transform={`translate(${tagX} ${tagY})`}>
             <rect x={-22} y={-12} width={44} height={24} rx={12} className="fill-ink" />
-            <text textAnchor="middle" dominantBaseline="central" className="fill-surface text-[12px] font-bold">
+            <text textAnchor="middle" dominantBaseline="central" className="fill-canvas text-[12px] font-bold">
               {values[active]}°
             </text>
           </g>
         )}
 
         {showFirst && (
-          <text x={pts[0].x} y={h - 6} className="fill-muted text-[11px]">
+          <text x={pts[0].x} y={h - 6} className="fill-muted text-[12px]">
             {points[0].label}
           </text>
         )}
         {showLast && n > 1 && (
-          <text x={pts[n - 1].x} y={h - 6} textAnchor="end" className="fill-muted text-[11px]">
+          <text x={pts[n - 1].x} y={h - 6} textAnchor="end" className="fill-muted text-[12px]">
             {points[n - 1].label}
           </text>
         )}
         {engaged && (
-          <text x={clamp(a.x, PAD.left + 24, w - PAD.right - 24)} y={h - 6} textAnchor="middle" className="fill-ink text-[11px] font-bold">
+          <text x={clamp(a.x, PAD.left + 24, w - PAD.right - 24)} y={h - 6} textAnchor="middle" className="fill-ink text-[12px] font-bold">
             {points[active].label}
           </text>
         )}

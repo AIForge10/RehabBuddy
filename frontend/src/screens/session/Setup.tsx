@@ -3,7 +3,8 @@ import { Button, PatientScreen } from '../../components/Screen'
 import { SeatedBody } from '../../components/SeatedBody'
 import { LightGuide } from '../../components/SetupGuides'
 import { SETUP_ICONS } from '../../components/SetupIcons'
-import { HIP, KNEE, ankleAt, toeAt } from '../../lib/bodyGeometry'
+import { jointsAt } from '../../lib/bodyGeometry'
+import type { Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 import type { CameraStatus } from '../../lib/useCamera'
 import { StepHeader } from './StepHeader'
@@ -12,25 +13,40 @@ import { StepHeader } from './StepHeader'
 // and the next unticked check drives what the preview shows, the way the
 // demo drives the steps on the briefing screen.
 
-/** The alignment ghost lives in the demo's stage space, scaled to sit inside the frame brackets. */
-const GUIDE = 'translate(360 228) scale(0.8) translate(-414 -219)'
-const JOINTS = [HIP, KNEE, ankleAt(0)]
-const TOE = toeAt(0)
+/** Where the alignment ghost sits: the exercise's own framing, scaled to fit inside the frame brackets. */
+function guide({ view }: Exercise) {
+  const k = view.w / 720
+  const cx = view.x + view.w / 2 + 26 * k
+  const cy = view.y + view.h / 2 - 6 * k
+  return { k, transform: `translate(360 228) scale(${0.8 / k}) translate(${-cx} ${-cy})` }
+}
+
+/** Offsets (in stage units at k = 1) for each joint's name. */
+const LABEL_AT = {
+  above: { dx: 0, dy: -22, anchor: 'middle' },
+  below: { dx: 0, dy: 42, anchor: 'middle' },
+  left: { dx: -14, dy: -22, anchor: 'end' },
+  right: { dx: 14, dy: -22, anchor: 'start' },
+} as const
 
 export function Setup({
+  exercise,
   camera,
   attach,
   onStart,
   onBack,
 }: {
+  exercise: Exercise
   camera: CameraStatus
   attach: (el: HTMLVideoElement | null) => void
   onStart: () => void
   onBack: () => void
 }) {
-  const { s } = useLanguage()
-  const total = s.setup.length
-  const [checked, setChecked] = useState<boolean[]>(() => s.setup.map(() => false))
+  const { s, lang } = useLanguage()
+  // Placement and framing depend on the joint; the lighting check doesn't.
+  const checks = [exercise.copy[lang].camera, exercise.copy[lang].frame, s.setup[2]]
+  const total = checks.length
+  const [checked, setChecked] = useState<boolean[]>(() => checks.map(() => false))
   const count = checked.filter(Boolean).length
   const done = count === total
   const current = done ? null : checked.indexOf(false)
@@ -41,7 +57,7 @@ export function Setup({
       <StepHeader step={2} title={s.setupTitle} sub={s.setupSub} />
 
       <section className="mt-6 grid overflow-hidden rounded-[28px] bg-surface shadow-lift ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Stage camera={camera} attach={attach} step={current} />
+        <Stage exercise={exercise} checks={checks} camera={camera} attach={attach} step={current} />
 
         <div className="flex flex-col p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 px-1.5">
@@ -59,7 +75,7 @@ export function Setup({
           </div>
 
           <ol className="mt-3">
-            {s.setup.map((item, i) => {
+            {checks.map((item, i) => {
               const on = checked[i]
               const isCurrent = i === current
               return (
@@ -121,13 +137,32 @@ export function Setup({
 }
 
 /** Live preview with the alignment ghost, marked up for whichever check is current (null = all done). */
-function Stage({ camera, attach, step }: { camera: CameraStatus; attach: (el: HTMLVideoElement | null) => void; step: number | null }) {
-  const { s } = useLanguage()
+function Stage({
+  exercise,
+  checks,
+  camera,
+  attach,
+  step,
+}: {
+  exercise: Exercise
+  checks: { tip: string }[]
+  camera: CameraStatus
+  attach: (el: HTMLVideoElement | null) => void
+  step: number | null
+}) {
+  const { s, lang } = useLanguage()
+  const copy = exercise.copy[lang]
+  const { k, transform } = guide(exercise)
+  const start = exercise.pose(exercise.rest)
+  const at = jointsAt(start)
+  const joints = exercise.measure.map((m) => at[m])
+  // The limb the tracker follows, from the first measured joint to the end of the chain.
+  const line = exercise.chain.slice(exercise.chain.indexOf(exercise.measure[0])).map((c) => at[c])
   const on = camera === 'on'
   const denied = camera === 'denied'
   const done = step == null
   const shows = (i: number) => `transition-opacity duration-300 ${step === i && !denied ? 'opacity-100' : 'opacity-0'}`
-  const label = { paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.6)', strokeWidth: 6, strokeLinejoin: 'round' } as const
+  const label = { paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.6)', strokeWidth: 6 * k, strokeLinejoin: 'round', fontSize: 22 * k } as const
 
   return (
     <div className="relative aspect-[4/3] overflow-hidden bg-stage sm:aspect-[16/10]">
@@ -162,45 +197,50 @@ function Stage({ camera, attach, step }: { camera: CameraStatus; attach: (el: HT
         {/* 3 · light falling on her from the camera side */}
         <rect width="720" height="450" fill="url(#setup-light)" className={shows(2)} />
 
-        <g transform={GUIDE}>
+        <g transform={transform}>
           <g className={`transition-colors duration-500 ${done ? 'text-brand-glow' : 'text-white'} ${on ? 'opacity-85' : 'opacity-60'}`}>
-            <SeatedBody mode="ghost" angle={0} />
+            <SeatedBody mode="ghost" pose={start} />
           </g>
 
-          {/* 1 · knee height: the camera's eye level */}
+          {/* 1 · the camera's eye level, at the joint that matters */}
           <g className={shows(0)}>
-            <line x1="-60" x2="900" y1={KNEE.y} y2={KNEE.y} className="stroke-brand-glow" strokeWidth="3" strokeDasharray="12 10" strokeLinecap="round" />
-            <text x="598" y={KNEE.y - 14} fill="white" className="text-[22px] font-bold max-sm:hidden" style={label}>
-              {s.guideKnee}
+            <line
+              x1={exercise.view.x - 300}
+              x2={exercise.view.x + exercise.view.w + 300}
+              y1={exercise.cameraY}
+              y2={exercise.cameraY}
+              className="stroke-brand-glow"
+              strokeWidth={3 * k}
+              strokeDasharray={`${12 * k} ${10 * k}`}
+              strokeLinecap="round"
+            />
+            <text x={exercise.view.x + exercise.view.w * 0.79} y={exercise.cameraY - 14 * k} fill="white" className="font-bold max-sm:hidden" style={label}>
+              {copy.cameraLine}
             </text>
           </g>
 
           {/* 2 · the joints the tracker has to see */}
           <g className={shows(1)}>
             <polyline
-              points={[...JOINTS, TOE].map((p) => `${p.x},${p.y}`).join(' ')}
+              points={line.map((p) => `${p.x},${p.y}`).join(' ')}
               fill="none"
               className="stroke-brand-glow"
-              strokeWidth="3.5"
+              strokeWidth={3.5 * k}
               strokeLinecap="round"
               strokeLinejoin="round"
             />
-            {JOINTS.map((p, i) => (
-              <g key={i}>
-                <circle cx={p.x} cy={p.y} r="10" className="animate-ping fill-brand-glow" fillOpacity="0.35" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
-                <circle cx={p.x} cy={p.y} r="8" className="fill-brand-glow" stroke="white" strokeWidth="3" />
-                <text
-                  x={p.x + (i === 0 ? -14 : 0)}
-                  y={p.y + (i === 2 ? 42 : -22)}
-                  textAnchor={i === 0 ? 'end' : 'middle'}
-                  fill="white"
-                  className="text-[22px] font-bold max-sm:hidden"
-                  style={label}
-                >
-                  {s.guideJoints[i]}
-                </text>
-              </g>
-            ))}
+            {joints.map((p, i) => {
+              const place = LABEL_AT[exercise.labels[i]]
+              return (
+                <g key={i}>
+                  <circle cx={p.x} cy={p.y} r={10 * k} className="animate-ping fill-brand-glow" fillOpacity="0.35" style={{ transformBox: 'fill-box', transformOrigin: 'center' }} />
+                  <circle cx={p.x} cy={p.y} r={8 * k} className="fill-brand-glow" stroke="white" strokeWidth={3 * k} />
+                  <text x={p.x + place.dx * k} y={p.y + place.dy * k} textAnchor={place.anchor} fill="white" className="font-bold max-sm:hidden" style={label}>
+                    {copy.joints[i]}
+                  </text>
+                </g>
+              )
+            })}
           </g>
         </g>
       </svg>
@@ -244,7 +284,7 @@ function Stage({ camera, attach, step }: { camera: CameraStatus; attach: (el: HT
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-glow text-stage [&>svg]:size-4">
             {step == null ? <Check size={14} /> : SETUP_ICONS[step]}
           </span>
-          <span className="text-[15px] font-semibold leading-tight sm:text-lg">{step == null ? s.setupAllSet : s.setup[step].tip}</span>
+          <span className="text-[15px] font-semibold leading-tight sm:text-lg">{step == null ? s.setupAllSet : checks[step].tip}</span>
         </p>
       )}
     </div>
