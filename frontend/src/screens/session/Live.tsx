@@ -18,6 +18,7 @@ import { useSimulatedPose } from '../../lib/simulatedPose'
 import { useRandomSelector } from '../../lib/useRandomSelector'
 import type { CameraStatus } from '../../lib/useCamera'
 import type { AngleSample, Assignment, LivePoseState, SessionResult } from '../../types/session'
+import { painQuestion, warm } from '../pain/say'
 
 import { usePoseSession, type JointName } from '../../pose'
 
@@ -210,6 +211,9 @@ export function Live({
       })
       const pain = stoppedForPain.current
       endLive(pain ? 'pain' : 'finished') // after the save, so the therapist's dashboard can already load it
+      // The pain check's question is voiced now, while the coach's last line
+      // plays, so that screen has the audio the moment it asks.
+      void warm(painQuestion(exercise, langRef.current, pain), langRef.current)
       // The coach's last line ("Session complete", or stopping for pain) ends before the pain check speaks.
       await untilCoachQuiet()
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain } })
