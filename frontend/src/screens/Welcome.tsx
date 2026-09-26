@@ -131,7 +131,6 @@ function Header() {
 function Kicker({ children, onDark = false }: { children: ReactNode; onDark?: boolean }) {
   return (
     <p className={`label-mono flex items-center gap-2.5 ${onDark ? 'text-brand-light' : 'text-brand-ink'}`}>
-      <span aria-hidden="true" className="h-px w-6 bg-current" />
       {children}
     </p>
   )
