@@ -1,0 +1,4 @@
+id,patient_id,therapist_id,exercise_id,target_angle,reps,times_per_week
+a-p-maria,p-maria,t-lee,ex-knee-bend,90,10,5
+a-p-james,p-james,t-lee,ex-knee-bend,90,10,5
+a-p-aisha,p-aisha,t-lee,ex-knee-bend,90,10,5

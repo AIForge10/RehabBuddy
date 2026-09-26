@@ -1,0 +1,617 @@
+{
+  "POST /auth/login": {
+    "request": {
+      "email": "maria@bendwith.us",
+      "password": "demo1234"
+    },
+    "response": {
+      "access_token": "<JWT>",
+      "token_type": "bearer",
+      "user": {
+        "id": "p-maria",
+        "full_name": "Maria Lopez",
+        "role": "patient",
+        "language": "es"
+      }
+    },
+    "errors": {
+      "401": "wrong email or password"
+    }
+  },
+  "GET /auth/me": {
+    "headers": {
+      "Authorization": "Bearer <JWT>"
+    },
+    "response": {
+      "id": "p-maria",
+      "full_name": "Maria Lopez",
+      "role": "patient",
+      "language": "es"
+    }
+  },
+  "_access_rules": {
+    "all endpoints except /auth/login and /health": "require header Authorization: Bearer <JWT>, else 401",
+    "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
+    "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
+    "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
+    "POST /summary": "same rule as /patients/{id}"
+  },
+  "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
+  "GET /patients/{patient_id}/assignment": {
+    "example_url": "/patients/p-maria/assignment",
+    "response": {
+      "id": "a-p-maria",
+      "patient_id": "p-maria",
+      "therapist_id": "t-lee",
+      "exercise": {
+        "id": "ex-knee-bend",
+        "name": "Seated knee bends",
+        "joint": "knee",
+        "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+      },
+      "target_angle": 90,
+      "reps": 10,
+      "times_per_week": 5
+    }
+  },
+  "GET /patients/{patient_id}/overview": {
+    "example_url": "/patients/p-maria/overview",
+    "response": {
+      "patient": {
+        "id": "p-maria",
+        "full_name": "Maria Lopez",
+        "language": "es",
+        "injury": "ACL reconstruction",
+        "start_date": "2026-09-16T00:00:00Z"
+      },
+      "assignment": {
+        "id": "a-p-maria",
+        "patient_id": "p-maria",
+        "therapist_id": "t-lee",
+        "exercise": {
+          "id": "ex-knee-bend",
+          "name": "Seated knee bends",
+          "joint": "knee",
+          "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+        },
+        "target_angle": 90,
+        "reps": 10,
+        "times_per_week": 5
+      },
+      "adherence_7d": 0.8,
+      "sessions": [
+        {
+          "id": "s-p-maria-1",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-25T18:22:00Z",
+          "reps_done": 10,
+          "max_angle": 86.5,
+          "form_warnings": [],
+          "duration_sec": 181,
+          "pain_score": 4,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-2",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-24T18:28:00Z",
+          "reps_done": 10,
+          "max_angle": 83.1,
+          "form_warnings": [],
+          "duration_sec": 270,
+          "pain_score": 3,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-4",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-22T18:56:00Z",
+          "reps_done": 10,
+          "max_angle": 80.3,
+          "form_warnings": [],
+          "duration_sec": 262,
+          "pain_score": 2,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-5",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-21T19:31:00Z",
+          "reps_done": 10,
+          "max_angle": 78.7,
+          "form_warnings": [
+            "not_deep_enough",
+            "too_fast"
+          ],
+          "duration_sec": 234,
+          "pain_score": 3,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-7",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-19T19:31:00Z",
+          "reps_done": 10,
+          "max_angle": 76.1,
+          "form_warnings": [],
+          "duration_sec": 215,
+          "pain_score": 3,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-8",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-18T18:42:00Z",
+          "reps_done": 10,
+          "max_angle": 74.0,
+          "form_warnings": [],
+          "duration_sec": 291,
+          "pain_score": 4,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-9",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-17T17:46:00Z",
+          "reps_done": 8,
+          "max_angle": 72.6,
+          "form_warnings": [
+            "not_deep_enough"
+          ],
+          "duration_sec": 203,
+          "pain_score": 4,
+          "flagged": false
+        },
+        {
+          "id": "s-p-maria-10",
+          "patient_id": "p-maria",
+          "started_at": "2026-09-16T19:07:00Z",
+          "reps_done": 10,
+          "max_angle": 70.6,
+          "form_warnings": [
+            "not_deep_enough"
+          ],
+          "duration_sec": 266,
+          "pain_score": 2,
+          "flagged": false
+        }
+      ],
+      "red_flags": [],
+      "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+    }
+  },
+  "GET /therapist/{therapist_id}/dashboard": {
+    "example_url": "/therapist/t-lee/dashboard",
+    "response": {
+      "therapist_id": "t-lee",
+      "patients": [
+        {
+          "patient": {
+            "id": "p-maria",
+            "full_name": "Maria Lopez",
+            "language": "es",
+            "injury": "ACL reconstruction",
+            "start_date": "2026-09-16T00:00:00Z"
+          },
+          "assignment": {
+            "id": "a-p-maria",
+            "patient_id": "p-maria",
+            "therapist_id": "t-lee",
+            "exercise": {
+              "id": "ex-knee-bend",
+              "name": "Seated knee bends",
+              "joint": "knee",
+              "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+            },
+            "target_angle": 90,
+            "reps": 10,
+            "times_per_week": 5
+          },
+          "adherence_7d": 0.8,
+          "sessions": [
+            {
+              "id": "s-p-maria-1",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-25T18:22:00Z",
+              "reps_done": 10,
+              "max_angle": 86.5,
+              "form_warnings": [],
+              "duration_sec": 181,
+              "pain_score": 4,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-2",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-24T18:28:00Z",
+              "reps_done": 10,
+              "max_angle": 83.1,
+              "form_warnings": [],
+              "duration_sec": 270,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-4",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-22T18:56:00Z",
+              "reps_done": 10,
+              "max_angle": 80.3,
+              "form_warnings": [],
+              "duration_sec": 262,
+              "pain_score": 2,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-5",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-21T19:31:00Z",
+              "reps_done": 10,
+              "max_angle": 78.7,
+              "form_warnings": [
+                "not_deep_enough",
+                "too_fast"
+              ],
+              "duration_sec": 234,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-7",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-19T19:31:00Z",
+              "reps_done": 10,
+              "max_angle": 76.1,
+              "form_warnings": [],
+              "duration_sec": 215,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-8",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-18T18:42:00Z",
+              "reps_done": 10,
+              "max_angle": 74.0,
+              "form_warnings": [],
+              "duration_sec": 291,
+              "pain_score": 4,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-9",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-17T17:46:00Z",
+              "reps_done": 8,
+              "max_angle": 72.6,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 203,
+              "pain_score": 4,
+              "flagged": false
+            },
+            {
+              "id": "s-p-maria-10",
+              "patient_id": "p-maria",
+              "started_at": "2026-09-16T19:07:00Z",
+              "reps_done": 10,
+              "max_angle": 70.6,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 266,
+              "pain_score": 2,
+              "flagged": false
+            }
+          ],
+          "red_flags": [],
+          "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+        },
+        {
+          "patient": {
+            "id": "p-james",
+            "full_name": "James Carter",
+            "language": "en",
+            "injury": "Grade II MCL sprain",
+            "start_date": "2026-09-18T00:00:00Z"
+          },
+          "assignment": {
+            "id": "a-p-james",
+            "patient_id": "p-james",
+            "therapist_id": "t-lee",
+            "exercise": {
+              "id": "ex-knee-bend",
+              "name": "Seated knee bends",
+              "joint": "knee",
+              "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+            },
+            "target_angle": 90,
+            "reps": 10,
+            "times_per_week": 5
+          },
+          "adherence_7d": 0.4,
+          "sessions": [
+            {
+              "id": "s-p-james-1",
+              "patient_id": "p-james",
+              "started_at": "2026-09-25T17:10:00Z",
+              "reps_done": 10,
+              "max_angle": 79.9,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 272,
+              "pain_score": 8,
+              "flagged": true
+            },
+            {
+              "id": "s-p-james-4",
+              "patient_id": "p-james",
+              "started_at": "2026-09-22T19:53:00Z",
+              "reps_done": 10,
+              "max_angle": 75.7,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 205,
+              "pain_score": 4,
+              "flagged": false
+            },
+            {
+              "id": "s-p-james-8",
+              "patient_id": "p-james",
+              "started_at": "2026-09-18T18:12:00Z",
+              "reps_done": 10,
+              "max_angle": 69.1,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 251,
+              "pain_score": 4,
+              "flagged": false
+            }
+          ],
+          "red_flags": [
+            {
+              "session_id": "s-p-james-1",
+              "patient_id": "p-james",
+              "created_at": "2026-09-25T17:15:02Z",
+              "pain_score": 8,
+              "reason": "“Sharp, on the inside of the knee.”"
+            }
+          ],
+          "latest_summary": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing."
+        },
+        {
+          "patient": {
+            "id": "p-aisha",
+            "full_name": "Aisha Khan",
+            "language": "en",
+            "injury": "Meniscus repair",
+            "start_date": "2026-09-17T00:00:00Z"
+          },
+          "assignment": {
+            "id": "a-p-aisha",
+            "patient_id": "p-aisha",
+            "therapist_id": "t-lee",
+            "exercise": {
+              "id": "ex-knee-bend",
+              "name": "Seated knee bends",
+              "joint": "knee",
+              "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+            },
+            "target_angle": 90,
+            "reps": 10,
+            "times_per_week": 5
+          },
+          "adherence_7d": 0.8,
+          "sessions": [
+            {
+              "id": "s-p-aisha-1",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-25T19:00:00Z",
+              "reps_done": 10,
+              "max_angle": 88.0,
+              "form_warnings": [
+                "too_fast"
+              ],
+              "duration_sec": 284,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-3",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-23T17:05:00Z",
+              "reps_done": 8,
+              "max_angle": 83.5,
+              "form_warnings": [],
+              "duration_sec": 230,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-4",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-22T19:07:00Z",
+              "reps_done": 10,
+              "max_angle": 82.5,
+              "form_warnings": [],
+              "duration_sec": 275,
+              "pain_score": 3,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-6",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-20T19:20:00Z",
+              "reps_done": 10,
+              "max_angle": 80.7,
+              "form_warnings": [],
+              "duration_sec": 278,
+              "pain_score": 4,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-7",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-19T19:14:00Z",
+              "reps_done": 10,
+              "max_angle": 78.9,
+              "form_warnings": [
+                "not_deep_enough"
+              ],
+              "duration_sec": 201,
+              "pain_score": 2,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-8",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-18T18:37:00Z",
+              "reps_done": 10,
+              "max_angle": 75.0,
+              "form_warnings": [],
+              "duration_sec": 222,
+              "pain_score": 2,
+              "flagged": false
+            },
+            {
+              "id": "s-p-aisha-9",
+              "patient_id": "p-aisha",
+              "started_at": "2026-09-17T17:37:00Z",
+              "reps_done": 8,
+              "max_angle": 73.5,
+              "form_warnings": [],
+              "duration_sec": 206,
+              "pain_score": 2,
+              "flagged": false
+            }
+          ],
+          "red_flags": [],
+          "latest_summary": "Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target."
+        }
+      ],
+      "generated_at": "2026-09-26T12:00:00Z"
+    }
+  },
+  "POST /sessions": {
+    "request": {
+      "patient_id": "p-maria",
+      "assignment_id": "a-p-maria",
+      "joint": "knee",
+      "started_at": "2026-09-26T11:56:00Z",
+      "reps_done": 10,
+      "max_angle": 87.5,
+      "form_warnings": [
+        "too_fast"
+      ],
+      "duration_sec": 212,
+      "angle_samples": [
+        {
+          "time": "2026-09-25T18:22:00Z",
+          "session_id": "s-p-maria-1",
+          "angle": 5.2
+        },
+        {
+          "time": "2026-09-25T18:22:00.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 3.2
+        },
+        {
+          "time": "2026-09-25T18:22:01Z",
+          "session_id": "s-p-maria-1",
+          "angle": 3.3
+        },
+        {
+          "time": "2026-09-25T18:22:01.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 3.9
+        },
+        {
+          "time": "2026-09-25T18:22:02Z",
+          "session_id": "s-p-maria-1",
+          "angle": 5.5
+        },
+        {
+          "time": "2026-09-25T18:22:02.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 5.7
+        },
+        {
+          "time": "2026-09-25T18:22:03Z",
+          "session_id": "s-p-maria-1",
+          "angle": 4.0
+        },
+        {
+          "time": "2026-09-25T18:22:03.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 5.9
+        },
+        {
+          "time": "2026-09-25T18:22:04Z",
+          "session_id": "s-p-maria-1",
+          "angle": 3.8
+        },
+        {
+          "time": "2026-09-25T18:22:04.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 4.8
+        },
+        {
+          "time": "2026-09-25T18:22:05Z",
+          "session_id": "s-p-maria-1",
+          "angle": 3.6
+        },
+        {
+          "time": "2026-09-25T18:22:05.500000Z",
+          "session_id": "s-p-maria-1",
+          "angle": 32.5
+        }
+      ]
+    },
+    "request_notes": "assignment_id, joint and angle_samples are PROPOSED additions (not yet in the frontend's CreateSessionRequest). angle_samples feed the Tiger Data hypertable; one array per session, ~2–30 samples/sec.",
+    "response": {
+      "session_id": "s-3f6c1a2e-7b8d-4c9e-a1f2-0d3e4b5c6a7f"
+    }
+  },
+  "POST /pain-check": {
+    "request": {
+      "session_id": "s-p-james-1",
+      "pain_score": 8,
+      "notes": "sharp pain",
+      "language": "en"
+    },
+    "response_flagged": {
+      "flagged": true,
+      "reply": "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.",
+      "flag_reason": "“sharp pain”"
+    },
+    "response_ok": {
+      "flagged": false,
+      "reply": "Great work! A little soreness is normal. See you next session.",
+      "flag_reason": null
+    },
+    "rule": "flagged if pain_score >= 7 OR notes contain: sharp, swelling, swollen, pop, numb, agudo, hinchado, hinchazón"
+  },
+  "POST /summary": {
+    "request": {
+      "patient_id": "p-james"
+    },
+    "response": {
+      "summary_text": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing.",
+      "week_start": "2026-09-20T00:00:00Z",
+      "is_fallback": false
+    }
+  },
+  "POST /translate": {
+    "request": {
+      "text": "Bend your knee slowly.",
+      "target_language": "es"
+    },
+    "response": {
+      "text": "Dobla la rodilla despacio."
+    }
+  }
+}
