@@ -114,7 +114,6 @@ export default function Home() {
   const historyJoint = (other ? other.joint : planJoint) as Joint
   const historyExercise = exerciseFor(historyJoint)
   const historyTarget = other ? historyExercise.target : assignment.target_angle
-  const historyReps = assignment.reps
   const chip = (active: boolean) =>
     `rounded-full px-3.5 py-1.5 text-sm transition-colors ${
       active ? 'bg-ink text-surface' : 'bg-surface text-ink-2 ring-1 ring-line hover:ring-ink/30'
@@ -139,9 +138,9 @@ export default function Home() {
       {/* How it's going: the coach's words first, then the numbers behind them. */}
       <div className={RECAP_GRID}>
         <WeeklyRecap overview={data} />
-        <div className="lg:col-span-12">
-          {others.length > 0 && (
-            <div className="mb-5 flex flex-wrap items-center gap-2">
+        {others.length > 0 && (
+          <div className="lg:col-span-12">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="label-mono mr-1 text-muted">{s.historyFor}</span>
               <button type="button" className={chip(!otherJoint)} onClick={() => setOtherJoint(null)}>
                 {exerciseFor(planJoint).copy[lang].name} · {s.planJoint}
@@ -152,10 +151,10 @@ export default function Home() {
                 </button>
               ))}
             </div>
-          )}
-          {other && <p className="mb-5 text-sm text-ink-2">{s.offPlanNote}</p>}
-          <Recap sessions={history.sessions} target={historyTarget} reps={historyReps} exercise={historyExercise} />
-        </div>
+            {other && <p className="mt-3 text-sm text-ink-2">{s.offPlanNote}</p>}
+          </div>
+        )}
+        <Recap sessions={history.sessions} target={historyTarget} reps={assignment.reps} exercise={historyExercise} />
       </div>
 
     </PatientScreen>
