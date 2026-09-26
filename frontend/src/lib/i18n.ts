@@ -96,6 +96,8 @@ const strings = {
     simulated: 'Simulated data',
     /** Shown while the session streams to the therapist's dashboard. */
     liveShared: 'Live to your therapist · angles only',
+    /** Shown while the microphone listens for the patient asking to stop (lib/listen.ts). */
+    listening: 'Say “stop” if it hurts',
 
     kneeBend: 'Knee bend',
     target: 'Target',
@@ -335,6 +337,7 @@ const strings = {
     exit: 'Salir',
     simulated: 'Datos simulados',
     liveShared: 'En vivo con tu terapeuta · solo ángulos',
+    listening: 'Di «para» si te duele',
 
     kneeBend: 'Flexión de rodilla',
     target: 'Meta',
