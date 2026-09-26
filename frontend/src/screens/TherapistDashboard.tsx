@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEMO_THERAPIST_ID, USE_MOCKS, getDashboard, getSummary, updateAssignment } from '../api/client'
+import { USE_MOCKS, getDashboard, getSummary, updateAssignment } from '../api/client'
 import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
 import { ExerciseFigure } from '../components/ExerciseFigure'

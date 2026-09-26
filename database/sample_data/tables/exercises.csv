@@ -1,0 +1,5 @@
+id,name,joint,instructions
+ex-knee-bend,Seated knee bends,knee,"Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."
+ex-hip-flexion,Standing hip flexion,hip,"Stand side-on, hold a chair for balance, lift your knee towards your chest, then lower it."
+ex-elbow-flexion,Elbow curls,elbow,"Sit side-on with your arm straight down, curl your forearm up, then lower it slowly."
+ex-shoulder-abduct,Shoulder raises,shoulder,"Face the camera, arm at your side, raise it out sideways to shoulder height, then lower it."

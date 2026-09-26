@@ -1,0 +1,5 @@
+id,full_name,role,language,email,password_hash
+t-lee,Dr. Sarah Lee,therapist,en,lee@bendwith.us,pbkdf2_sha256$200000$dC1sZWUtZGVtby1zYWx0IQ==$giXHKatI6Rbzcle3v/Aqd9AF91y7mbG8svjuCF+EKb8=
+p-maria,Maria Lopez,patient,es,maria@bendwith.us,pbkdf2_sha256$200000$cC1tYXJpYS1kZW1vLXNhbA==$BUSfy4a9XyaWcTE59peTnCgsI+FO1g50z03PvshSmec=
+p-james,James Carter,patient,en,james@bendwith.us,pbkdf2_sha256$200000$cC1qYW1lcy1kZW1vLXNhbA==$YV0cvQz5Zw1V/e4VQE5IhrMyNMZI/7xxJRrpjHB8DFQ=
+p-aisha,Aisha Khan,patient,en,aisha@bendwith.us,pbkdf2_sha256$200000$cC1haXNoYS1kZW1vLXNhbA==$I6NmP0VBvvO1qVLXC51TOKVTM7kru0bJTksvL5zFD+8=
