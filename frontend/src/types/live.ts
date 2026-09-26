@@ -30,8 +30,11 @@ export interface LiveUpdate {
   samples: AngleSample[]
 }
 
-/** `lost`: the patient went quiet for a few seconds (tab closed, network gone). */
-export type LiveEndReason = 'finished' | 'exited' | 'lost'
+/**
+ * `pain`: the patient said it hurts or asked to stop (lib/listen.ts); the session was saved.
+ * `lost`: the patient went quiet for a few seconds (tab closed, network gone).
+ */
+export type LiveEndReason = 'finished' | 'exited' | 'pain' | 'lost'
 
 export interface LiveEnd {
   type: 'end'

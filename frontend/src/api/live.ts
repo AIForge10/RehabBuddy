@@ -16,7 +16,7 @@
 // the backend is unreachable the session carries on and the dashboard simply
 // shows no one live, while both keep retrying quietly in the background.
 
-import type { LiveEnd, LiveEvent, LiveUpdate } from '../types/live'
+import type { LiveEnd, LiveEndReason, LiveEvent, LiveUpdate } from '../types/live'
 import type { UUID } from '../types/session'
 import { API_URL, USE_MOCKS, getAuthToken } from './client'
 
@@ -39,7 +39,10 @@ function openChannel(): BroadcastChannel | null {
 
 // --- Patient side ----------------------------------------------------------------
 
-export type PublishedEvent = LiveUpdate | (LiveEnd & { reason: 'finished' | 'exited' })
+/** How the patient's screen can end a session; `lost` is for the backend (or the dashboard's own timer) to decide. */
+export type PublishedEndReason = Exclude<LiveEndReason, 'lost'>
+
+export type PublishedEvent = LiveUpdate | (LiveEnd & { reason: PublishedEndReason })
 
 export interface LivePublisher {
   /** Sends now if connected; otherwise drops it. */

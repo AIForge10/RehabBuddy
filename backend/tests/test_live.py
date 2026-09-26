@@ -150,19 +150,20 @@ def test_a_stalled_watcher_is_dropped(hub, monkeypatch):
 PUBLISH = "/api/v1/live/{}/publish"
 
 
-def test_patient_publishes_their_own_session(client, hub):
+@pytest.mark.parametrize("reason", ["finished", "pain"])  # "pain": they said it hurts and stopped
+def test_patient_publishes_their_own_session(client, hub, reason):
     sub = hub.subscribe(["p-maria"])
     with client.websocket_connect(PUBLISH.format("p-maria")) as ws:
         ws.send_json({"token": "maria"})
         assert ws.receive_json() == {"ok": True}
         ws.send_json(update(reps=1, samples=[{"t_ms": 100, "angle": 12.3}]))
-        ws.send_json({"type": "end", "started_at": STARTED, "reason": "finished"})
+        ws.send_json({"type": "end", "started_at": STARTED, "reason": reason})
     # Leaving the block waits for the server to handle everything sent.
 
     first, last = drain(sub)
     assert first["patient_id"] == "p-maria" and first["samples"] == [{"t_ms": 100, "angle": 12.3}]
     assert first["type"] == "update"
-    assert last["type"] == "end" and last["reason"] == "finished"
+    assert last["type"] == "end" and last["reason"] == reason
 
 
 @pytest.mark.parametrize(("token", "stream", "code"), [

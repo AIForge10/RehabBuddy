@@ -5,12 +5,14 @@ import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { ExerciseFigure } from '../../components/ExerciseFigure'
-import { playCue, preloadCues, stopCoach, type CoachCue,  } from '../../lib/coach'
-import type { Exercise } from '../../lib/exercises'
+import { countCue, playCue, preloadCues, stopCoach, untilCoachQuiet, type CoachCue } from '../../lib/coach'
+import type { BodyPart, Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { warningCue, warningLabel } from '../../lib/formWarnings'
 import { useLanguage } from '../../lib/language'
+import { useStopRequest } from '../../lib/listen'
 import { darkStatusBar } from '../../lib/native'
+import { REACHED_WITHIN } from '../../lib/replay'
 import { useLivePublisher } from '../../lib/useLivePublisher'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import { useRandomSelector } from '../../lib/useRandomSelector'
@@ -25,7 +27,19 @@ const COUNTDOWN = 3
 // Real MediaPipe Pose Landmarker is wired and active.
 const POSE_READY = true
 
+// The coach's "step back so your leg is visible" is only true of these.
+const LEGS: ReadonlySet<BodyPart> = new Set(['knee', 'hip'])
+
 type Phase = 'countdown' | 'running' | 'saving'
+
+/** The last four reps each took about as long as their average (within 15%). */
+function steadyPace(landedAt: number[]): boolean {
+  if (landedAt.length < 5) return false
+  const last = landedAt.slice(-5)
+  const gaps = last.slice(1).map((t, i) => t - last[i])
+  const mean = gaps.reduce((a, b) => a + b) / gaps.length
+  return gaps.every((g) => Math.abs(g - mean) <= mean * 0.15)
+}
 
 export function Live({
   assignment,
@@ -90,7 +104,16 @@ export function Live({
     langRef.current = lang
     exerciseRef.current = exercise
   })
-  const rec = useRef({ startedAt: new Date(), t0: 0, samples: [] as AngleSample[], max: 0, repPeak: 0, warnings: [] as string[] })
+  const rec = useRef({
+    startedAt: new Date(),
+    t0: 0,
+    samples: [] as AngleSample[],
+    max: 0,
+    /** The current rep's deepest reading, and whether the coach has said "hold" on it. */
+    repPeak: 0,
+    held: false,
+    warnings: [] as string[],
+  })
 
   // The therapist can watch from their dashboard while this runs: angles, reps and cues, never video.
   const { connected: liveShared, end: endLive } = useLivePublisher({
@@ -109,10 +132,19 @@ export function Live({
     }),
   })
 
-  const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current, exerciseRef.current)), [])
+  // Set when the patient says it hurts: from then on the coach says nothing else.
+  const stoppedForPain = useRef(false)
+
+  /** Speaks a cue and captions it. False when the coach was mid-line and let this one go. */
+  const say = useCallback((cue: CoachCue) => {
+    if (stoppedForPain.current && cue !== 'pain_stop') return false
+    const line = playCue(cue, langRef.current, exerciseRef.current)
+    if (line) setCaption(line)
+    return line != null
+  }, [])
 
   // Clips load during the countdown, so the first cue doesn't wait on the network.
-  useEffect(() => preloadCues(lang, exercise), [lang, exercise])
+  useEffect(() => preloadCues(lang, exercise, goal), [lang, exercise, goal])
 
   useEffect(() => {
     if (phase !== 'countdown') return
@@ -136,7 +168,6 @@ export function Live({
       const angle = Math.round(a * 10) / 10
       r.samples.push({ t_ms: Math.round(performance.now() - r.t0), angle })
       r.max = Math.max(r.max, angle)
-      r.repPeak = Math.max(r.repPeak, angle)
       setTrace(r.samples.slice(-130))
       setBest(Math.round(r.max))
     }, SAMPLE_MS)
@@ -147,7 +178,11 @@ export function Live({
     }
   }, [phase])
 
+  const saving = useRef(false)
   const finish = useCallback(async () => {
+    // The Finish button, the last rep's timer and a pain stop can all land at once: save once.
+    if (saving.current) return
+    saving.current = true
     const r = rec.current
     setPhase('saving')
     setSaveError(false)
@@ -173,13 +208,34 @@ export function Live({
         started_at: r.startedAt.toISOString(),
         joint: exercise.part,
       })
-      endLive('finished') // after the save, so the therapist's dashboard can already load it
-      navigate('/pain-check', { state: { sessionId: session_id, result, assignment } })
+      const pain = stoppedForPain.current
+      endLive(pain ? 'pain' : 'finished') // after the save, so the therapist's dashboard can already load it
+      // The coach's last line ("Session complete", or stopping for pain) ends before the pain check speaks.
+      await untilCoachQuiet()
+      navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain } })
     } catch {
+      saving.current = false
       setSaveError(true)
       setPhase('running')
     }
   }, [assignment, exercise, navigate, finishPose, endLive])
+  // For timers, which would otherwise call the finish of the render that set them.
+  const finishRef = useRef(finish)
+  useEffect(() => {
+    finishRef.current = finish
+  })
+
+  // "It hurts" or "stop" (lib/listen.ts): the coach says it's stopping and
+  // telling the therapist, the session is saved as it stands, and the live view
+  // ends saying why. Saying it again after a failed save tries the save again.
+  const stopForPain = useCallback(() => {
+    if (!stoppedForPain.current) {
+      stoppedForPain.current = true
+      say('pain_stop')
+    }
+    void finishRef.current()
+  }, [say])
+  const listening = useStopRequest(phase === 'running', lang, stopForPain)
 
   const getRandomEncouragement = useRandomSelector<CoachCue>([
     'good_rep',
@@ -196,55 +252,102 @@ export function Live({
     'great_depth',
     'full_range',
   ])
-  const getRandomDepthCorrection = useRandomSelector<CoachCue>([
-    'bend_deeper',
+  const getRandomNearMiss = useRandomSelector<CoachCue>([
     'push_a_bit_more',
     'almost_there',
+  ])
+  const getRandomSpeedCorrection = useRandomSelector<CoachCue>([
+    'slow_down',
+    'control_the_return',
+  ])
+  const getRandomLastRep = useRandomSelector<CoachCue>([
+    'final_rep',
+    'last_rep',
   ])
   const getRandomFinish = useRandomSelector<CoachCue>([
     'done',
     'session_complete',
   ])
 
-  // Coach reacts to each completed rep...
-  const lastReps = useRef(0)
-  const targetStreak = useRef(0)
+  const angle = pose.angle
+
+  // Every frame: the rep's deepest point so far, and "hold" the first time the
+  // rep reaches the target, as the brief asks for a second's pause there. Once
+  // per rep; if the coach is mid-line, it tries again while they're still there.
   useEffect(() => {
-    if (pose.reps <= lastReps.current) return
-    lastReps.current = pose.reps
-    const peak = rec.current.repPeak
-    rec.current.repPeak = 0
+    if (phase !== 'running' || angle == null) return
+    const r = rec.current
+    r.repPeak = Math.max(r.repPeak, angle)
+    if (!r.held && pose.reps < goal && angle >= target - REACHED_WITHIN) r.held = say('hold')
+  }, [angle, phase, pose.reps, goal, target, say])
+
+  // Coach reacts to each completed rep, like a therapist counting along: it
+  // says the rep's number unless something is worth saying instead. First
+  // match wins: the finish, a rushed rep, the last rep and halfway, a rep that
+  // fell short, three on target in a row, reaching the target after missing
+  // it, a controlled rep after a rushed one, and once a session, a steady pace.
+  // Corrections don't repeat rep after rep: in between, the coach counts.
+  const coached = useRef({
+    reps: 0,
+    streak: 0,
+    missed: true, // so the first rep on target is praised
+    depthAt: -Infinity,
+    speedAt: -Infinity,
+    fastAt: -Infinity,
+    rhythm: false,
+    landedAt: [] as number[],
+  })
+  useEffect(() => {
+    const c = coached.current
+    const n = pose.reps
+    if (n <= c.reps) return
+    c.reps = n
+    const r = rec.current
+    const peak = r.repPeak
+    r.repPeak = 0
+    r.held = false
     // Read through the ref: as a dependency, a new array every render would rerun
     // this effect and cancel the finish timer below.
     const warnings = poseRef.current.rep_warnings
-    rec.current.warnings.push(...warnings)
-    if (pose.reps >= goal) {
+    r.warnings.push(...warnings)
+    if (n >= goal) {
       say(getRandomFinish())
-      const id = setTimeout(finish, 1500)
+      const id = setTimeout(() => finishRef.current(), 1500)
       return () => clearTimeout(id)
     }
-    if (pose.reps === goal - 1) say('final_rep')
-    else if (pose.reps === Math.floor(goal / 2)) say('halfway')
-    else if (trackedSession.lastRep?.warnings.includes('too_fast')) {
-      targetStreak.current = 0
-      say('slow_down')
-    } else if (peak >= target) {
-      targetStreak.current += 1
-      if (targetStreak.current === 3) {
-        say('streak')
-      } else {
-        say(getRandomEncouragement())
-      }
-    } else if (peak < target - 10) {
-      targetStreak.current = 0
-      say(getRandomDepthCorrection())
-    } else {
-      targetStreak.current = 0
-      say(getRandomTargetHit())
-    }
-  }, [pose.reps, goal, target, say, finish, trackedSession.lastRep])
 
-  // Camera visibility watchdog: remind patient to step back if hidden
+    const tooFast = warnings.includes('too_fast')
+    const reached = peak >= target - REACHED_WITHIN
+    const missedBefore = c.missed
+    c.missed = !reached
+    c.streak = reached && !tooFast ? c.streak + 1 : 0
+    if (tooFast) c.fastAt = n
+    c.landedAt.push(performance.now())
+
+    let cue: CoachCue
+    if (tooFast && n - c.speedAt >= 2) {
+      c.speedAt = n
+      cue = getRandomSpeedCorrection()
+    } else if (n === goal - 1) cue = getRandomLastRep()
+    else if (n === Math.floor(goal / 2)) cue = 'halfway'
+    else if (!reached && n - c.depthAt >= 3) {
+      c.depthAt = n
+      // Within 10° is the rep counter's "deep enough", just not all the way.
+      cue = peak < target - 10 ? 'bend_deeper' : getRandomNearMiss()
+    } else if (c.streak === 3) cue = 'streak'
+    else if (reached && !tooFast && missedBefore) cue = getRandomTargetHit()
+    else if (c.speedAt === n - 1 && !tooFast) cue = getRandomEncouragement()
+    else if (!c.rhythm && n - c.fastAt > 4 && steadyPace(c.landedAt)) {
+      c.rhythm = true
+      cue = 'great_rhythm'
+    } else cue = countCue(n) ?? getRandomEncouragement()
+    say(cue)
+    // The pickers are fresh functions every render but pick the same way; the rest is read through refs.
+  }, [pose.reps, goal, target, say])
+
+  // Camera visibility watchdog: after a few seconds without a clear view, ask
+  // them to step back when the limb has left the frame, or to get into full
+  // view when it's there but hard to make out.
   const lastLostTime = useRef<number | null>(null)
   const lastSpokeLost = useRef<number>(0)
   useEffect(() => {
@@ -255,7 +358,7 @@ export function Live({
       else if (now - lastLostTime.current > 3500) {
         if (now - lastSpokeLost.current > 15000) {
           lastSpokeLost.current = now
-          say('reposition')
+          say(pose.angle == null && LEGS.has(exerciseRef.current.part) ? 'step_back' : 'reposition')
         }
       }
     } else {
@@ -285,8 +388,7 @@ export function Live({
     return () => void darkStatusBar(false)
   }, [])
 
-  const angle = pose.angle
-  const reached = angle != null && angle >= target - 2
+  const reached = angle != null && angle >= target - REACHED_WITHIN
   const exit = () => {
     stopCoach()
     endLive('exited')
@@ -329,11 +431,20 @@ export function Live({
           </button>
           <div className="min-w-0">
             <p className="truncate font-bold">{copy.name}</p>
-            <p className="flex items-center gap-1.5 text-sm tabular-nums text-white/65">
+            <p className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-sm tabular-nums text-white/65">
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
               {simulated && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.simulated}</span>}
               {liveShared && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.liveShared}</span>}
+              {listening && (
+                <span className="inline-flex max-w-full animate-rise items-center gap-1.5 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/80 sm:ml-1.5">
+                  <svg width="11" height="11" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-brand-glow">
+                    <rect x="5" y="1" width="6" height="9.5" rx="3" fill="currentColor" />
+                    <path d="M2.5 7.5a5.5 5.5 0 0 0 11 0M8 13v2.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                  <span className="min-w-0 truncate">{s.listening}</span>
+                </span>
+              )}
             </p>
           </div>
         </div>

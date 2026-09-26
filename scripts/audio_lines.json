@@ -34,6 +34,106 @@
     "text": "Don't rush the return.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/count_1": {
+    "model": "eleven_multilingual_v2",
+    "text": "One.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_10": {
+    "model": "eleven_multilingual_v2",
+    "text": "Ten.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_11": {
+    "model": "eleven_multilingual_v2",
+    "text": "Eleven.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_12": {
+    "model": "eleven_multilingual_v2",
+    "text": "Twelve.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_13": {
+    "model": "eleven_multilingual_v2",
+    "text": "Thirteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_14": {
+    "model": "eleven_multilingual_v2",
+    "text": "Fourteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_15": {
+    "model": "eleven_multilingual_v2",
+    "text": "Fifteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_16": {
+    "model": "eleven_multilingual_v2",
+    "text": "Sixteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_17": {
+    "model": "eleven_multilingual_v2",
+    "text": "Seventeen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_18": {
+    "model": "eleven_multilingual_v2",
+    "text": "Eighteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_19": {
+    "model": "eleven_multilingual_v2",
+    "text": "Nineteen.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_2": {
+    "model": "eleven_multilingual_v2",
+    "text": "Two.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_20": {
+    "model": "eleven_multilingual_v2",
+    "text": "Twenty.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_3": {
+    "model": "eleven_multilingual_v2",
+    "text": "Three.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_4": {
+    "model": "eleven_multilingual_v2",
+    "text": "Four.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_5": {
+    "model": "eleven_multilingual_v2",
+    "text": "Five.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_6": {
+    "model": "eleven_multilingual_v2",
+    "text": "Six.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_7": {
+    "model": "eleven_multilingual_v2",
+    "text": "Seven.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_8": {
+    "model": "eleven_multilingual_v2",
+    "text": "Eight.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/count_9": {
+    "model": "eleven_multilingual_v2",
+    "text": "Nine.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/done": {
     "model": "eleven_multilingual_v2",
     "text": "Great work. Session complete.",
@@ -79,6 +179,11 @@
     "text": "Halfway there. Keep going.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/hold": {
+    "model": "eleven_multilingual_v2",
+    "text": "Hold it there.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/keep_it_up": {
     "model": "eleven_multilingual_v2",
     "text": "Keep it up.",
@@ -122,6 +227,11 @@
   "en/nicely_done": {
     "model": "eleven_multilingual_v2",
     "text": "Nicely, done.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/pain_stop": {
+    "model": "eleven_multilingual_v2",
+    "text": "Okay, let's stop there. I'm letting your therapist know.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/perfect_form": {
@@ -229,6 +339,106 @@
     "text": "No te apresures al regresar.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/count_1": {
+    "model": "eleven_multilingual_v2",
+    "text": "Uno.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_10": {
+    "model": "eleven_multilingual_v2",
+    "text": "Diez.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_11": {
+    "model": "eleven_multilingual_v2",
+    "text": "Once.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_12": {
+    "model": "eleven_multilingual_v2",
+    "text": "Doce.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_13": {
+    "model": "eleven_multilingual_v2",
+    "text": "Trece.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_14": {
+    "model": "eleven_multilingual_v2",
+    "text": "Catorce.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_15": {
+    "model": "eleven_multilingual_v2",
+    "text": "Quince.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_16": {
+    "model": "eleven_multilingual_v2",
+    "text": "Dieciséis.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_17": {
+    "model": "eleven_multilingual_v2",
+    "text": "Diecisiete.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_18": {
+    "model": "eleven_multilingual_v2",
+    "text": "Dieciocho.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_19": {
+    "model": "eleven_multilingual_v2",
+    "text": "Diecinueve.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_2": {
+    "model": "eleven_multilingual_v2",
+    "text": "Dos.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_20": {
+    "model": "eleven_multilingual_v2",
+    "text": "Veinte.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_3": {
+    "model": "eleven_multilingual_v2",
+    "text": "Tres.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_4": {
+    "model": "eleven_multilingual_v2",
+    "text": "Cuatro.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_5": {
+    "model": "eleven_multilingual_v2",
+    "text": "Cinco.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_6": {
+    "model": "eleven_multilingual_v2",
+    "text": "Seis.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_7": {
+    "model": "eleven_multilingual_v2",
+    "text": "Siete.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_8": {
+    "model": "eleven_multilingual_v2",
+    "text": "Ocho.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/count_9": {
+    "model": "eleven_multilingual_v2",
+    "text": "Nueve.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/done": {
     "model": "eleven_multilingual_v2",
     "text": "Buen trabajo. Sesión terminada.",
@@ -274,6 +484,11 @@
     "text": "Vas por la mitad. Sigue así.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/hold": {
+    "model": "eleven_multilingual_v2",
+    "text": "Mantén la posición.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/keep_it_up": {
     "model": "eleven_multilingual_v2",
     "text": "Sigue así.",
@@ -317,6 +532,11 @@
   "es/nicely_done": {
     "model": "eleven_multilingual_v2",
     "text": "Bien hecho.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/pain_stop": {
+    "model": "eleven_multilingual_v2",
+    "text": "Está bien, paremos aquí. Le aviso a tu terapeuta.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/perfect_form": {
