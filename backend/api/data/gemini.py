@@ -8,10 +8,10 @@ log = logging.getLogger("rehabbuddy.gemini")
 try:  # use the project settings if available
     from api.core.config import settings as _settings
     _KEY = getattr(_settings, "GEMINI_API_KEY", "") or os.getenv("GEMINI_API_KEY", "")
-    _MODEL = getattr(_settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    _MODEL = getattr(_settings, "GEMINI_MODEL", "") or os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 except Exception:  # noqa: BLE001
     _KEY = os.getenv("GEMINI_API_KEY", "")
-    _MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+    _MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 
 _client = None
 
