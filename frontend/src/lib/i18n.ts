@@ -144,6 +144,8 @@ const strings = {
       { value: '23%', label: 'keep it up for their whole treatment, down from 64% in the first weeks.', source: 2 },
       { value: 'Unseen', label: 'Home exercise is usually not measured at all, so patients get no feedback on form or progress.', source: 2 },
     ],
+    statBars: ['First weeks', 'Whole treatment'],
+    statNoData: 'No data',
     howEyebrow: 'How it works',
     howTitle: 'The missing link between the clinic and the living room.',
     howSteps: [
@@ -163,6 +165,7 @@ const strings = {
     ctaTitle: 'Ready to bend with us?',
     ctaBody: 'Create an account in a minute, or look around with the demo.',
     ctaDemo: 'Try the demo',
+    ctaTherapist: 'Or open the therapist dashboard',
     builtWith: 'Built with MediaPipe, ElevenLabs, Gemini and Tiger Data.',
     sources: 'Sources',
     sourceList: [
@@ -355,6 +358,8 @@ const strings = {
       { value: '23%', label: 'lo mantiene durante todo el tratamiento, frente al 64% de las primeras semanas.', source: 2 },
       { value: 'Invisible', label: 'El ejercicio en casa casi nunca se mide, así que no hay comentarios sobre postura ni progreso.', source: 2 },
     ],
+    statBars: ['Primeras semanas', 'Todo el tratamiento'],
+    statNoData: 'Sin datos',
     howEyebrow: 'Cómo funciona',
     howTitle: 'El eslabón que faltaba entre la clínica y la sala de tu casa.',
     howSteps: [
@@ -374,6 +379,7 @@ const strings = {
     ctaTitle: '¿Listo para doblarte con nosotros?',
     ctaBody: 'Crea una cuenta en un minuto o explora la demostración.',
     ctaDemo: 'Probar la demo',
+    ctaTherapist: 'O abre el panel del terapeuta',
     builtWith: 'Hecho con MediaPipe, ElevenLabs, Gemini y Tiger Data.',
     sources: 'Fuentes',
     sourceList: [

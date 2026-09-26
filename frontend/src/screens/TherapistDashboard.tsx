@@ -4,6 +4,7 @@ import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
 import { Logo } from '../components/Logo'
 import { RomChart } from '../components/RomChart'
+import { TITLE, buttonClass } from '../components/Screen'
 import { useAuth } from '../lib/auth'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
 import type { DashboardResponse, PatientOverview, RedFlag } from '../types/session'
@@ -86,8 +87,8 @@ export default function TherapistDashboard() {
 
   return (
     <div className="min-h-dvh">
-      <header className="sticky top-0 z-20 border-b border-line bg-canvas/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-5">
+      <header className="sticky top-0 z-20 border-b border-line bg-canvas/85 backdrop-blur-xl">
+        <div className="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-3 px-5">
           <Logo to="/therapist" suffix="Clinic" />
           <div className="flex items-center gap-4">
             <LiveIndicator error={error} lastOk={lastOk} now={now} />
@@ -98,24 +99,31 @@ export default function TherapistDashboard() {
 
       <main className="mx-auto max-w-7xl px-5 pb-16 pt-8">
         <div className="animate-rise">
-          <h1 className="font-display text-[36px] font-medium leading-tight tracking-tight">{greeting()}, {account?.full_name ?? 'Dr. Lee'}</h1>
-          <ul className="mt-3 flex flex-wrap gap-2 text-sm font-semibold text-ink-2">
-            <li className="rounded-full bg-surface px-3 py-1.5 shadow-card ring-1 ring-line">
+          <p className="label-mono text-muted">{new Date(now).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          <h1 className={`mt-3 ${TITLE}`}>
+            {greeting()}, {account?.full_name ?? 'Dr. Lee'}
+          </h1>
+          <p className="mt-3 flex flex-wrap items-center gap-x-2.5 text-lg text-ink-2">
+            <span>
               <span className="font-bold text-ink tabular-nums">{patients.length}</span> patients
-            </li>
+            </span>
             {needAttention > 0 && (
-              <li className="rounded-full bg-critical-soft px-3 py-1.5 text-critical ring-1 ring-critical/20">
-                <span className="font-bold tabular-nums">{needAttention}</span> need attention
-              </li>
+              <>
+                <span aria-hidden="true" className="text-line-strong">·</span>
+                <span className="font-semibold text-critical">
+                  <span className="font-bold tabular-nums">{needAttention}</span> {needAttention === 1 ? 'needs' : 'need'} attention
+                </span>
+              </>
             )}
-            <li className="rounded-full bg-surface px-3 py-1.5 shadow-card ring-1 ring-line">
+            <span aria-hidden="true" className="text-line-strong">·</span>
+            <span>
               <span className="font-bold text-ink tabular-nums">{weekSessions}</span> sessions this week
-            </li>
-          </ul>
+            </span>
+          </p>
         </div>
 
         {alerts.length > 0 && (
-          <section aria-label="Red flags" className="mt-6 animate-rise overflow-hidden rounded-3xl bg-critical-soft shadow-card ring-1 ring-critical/25">
+          <section aria-label="Red flags" className="mt-8 animate-rise overflow-hidden rounded-2xl bg-critical-soft ring-1 ring-critical/25">
             {alerts.map((a) => (
               <button
                 key={a.session_id}
@@ -128,7 +136,7 @@ export default function TherapistDashboard() {
                   <span className="text-ink"> reported pain {a.pain_score}/10</span>
                   <span className="text-ink-2"> · {a.reason}</span>
                 </span>
-                <span className="shrink-0 text-xs font-medium text-ink-2">{timeAgo(a.created_at, now)}</span>
+                <span className="label-mono shrink-0 text-ink-2">{timeAgo(a.created_at, now)}</span>
                 <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0 text-ink-2">
                   <path d="m6 3.5 4.5 4.5L6 12.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -138,7 +146,7 @@ export default function TherapistDashboard() {
         )}
 
         {!data && !error && (
-          <div className="mt-6 grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="mt-8 grid gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
             <div className="h-72 animate-pulse rounded-3xl bg-line" />
             <div className="h-[560px] animate-pulse rounded-3xl bg-line" />
           </div>
@@ -146,14 +154,14 @@ export default function TherapistDashboard() {
         {!data && error && <p className="mt-6 text-critical">Can’t reach the backend. Retrying every few seconds.</p>}
 
         {data && (
-          <div className="mt-6 grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
             <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={setSelectedId} now={now} fresh={fresh} />
             {selected && <PatientDetail key={selected.patient.id} p={selected} fresh={fresh} now={now} />}
           </div>
         )}
 
         {USE_MOCKS && (
-          <p className="mt-12 text-xs text-muted">
+          <p className="label-mono mt-14 text-muted">
             Demo data ·{' '}
             <button
               className="underline underline-offset-2 hover:text-ink"
@@ -174,7 +182,7 @@ export default function TherapistDashboard() {
 function LiveIndicator({ error, lastOk, now }: { error: boolean; lastOk: number | null; now: number }) {
   const secs = lastOk ? Math.max(0, Math.round((now - lastOk) / 1000)) : null
   return (
-    <span className="hidden items-center gap-2 rounded-full bg-surface px-3 py-1.5 text-xs font-medium text-ink-2 ring-1 ring-line sm:inline-flex">
+    <span className="label-mono hidden h-9 items-center gap-2 rounded-full bg-surface px-3.5 text-ink-2 ring-1 ring-line sm:inline-flex">
       <span className="relative flex size-2">
         {!error && <span className="absolute inset-0 animate-ping rounded-full bg-brand opacity-70" />}
         <span className={`relative size-2 rounded-full ${error ? 'bg-critical' : 'bg-brand'}`} />
@@ -246,8 +254,8 @@ function PatientList({
   fresh: Record<string, number>
 }) {
   return (
-    <section aria-label="Patients" className="overflow-hidden rounded-3xl bg-surface shadow-card ring-1 ring-line lg:sticky lg:top-24">
-      <p className="px-5 pb-2 pt-4 text-xs font-bold uppercase tracking-[0.14em] text-muted">Patients</p>
+    <section aria-label="Patients" className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:sticky lg:top-24">
+      <p className="label-mono px-5 pb-2 pt-5 text-muted">Patients · {patients.length}</p>
       <ul className="p-2 pt-0">
         {patients.map((p) => {
           const done = Math.round(p.adherence_7d * p.assignment.times_per_week)
@@ -284,11 +292,11 @@ function PatientList({
 function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: 'critical' | 'brand' }) {
   return (
     <div className="p-5">
-      <dt className="text-xs font-bold text-ink-2">{label}</dt>
-      <dd className={`mt-2 text-[30px] font-bold leading-none tracking-tight tabular-nums ${tone === 'critical' ? 'text-critical' : tone === 'brand' ? 'text-brand-ink' : ''}`}>
+      <dt className="label-mono text-muted">{label}</dt>
+      <dd className={`mt-3 text-[32px] font-bold leading-none tracking-tight tabular-nums ${tone === 'critical' ? 'text-critical' : tone === 'brand' ? 'text-brand-ink' : ''}`}>
         {value}
       </dd>
-      {sub && <dd className="mt-1.5 text-xs text-muted">{sub}</dd>}
+      {sub && <dd className="mt-2 text-[13px] text-ink-2">{sub}</dd>}
     </div>
   )
 }
@@ -314,31 +322,37 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
   }
 
   return (
-    <section aria-label={patient.full_name} className="min-w-0 animate-rise space-y-5">
-      <div className="flex flex-wrap items-center gap-4">
-        <Avatar name={patient.full_name} size={56} flagged={flagged} />
-        <div className="min-w-0 flex-1">
-          <h2 className="font-display text-[28px] font-medium leading-tight tracking-tight">{patient.full_name}</h2>
-          <div className="mt-1.5 flex flex-wrap gap-1.5 text-xs font-medium">
-            <span className="rounded-full bg-surface px-2.5 py-1 text-ink-2 ring-1 ring-line">{patient.injury}</span>
-            <span className="rounded-full bg-surface px-2.5 py-1 text-ink-2 ring-1 ring-line">Day {rehabDay} of rehab</span>
-            <span className="rounded-full bg-surface px-2.5 py-1 text-ink-2 ring-1 ring-line">{patient.language === 'es' ? 'Spanish' : 'English'}</span>
+    <section aria-label={patient.full_name} className="min-w-0 animate-rise space-y-6">
+      <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-4">
+        <div className="flex min-w-0 items-center gap-4">
+          <Avatar name={patient.full_name} size={56} flagged={flagged} />
+          <div className="min-w-0">
+            <h2 className="truncate font-display text-[30px] leading-tight">{patient.full_name}</h2>
+            <p className="label-mono mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-muted">
+              <span>{patient.injury}</span>
+              <span aria-hidden="true">·</span>
+              <span>Day {rehabDay} of rehab</span>
+              <span aria-hidden="true">·</span>
+              <span>{patient.language === 'es' ? 'Spanish' : 'English'}</span>
+            </p>
           </div>
         </div>
-        <p className="rounded-2xl bg-surface px-3.5 py-2 text-sm text-ink-2 shadow-card ring-1 ring-line">
-          <span className="font-bold text-ink">{assignment.exercise.name}</span> · {assignment.reps} × {assignment.target_angle}° ·{' '}
-          {assignment.times_per_week}×/wk
-        </p>
+        <div className="text-right max-sm:text-left">
+          <p className="label-mono text-muted">Plan</p>
+          <p className="mt-1 text-[15px] text-ink-2">
+            <span className="font-bold text-ink">{assignment.exercise.name}</span> · {assignment.reps} × {assignment.target_angle}° · {assignment.times_per_week}×/wk
+          </p>
+        </div>
       </div>
 
-      <dl className="grid grid-cols-2 overflow-hidden rounded-3xl bg-surface shadow-card ring-1 ring-line sm:grid-cols-4 [&>div]:border-line max-sm:[&>div:nth-child(-n+2)]:border-b sm:[&>div:not(:first-child)]:border-l max-sm:[&>div:nth-child(2n)]:border-l">
+      <dl className="grid grid-cols-2 overflow-hidden rounded-3xl bg-surface ring-1 ring-line sm:grid-cols-4 [&>div]:border-line max-sm:[&>div:nth-child(-n+2)]:border-b sm:[&>div:not(:first-child)]:border-l max-sm:[&>div:nth-child(2n)]:border-l">
         <Stat
           label="Peak flexion"
           value={latest ? `${latest.max_angle}°` : '—'}
           sub={latest ? `${gain >= 0 ? '+' : ''}${gain}° since first session` : undefined}
           tone={latest && latest.max_angle >= assignment.target_angle ? 'brand' : undefined}
         />
-        <Stat label="Adherence, 7 days" value={`${done}/${assignment.times_per_week}`} sub={`${Math.round(p.adherence_7d * 100)}% of plan`} />
+        <Stat label="Adherence, 7d" value={`${done}/${assignment.times_per_week}`} sub={`${Math.round(p.adherence_7d * 100)}% of plan`} />
         <Stat label="Sessions" value={`${sessions.length}`} sub={latest ? `Last ${timeAgo(latest.started_at, now)}` : undefined} />
         <Stat
           label="Latest pain"
@@ -348,59 +362,50 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
         />
       </dl>
 
-      <div className="rounded-3xl bg-surface p-5 shadow-card ring-1 ring-line sm:p-6">
+      <div className="rounded-3xl bg-surface p-5 ring-1 ring-line sm:p-7">
         <div className="flex items-baseline justify-between gap-4">
           <div>
             <h3 className="text-lg font-bold">Range of motion</h3>
-            <p className="text-sm text-muted">Peak knee flexion per session</p>
+            <p className="mt-0.5 text-sm text-muted">Peak knee flexion per session</p>
           </div>
-          {first && <p className="text-sm text-ink-2">Since {shortDate(first.started_at)}</p>}
+          {first && <p className="label-mono text-muted">Since {shortDate(first.started_at)}</p>}
         </div>
-        <div className="mt-5">
+        <div className="mt-6">
           {sessions.length ? <RomChart sessions={sessions} target={assignment.target_angle} /> : <p className="text-muted">No sessions yet.</p>}
         </div>
       </div>
 
-      <div className="relative overflow-hidden rounded-3xl bg-surface bg-[linear-gradient(170deg,var(--rb-brand-soft)_0%,var(--rb-surface)_55%)] p-5 shadow-card ring-1 ring-brand/15 sm:p-6">
+      <div className="rounded-3xl bg-surface p-5 ring-1 ring-line sm:p-7">
         <div className="flex items-center justify-between gap-4">
-          <h3 className="flex items-center gap-2 text-lg font-bold">
-            Weekly summary
-            <span className="inline-flex items-center gap-1 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-on-brand">
-              <svg width="11" height="11" viewBox="0 0 12 12" aria-hidden="true">
-                <path d="M6 0.8 7.2 4.8 11.2 6 7.2 7.2 6 11.2 4.8 7.2 0.8 6 4.8 4.8Z" fill="currentColor" />
-              </svg>
-              AI
-            </span>
-          </h3>
-          <button
-            onClick={regenerate}
-            disabled={regenerating}
-            className="inline-flex h-10 items-center gap-1.5 rounded-full bg-surface px-3.5 text-sm font-bold text-brand-ink shadow-card ring-1 ring-line transition-colors hover:bg-brand-soft disabled:text-muted"
-          >
+          <div className="flex items-baseline gap-3">
+            <h3 className="text-lg font-bold">Weekly summary</h3>
+            <span className="label-mono rounded-md bg-raised px-1.5 py-1 text-[10px] text-ink-2 ring-1 ring-line">Draft</span>
+          </div>
+          <button onClick={regenerate} disabled={regenerating} className={`${buttonClass('secondary', 'md')} h-10 px-3.5 text-sm`}>
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className={regenerating ? 'animate-spin' : ''}>
               <path d="M13.5 8A5.5 5.5 0 1 1 11.9 4.1M13.5 2.5v3h-3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             {regenerating ? 'Writing…' : 'Regenerate'}
           </button>
         </div>
-        <p className={`mt-3 text-[17px] leading-relaxed text-ink transition-opacity ${regenerating ? 'opacity-40' : ''}`}>
+        <p className={`mt-5 border-l-2 border-brand pl-5 text-[17px] leading-relaxed text-ink transition-opacity ${regenerating ? 'opacity-40' : ''}`}>
           {summary ?? p.latest_summary ?? 'No summary yet.'}
         </p>
-        <p className="mt-4 text-xs text-muted">Drafted by Gemini from session data. Review before acting.</p>
+        <p className="label-mono mt-5 text-[10px] text-muted">Drafted by Gemini from session data · Review before acting</p>
       </div>
 
-      <div className="overflow-hidden rounded-3xl bg-surface shadow-card ring-1 ring-line">
-        <h3 className="px-6 pb-3 pt-5 text-lg font-bold">Sessions</h3>
+      <div className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line">
+        <h3 className="px-6 pb-4 pt-6 text-lg font-bold sm:px-7">Sessions</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
             <thead>
-              <tr className="border-y border-line bg-raised text-left text-xs uppercase tracking-[0.08em] text-muted">
-                <th className="px-6 py-2.5 font-bold">Date</th>
-                <th className="px-3 py-2.5 text-right font-bold">Reps</th>
-                <th className="px-3 py-2.5 text-right font-bold">Peak</th>
-                <th className="px-3 py-2.5 text-right font-bold">Time</th>
-                <th className="px-3 py-2.5 font-bold">Form</th>
-                <th className="px-6 py-2.5 text-right font-bold">Pain</th>
+              <tr className="label-mono border-y border-line bg-raised text-left text-muted">
+                <th className="px-6 py-3 font-medium sm:pl-7">Date</th>
+                <th className="px-3 py-3 text-right font-medium">Reps</th>
+                <th className="px-3 py-3 text-right font-medium">Peak</th>
+                <th className="px-3 py-3 text-right font-medium">Time</th>
+                <th className="px-3 py-3 font-medium">Form</th>
+                <th className="px-6 py-3 text-right font-medium sm:pr-7">Pain</th>
               </tr>
             </thead>
             <tbody>
@@ -408,20 +413,20 @@ function PatientDetail({ p, fresh, now }: { p: PatientOverview; fresh: Record<st
                 const isFresh = (fresh[s.id] ?? 0) > now
                 return (
                   <tr key={s.id} className={`border-b border-line transition-colors duration-1000 last:border-0 ${isFresh ? 'bg-brand-soft' : ''}`}>
-                    <td className="whitespace-nowrap px-6 py-3">
+                    <td className="whitespace-nowrap px-6 py-3.5 sm:pl-7">
                       {new Date(s.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
-                      {isFresh && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 text-xs font-bold text-on-brand">New</span>}
+                      {isFresh && <span className="label-mono ml-2 rounded-md bg-brand px-1.5 py-0.5 text-[10px] text-on-brand">New</span>}
                     </td>
-                    <td className="px-3 py-3 text-right">
+                    <td className="px-3 py-3.5 text-right">
                       {s.reps_done}
                       <span className="text-muted">/{assignment.reps}</span>
                     </td>
-                    <td className={`px-3 py-3 text-right font-semibold ${s.max_angle >= assignment.target_angle ? 'text-brand-ink' : ''}`}>{s.max_angle}°</td>
-                    <td className="px-3 py-3 text-right text-ink-2">{formatDuration(s.duration_sec)}</td>
-                    <td className="px-3 py-3 text-ink-2">{s.form_warnings.length ? [...new Set(s.form_warnings)].join(', ') : '—'}</td>
-                    <td className="px-6 py-3 text-right">
+                    <td className={`px-3 py-3.5 text-right font-bold ${s.max_angle >= assignment.target_angle ? 'text-brand-ink' : ''}`}>{s.max_angle}°</td>
+                    <td className="px-3 py-3.5 text-right text-ink-2">{formatDuration(s.duration_sec)}</td>
+                    <td className="px-3 py-3.5 text-ink-2">{s.form_warnings.length ? [...new Set(s.form_warnings)].join(', ') : '—'}</td>
+                    <td className="px-6 py-3.5 text-right sm:pr-7">
                       {s.flagged ? (
-                        <span className="rounded-full bg-critical-soft px-2 py-0.5 font-bold text-critical">{s.pain_score}</span>
+                        <span className="rounded-md bg-critical-soft px-2 py-0.5 font-bold text-critical ring-1 ring-critical/20">{s.pain_score}</span>
                       ) : (
                         (s.pain_score ?? '—')
                       )}

@@ -70,7 +70,7 @@ export function Logo({ to = '/', suffix }: { to?: string; suffix?: string }) {
     <Link to={to} aria-label={suffix ? `bendwith.us ${suffix}` : 'bendwith.us'} className="inline-flex items-center gap-2 rounded-lg">
       <LegMark className="h-9 w-auto text-brand" />
       <Wordmark className="mt-2 h-[18px] w-auto text-ink" />
-      {suffix && <span className="ml-1 mt-1.5 text-[15px] text-muted">{suffix}</span>}
+      {suffix && <span className="label-mono ml-2 mt-1.5 rounded-md bg-ink px-1.5 py-1 text-[10px] text-canvas">{suffix}</span>}
     </Link>
   )
 }

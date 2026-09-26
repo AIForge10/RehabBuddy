@@ -11,7 +11,7 @@ export function PlanVisual() {
   const copy = EXERCISES.knee.copy[lang]
   return (
     <div className="w-[84%] max-w-[230px] rounded-2xl bg-surface p-3.5 shadow-card ring-1 ring-line">
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-ink">{s.today}</p>
+      <p className="label-mono text-[10px] text-brand-ink">{s.today}</p>
       <p className="mt-1 font-display text-lg leading-tight">{copy.name}</p>
       <div className="mt-2.5 flex flex-wrap gap-1.5 text-[11px] font-semibold text-ink-2">
         <span className="rounded-full bg-raised px-2 py-1 ring-1 ring-line">{s.chipReps(10)}</span>
@@ -51,7 +51,7 @@ export function CoachVisual() {
             i ? 'self-end rounded-br-md bg-hero text-on-hero ring-white/10' : 'rounded-bl-md bg-surface ring-line'
           }`}
         >
-          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${i ? 'bg-brand text-on-brand' : 'bg-brand-soft text-brand-ink'}`}>{l.tag}</span>“{l.text}”
+          <span className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold ${i ? 'bg-brand text-on-brand' : 'bg-brand-soft text-brand-ink'}`}>{l.tag}</span>“{l.text}”
         </p>
       ))}
     </div>

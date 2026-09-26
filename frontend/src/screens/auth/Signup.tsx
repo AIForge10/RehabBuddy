@@ -63,7 +63,7 @@ export default function Signup() {
             {ROLES.map((r) => (
               <label
                 key={r}
-                className="relative flex cursor-pointer flex-col rounded-2xl bg-surface p-4 shadow-card ring-1 ring-line-strong transition-[box-shadow,background-color] duration-200 has-checked:bg-brand-soft has-checked:ring-2 has-checked:ring-brand-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-ink"
+                className="relative flex cursor-pointer flex-col rounded-2xl bg-surface p-4 ring-1 ring-line-strong hover:ring-ink/30 transition-[box-shadow,background-color] duration-200 has-checked:bg-brand-soft has-checked:ring-2 has-checked:ring-brand-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-ink"
               >
                 <input type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} className="peer sr-only" />
                 <span className="grid size-10 place-items-center rounded-xl bg-raised text-brand-ink ring-1 ring-line peer-checked:bg-brand peer-checked:text-on-brand peer-checked:ring-0">
@@ -105,7 +105,7 @@ export default function Signup() {
           error={errors.password && s[errors.password]}
           hint={s.passwordHint}
         />
-        <Button type="submit" disabled={pending} className="mt-1 w-full font-display">
+        <Button type="submit" disabled={pending} className="mt-1 w-full">
           {pending ? (
             <>
               <Spinner />

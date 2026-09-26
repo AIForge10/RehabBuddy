@@ -698,13 +698,14 @@ export function SeatedBody({
           <path d={APRON} fill={url('woodH')} />
           <path d={FRONT_LEG} fill={url('woodV')} />
           <path d={STRETCHER} fill={url('woodH')} />
+          {/* shade under the seat, behind the rear post, which stands clear of it */}
+          <rect x="268" y="299.8" width="132" height="30" fill={url('underSeat')} />
           <path d={REAR_POST} fill={url('woodV')} />
           <g fill="none" stroke={C.woodDeep} strokeWidth="0.8" opacity="0.35" strokeLinecap="round">
             <path d="M268 150C270 200 271 250 270.4 296" />
             <path d="M391 306C392 340 392 372 392 404" />
             <path d="M300 294.6C330 294 360 295 392 294.4" />
           </g>
-          <rect x="268" y="299.8" width="132" height="30" fill={url('underSeat')} />
           <path d={FRONT_LEG} fill={url('underSeat')} />
         </>
       )}

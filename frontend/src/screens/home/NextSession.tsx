@@ -1,3 +1,4 @@
+import { ArrowRight, buttonClass } from '../../components/Screen'
 import { SeatedBody } from '../../components/SeatedBody'
 import { FLOOR_Y, KNEE, ankleAt } from '../../lib/bodyGeometry'
 import { exerciseFor, type Exercise } from '../../lib/exercises'
@@ -20,11 +21,14 @@ export function NextSession({ assignment, onStart }: { assignment: Assignment; o
   return (
     <section
       aria-labelledby="next-session"
-      className="grid animate-rise overflow-hidden rounded-[28px] bg-hero text-on-hero lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
+      className="grid animate-rise overflow-hidden rounded-3xl bg-hero text-on-hero ring-1 ring-white/6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
     >
       <div className="flex flex-col p-6 pt-2 sm:p-10 sm:pt-4 lg:pt-10">
-        <p className="text-[15px] font-semibold text-brand-light">{s.today}</p>
-        <h2 id="next-session" className="mt-2 max-w-[14ch] font-display text-[36px] leading-[1.04] sm:text-[52px]">
+        <p className="label-mono flex items-center gap-2.5 text-brand-light">
+          <span aria-hidden="true" className="h-px w-6 bg-current" />
+          {s.today}
+        </p>
+        <h2 id="next-session" className="mt-4 max-w-[14ch] font-display text-[36px] leading-[1.04] sm:text-[52px]">
           {name}
         </h2>
         <ul className="mt-4 flex flex-wrap gap-x-2 text-lg text-on-hero-2">
@@ -43,12 +47,10 @@ export function NextSession({ assignment, onStart }: { assignment: Assignment; o
         <button
           type="button"
           onClick={onStart}
-          className="group mt-8 inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-brand px-8 font-display text-lg text-on-brand transition-[background-color,transform] duration-200 hover:bg-brand-strong focus-visible:outline-brand-light active:scale-[0.98] sm:w-auto sm:self-start lg:mt-auto"
+          className={`${buttonClass('primary')} group mt-8 w-full px-8 focus-visible:outline-brand-light sm:w-auto sm:self-start lg:mt-auto`}
         >
           {s.start}
-          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1">
-            <path d="M3 9h11m-4.5-4.5L14 9l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
+          <ArrowRight className="transition-transform duration-200 group-hover:translate-x-1" />
         </button>
       </div>
 

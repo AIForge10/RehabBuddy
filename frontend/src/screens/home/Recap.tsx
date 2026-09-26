@@ -1,4 +1,7 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useMemo, useState } from 'react'
+import { DegreeScale } from '../../components/DegreeScale'
+import { PainDot, Row, Rows, Section } from '../../components/Ledger'
+import type { Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 import type { SessionRecord } from '../../types/session'
 import { TrendChart } from './TrendChart'
@@ -22,7 +25,7 @@ function when(iso: string, locale: string): string {
  * earlier session. Two open sections under a rule rather than two cards: the
  * dark band above is the only boxed thing on the page.
  */
-export function Recap({ sessions, target, reps }: { sessions: SessionRecord[]; target: number; reps: number }) {
+export function Recap({ sessions, target, reps, exercise }: { sessions: SessionRecord[]; target: number; reps: number; exercise: Exercise }) {
   const { s } = useLanguage()
   const ordered = useMemo(() => [...sessions].sort((a, b) => a.started_at.localeCompare(b.started_at)), [sessions])
   // A hover previews a session; a click, tap or key pins it until "Back to latest".
@@ -54,11 +57,12 @@ export function Recap({ sessions, target, reps }: { sessions: SessionRecord[]; t
         aside={when(cur.started_at, s.locale)}
         className="lg:col-span-5 xl:col-span-4"
       >
-        <p className="mt-5 text-sm font-semibold text-muted">{s.doneDeepest}</p>
-        <p className="font-display text-[72px] leading-none tabular-nums">
+        <p className="label-mono mt-6 text-muted">{s.doneDeepest}</p>
+        <p className="mt-2 font-display text-[72px] leading-none tabular-nums">
           {cur.max_angle}
           <span className="text-muted">°</span>
         </p>
+        <DegreeScale value={cur.max_angle} target={target} min={exercise.min} max={exercise.max} className="mt-5" />
         {/* Goal first: it's the number the therapist set. Both halves stay on one line so hovering never reflows. */}
         <p className="mt-3 truncate text-[15px] font-semibold">
           <span className={hit ? 'text-good' : 'text-brand-ink'}>{hit ? s.goalHit : s.toGo(target - cur.max_angle)}</span>
@@ -68,7 +72,7 @@ export function Recap({ sessions, target, reps }: { sessions: SessionRecord[]; t
           </span>
         </p>
 
-        <dl className="mt-6 divide-y divide-line border-y border-line">
+        <Rows className="mt-6">
           <Row label={s.doneReps}>
             {cur.reps_done}
             <span className="font-medium text-muted"> / {reps}</span>
@@ -88,16 +92,13 @@ export function Recap({ sessions, target, reps }: { sessions: SessionRecord[]; t
               <span className="text-muted">—</span>
             ) : (
               <>
-                <span
-                  aria-hidden="true"
-                  className={`mr-2 inline-block size-2 rounded-full align-middle ${cur.pain_score <= 3 ? 'bg-pain-1' : cur.pain_score <= 6 ? 'bg-pain-2' : 'bg-pain-3'}`}
-                />
+                <PainDot score={cur.pain_score} />
                 {cur.pain_score}
                 <span className="font-medium text-muted"> / 10</span>
               </>
             )}
           </Row>
-        </dl>
+        </Rows>
       </Section>
 
       <Section
@@ -145,26 +146,5 @@ export function Recap({ sessions, target, reps }: { sessions: SessionRecord[]; t
         )}
       </Section>
     </>
-  )
-}
-
-function Section({ title, aside, className = '', children }: { title: string; aside?: ReactNode; className?: string; children: ReactNode }) {
-  return (
-    <section className={`animate-rise border-t-2 border-ink pt-4 [animation-delay:90ms] ${className}`}>
-      <div className="flex items-baseline justify-between gap-4">
-        <h2 className="min-w-0 truncate text-lg font-bold">{title}</h2>
-        {aside && <p className="shrink-0 whitespace-nowrap text-sm font-semibold text-ink-2">{aside}</p>}
-      </div>
-      {children}
-    </section>
-  )
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex h-12 items-center justify-between gap-4">
-      <dt className="shrink-0 text-[15px] text-ink-2">{label}</dt>
-      <dd className="min-w-0 truncate text-right text-[15px] font-bold tabular-nums">{children}</dd>
-    </div>
   )
 }

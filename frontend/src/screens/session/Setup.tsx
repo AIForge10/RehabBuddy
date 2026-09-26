@@ -56,13 +56,13 @@ export function Setup({
     <PatientScreen wide>
       <StepHeader step={2} title={s.setupTitle} sub={s.setupSub} />
 
-      <section className="mt-6 grid overflow-hidden rounded-[28px] bg-surface shadow-lift ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
+      <section className="mt-7 grid overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
         <Stage exercise={exercise} checks={checks} camera={camera} attach={attach} step={current} />
 
         <div className="flex flex-col p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 px-1.5">
-            <h2 className="text-xs font-bold uppercase tracking-[0.14em] text-muted">{s.setupChecks}</h2>
-            <p aria-live="polite" className={`text-sm font-bold tabular-nums transition-colors ${done ? 'text-brand-ink' : 'text-muted'}`}>
+            <h2 className="label-mono pt-1 text-muted">{s.setupChecks}</h2>
+            <p aria-live="polite" className={`label-mono pt-1 transition-colors ${done ? 'text-brand-ink' : 'text-muted'}`}>
               {s.checked(count, total)}
             </p>
           </div>
@@ -84,7 +84,7 @@ export function Setup({
                     onClick={() => setChecked((c) => c.map((v, j) => (j === i ? !v : v)))}
                     aria-pressed={on}
                     aria-current={isCurrent ? 'step' : undefined}
-                    className={`relative flex w-full items-start gap-3.5 rounded-[20px] px-3 py-3 text-left transition-colors duration-300 ${
+                    className={`relative flex w-full items-start gap-3.5 rounded-2xl px-3 py-3 text-left transition-colors duration-300 ${
                       isCurrent ? 'bg-brand-soft' : 'hover:bg-raised'
                     }`}
                   >
@@ -165,7 +165,7 @@ function Stage({
   const label = { paintOrder: 'stroke', stroke: 'rgb(0 0 0 / 0.6)', strokeWidth: 6 * k, strokeLinejoin: 'round', fontSize: 22 * k } as const
 
   return (
-    <div className="relative aspect-[4/3] overflow-hidden bg-stage sm:aspect-[16/10]">
+    <div className="relative aspect-[4/3] overflow-hidden bg-stage sm:aspect-[16/10] lg:aspect-auto lg:min-h-[460px]">
       <video ref={attach} muted playsInline className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${on ? '' : 'invisible'}`} />
       {/* Scrim so the guides still read against a bright room */}
       <div className={`absolute inset-0 bg-gradient-to-b from-black/35 via-black/5 to-black/45 transition-opacity duration-500 ${on ? 'opacity-100' : 'opacity-0'}`} />
@@ -247,7 +247,7 @@ function Stage({
 
       <span
         role="status"
-        className="absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-xs font-bold text-white ring-1 ring-white/10 backdrop-blur-md sm:left-4 sm:top-4"
+        className="label-mono absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-white ring-1 ring-white/10 backdrop-blur-md sm:left-4 sm:top-4"
       >
         <span className={`size-2 rounded-full ${on ? 'bg-brand-glow' : denied ? 'bg-critical' : 'animate-pulse bg-white/60'}`} />
         {on ? s.cameraOn : denied ? s.cameraDenied.split('.')[0] : s.cameraStarting}

@@ -192,7 +192,7 @@ export function Live({
             <p className="flex items-center gap-1.5 text-sm tabular-nums text-white/65">
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
-              {simulated && <span className="ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold sm:inline">{s.simulated}</span>}
+              {simulated && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.simulated}</span>}
             </p>
           </div>
         </div>
@@ -203,8 +203,8 @@ export function Live({
       <aside className="absolute right-5 top-24 hidden w-[340px] lg:block">
         <Glass className="p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-white/70">{copy.angleLabel}</p>
-            <span className={`rounded-full bg-brand-glow px-2.5 py-1 text-xs font-semibold text-stage transition-opacity duration-300 ${reached ? 'opacity-100' : 'opacity-0'}`}>
+            <p className="label-mono text-white/60">{copy.angleLabel}</p>
+            <span className={`label-mono rounded-full bg-brand-glow px-2.5 py-1 text-[10px] text-stage transition-opacity duration-300 ${reached ? 'opacity-100' : 'opacity-0'}`}>
               {s.reached}
             </span>
           </div>
@@ -218,7 +218,7 @@ export function Live({
             <MiniStat label={s.best} value={best ? `${best}°` : '—'} accent={best >= target - 2} />
           </dl>
           <div className="mt-5 border-t border-white/10 pt-4">
-            <p className="text-xs font-medium text-white/55">{s.liveAngle}</p>
+            <p className="label-mono text-white/55">{s.liveAngle}</p>
             <div className="mt-2">
               <AngleTrace samples={trace} target={target} min={exercise.min} onDark />
             </div>
@@ -279,7 +279,7 @@ export function Live({
           <Glass className="w-full p-4 sm:p-5 lg:w-[360px]">
             <div className="flex items-end justify-between gap-4">
               <div>
-                <p className="text-sm font-medium text-white/70">{s.reps}</p>
+                <p className="label-mono text-white/60">{s.reps}</p>
                 <p className="mt-1 text-6xl font-bold leading-none tracking-tighter tabular-nums sm:text-7xl">
                   <span key={pose.reps} className="inline-block animate-pop">
                     {pose.reps}
@@ -289,9 +289,9 @@ export function Live({
               </div>
               {/* Compact angle for small screens */}
               <div className="text-right lg:hidden">
-                <p className="text-sm font-medium text-white/70">{copy.angleLabel}</p>
+                <p className="label-mono text-white/60">{copy.angleLabel}</p>
                 <BigAngle angle={angle} reached={reached} small />
-                <p className="text-xs text-white/55">
+                <p className="label-mono mt-1 text-white/55">
                   {s.target} {target}°
                 </p>
               </div>
@@ -307,7 +307,7 @@ export function Live({
             <button
               onClick={finish}
               disabled={phase !== 'running'}
-              className="h-14 rounded-2xl bg-white px-7 text-lg font-bold text-stage shadow-[0_12px_32px_-12px_rgb(0_0_0/0.6)] transition-[transform,opacity,background-color] hover:bg-white/90 active:scale-[0.98] disabled:opacity-40"
+              className="h-14 rounded-xl bg-white px-7 text-[17px] font-bold text-stage shadow-[0_12px_32px_-12px_rgb(0_0_0/0.6)] transition-[transform,opacity,background-color] hover:bg-white/90 active:scale-[0.98] disabled:opacity-40"
             >
               {phase === 'saving' ? s.saving : s.finish}
             </button>
@@ -317,7 +317,7 @@ export function Live({
         <button
           onClick={finish}
           disabled={phase !== 'running'}
-          className="mt-3 h-14 w-full rounded-2xl bg-white/12 text-lg font-bold ring-1 ring-white/20 backdrop-blur-xl transition-[transform,opacity,background-color] active:scale-[0.98] active:bg-white/20 disabled:opacity-40 lg:hidden"
+          className="mt-3 h-14 w-full rounded-xl bg-white/12 text-[17px] font-bold ring-1 ring-white/20 backdrop-blur-xl transition-[transform,opacity,background-color] active:scale-[0.98] active:bg-white/20 disabled:opacity-40 lg:hidden"
         >
           {phase === 'saving' ? s.saving : s.finish}
         </button>
@@ -327,7 +327,7 @@ export function Live({
 }
 
 function Glass({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return <section className={`rounded-[28px] bg-black/45 ring-1 ring-white/10 backdrop-blur-2xl ${className}`}>{children}</section>
+  return <section className={`rounded-3xl bg-black/45 ring-1 ring-white/10 backdrop-blur-2xl ${className}`}>{children}</section>
 }
 
 function BigAngle({ angle, reached, small = false }: { angle: number | null; reached: boolean; small?: boolean }) {
@@ -345,9 +345,9 @@ function BigAngle({ angle, reached, small = false }: { angle: number | null; rea
 
 function MiniStat({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-2xl bg-white/[0.06] py-2.5">
-      <dt className="text-xs text-white/55">{label}</dt>
-      <dd className={`text-lg font-bold tabular-nums ${accent ? 'text-brand-glow' : ''}`}>{value}</dd>
+    <div className="rounded-xl bg-white/[0.06] py-2.5">
+      <dt className="label-mono text-[10px] text-white/55">{label}</dt>
+      <dd className={`mt-0.5 text-lg font-bold tabular-nums ${accent ? 'text-brand-glow' : ''}`}>{value}</dd>
     </div>
   )
 }
