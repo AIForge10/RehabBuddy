@@ -214,7 +214,7 @@ export default function PoseDebug() {
   // ---- Per-frame pipeline output ----
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const counter = useRef(new RepCounter({ bentThreshold: cfg.bent, straightThreshold: cfg.straight, targetAngle: cfg.target }))
+  const counter = useRef(new RepCounter({ bentThreshold: cfg.bent, straightThreshold: cfg.straight, restAngle: cfg.rest ?? 0, targetAngle: cfg.target }))
   const history = useRef<ChartPoint[]>([])
   const reps = useRef<{ t: number; count: number }[]>([])
   const log = useRef<object[]>([])
@@ -232,7 +232,7 @@ export default function PoseDebug() {
 
   const resetRun = useCallback(() => {
     const c = JOINTS[joint]
-    counter.current = new RepCounter({ bentThreshold: c.bent, straightThreshold: c.straight, targetAngle: c.target })
+    counter.current = new RepCounter({ bentThreshold: c.bent, straightThreshold: c.straight, restAngle: c.rest ?? 0, targetAngle: c.target })
     history.current = []
     reps.current = []
     log.current = []

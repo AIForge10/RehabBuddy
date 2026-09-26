@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { painCheck, VOICE_ANSWERS } from '../api/client'
+import { painCheck } from '../api/client'
 import { LogoMark } from '../components/Logo'
 import { ArrowRight, Button, PageHeader, PatientScreen } from '../components/Screen'
 import { sayText, unlockAudio } from '../lib/coach'
 import { exerciseFor } from '../lib/exercises'
 import { useLanguage } from '../lib/language'
-import { canRecord } from '../lib/useRecorder'
 import type { Assignment, PainCheckResponse, PainSymptom, PainTranscriptResponse, SessionResult } from '../types/session'
-import { say, skipPending } from './pain/say'
+import { MIC, painQuestion, say, skipPending, warm } from './pain/say'
 import { VoiceAnswer } from './pain/VoiceAnswer'
 
 export interface SessionFlowState {
@@ -24,9 +23,6 @@ const SCORES = Array.from({ length: 10 }, (_, i) => i + 1)
 
 // The chips a spoken answer can turn on, in the same order as s.painChips.
 const SYMPTOMS: PainSymptom[] = ['sharp', 'swelling', 'stiffness', 'clicking', 'felt_good']
-
-// A spoken answer needs speech-to-text (not in mock mode) and a browser that can record.
-const MIC = VOICE_ANSWERS && canRecord
 
 // The session's last line ("Session complete", or stopping for pain) plays on
 // as this screen opens; the question waits for it rather than cutting it off.
@@ -58,18 +54,23 @@ export default function PainCheck() {
   const spokenNote = useRef('')
 
   const stopped = Boolean(flow?.stoppedForPain)
-  const painTitle = flow ? exerciseFor(flow.assignment.exercise.joint).copy[lang].painTitle : ''
+  const exercise = flow ? exerciseFor(flow.assignment.exercise.joint) : null
+  const painTitle = exercise ? exercise.copy[lang].painTitle : ''
+  const question = exercise ? painQuestion(exercise, lang, stopped) : ''
   const answered = response != null
 
-  // The coach asks the question out loud, in the exercise's own words.
+  // The coach asks the question out loud, in the exercise's own words. Its
+  // audio is asked for right away (Live already did, as the session ended),
+  // so it's here by the time the session's last line has finished.
   useEffect(() => {
-    if (!painTitle || answered || talking) return
-    const timer = setTimeout(() => say(s.painAsk(painTitle, MIC, stopped), lang), stopped ? ASK_AFTER_STOP_MS : ASK_AFTER_MS)
+    if (!question || answered || talking) return
+    void warm(question, lang)
+    const timer = setTimeout(() => say(question, lang), stopped ? ASK_AFTER_STOP_MS : ASK_AFTER_MS)
     return () => {
       clearTimeout(timer)
       skipPending()
     }
-  }, [painTitle, stopped, answered, talking, lang, s])
+  }, [question, stopped, answered, talking, lang])
 
   if (!flow) return <Navigate to="/" replace />
 

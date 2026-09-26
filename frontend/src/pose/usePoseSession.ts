@@ -48,6 +48,7 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     new RepCounter({
       bentThreshold: cfg.bent,
       straightThreshold: cfg.straight,
+      restAngle: cfg.rest ?? 0,
       targetAngle,
       minValidMs: 450,
       minRepMs: 1200,

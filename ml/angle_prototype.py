@@ -37,8 +37,11 @@ JOINTS = {
     },
     "hip": {
         "a": (11, 12), "joint": (23, 24), "b": (25, 26), "mode": "flexion",
-        "bent": 40, "straight": 15, "target": 90,
-        "tip": "Stand SIDE-ON, lift your knee towards your chest",
+        # Seated knee lifts, as in the app: sitting already reads ~86 deg, so the band
+        # sits above it. (The browser's counter also lets the band follow the rest
+        # reading it sees; see frontend/src/pose/repCounter.ts.)
+        "bent": 100, "straight": 93, "target": 115,
+        "tip": "Sit SIDE-ON, feet flat, lift your knee towards your chest",
     },
     "elbow": {
         "a": (11, 12), "joint": (13, 14), "b": (15, 16), "mode": "flexion",

@@ -16,6 +16,12 @@ export interface JointConfig {
   mode: 'flexion' | 'raw'
   bent: number
   straight: number
+  /**
+   * Reading at the start position, for a joint that doesn't start straight (the
+   * seated hip). The rep counter then shifts `bent` and `straight` by however far
+   * the rest it sees is from this; see repCounter.ts.
+   */
+  rest?: number
   target: number
   tip: string
   /** The one form fault checked for this joint, if any. Browser only (not in the Python prototype). */
@@ -31,8 +37,10 @@ export const JOINTS: Record<JointName, JointConfig> = {
   },
   hip: {
     label: 'Hip', a: [11, 12], joint: [23, 24], b: [25, 26], mode: 'flexion',
-    bent: 40, straight: 15, target: 90,
-    tip: 'Stand side-on, lift your knee towards your chest',
+    // Seated knee lifts: sitting already reads ~86° (lib/exercises.ts HIP_SEATED),
+    // so the band sits above that, and follows the rest reading (repCounter.ts).
+    rest: 86, bent: 100, straight: 93, target: 115,
+    tip: 'Sit side-on, feet flat, lift your knee towards your chest',
     fault: 'leaning_back',
   },
   elbow: {
