@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthError } from '../../api/auth'
-import { LegMark } from '../../components/Logo'
+import { ArmMark, LegMark } from '../../components/Logo'
 import { Button } from '../../components/Screen'
 import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
@@ -66,9 +66,12 @@ export default function Signup() {
                 className="relative flex cursor-pointer flex-col rounded-2xl bg-surface p-4 ring-1 ring-line-strong hover:ring-ink/30 transition-[box-shadow,background-color] duration-200 has-checked:bg-brand-soft has-checked:ring-2 has-checked:ring-brand-ink has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-brand-ink"
               >
                 <input type="radio" name="role" value={r} checked={role === r} onChange={() => setRole(r)} className="peer sr-only" />
-                <span className="grid size-10 place-items-center rounded-xl bg-raised text-brand-ink ring-1 ring-line peer-checked:bg-brand peer-checked:text-on-brand peer-checked:ring-0">
+                <span className="flex h-10 w-fit items-center gap-1.5 rounded-xl bg-raised px-2.5 text-brand-ink ring-1 ring-line peer-checked:bg-brand peer-checked:text-on-brand peer-checked:ring-0">
                   {r === 'patient' ? (
-                    <LegMark className="h-6 w-auto" />
+                    <>
+                      <LegMark className="h-6 w-auto" />
+                      <ArmMark className="h-auto w-9" />
+                    </>
                   ) : (
                     <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M4 19V5m0 14h16M8 15l3.5-4 3 2.5L20 7" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />

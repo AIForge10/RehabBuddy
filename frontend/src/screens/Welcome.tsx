@@ -1,8 +1,8 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { LanguageToggle } from '../components/LanguageToggle'
-import { LegLattice } from '../components/LegLattice'
-import { LegMark, Logo, Wordmark } from '../components/Logo'
+import { LimbLattice } from '../components/LimbLattice'
+import { ArmMark, LegMark, Logo, Wordmark } from '../components/Logo'
 import { ArrowRight, buttonClass } from '../components/Screen'
 import { useAuth } from '../lib/auth'
 import { useLanguage } from '../lib/language'
@@ -137,7 +137,7 @@ function Kicker({ children, onDark = false }: { children: ReactNode; onDark?: bo
   )
 }
 
-/** List bullet: a right angle, the shape of a knee at its 90° goal. */
+/** List bullet: a right angle, a joint bent to 90°. */
 function Angle({ className = 'text-brand-ink' }: { className?: string }) {
   return (
     <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true" className={`mt-[5px] shrink-0 ${className}`}>
@@ -228,13 +228,20 @@ function Problem() {
   )
 }
 
-/** 35%: seven legs in twenty, in the logo's own shape. */
+/** 35%: seven patients in twenty, as legs and arms in a checkerboard, since rehab is every joint. */
 function Pictogram() {
   return (
-    <div className="grid w-fit grid-cols-10 gap-x-2.5 gap-y-3">
-      {Array.from({ length: 20 }, (_, i) => (
-        <LegMark key={i} className={`h-8 w-auto ${i < 7 ? 'text-brand' : 'text-line-strong'}`} />
-      ))}
+    <div className="grid w-fit grid-cols-5 gap-x-3 gap-y-2.5">
+      {Array.from({ length: 20 }, (_, i) => {
+        const tone = i < 7 ? 'text-brand' : 'text-line-strong'
+        // Five across, so alternating by index staggers each row against the last.
+        const leg = i % 2 === 0
+        return (
+          <span key={i} className="grid h-9 w-11 place-items-center">
+            {leg ? <LegMark className={`h-9 w-auto ${tone}`} /> : <ArmMark className={`h-auto w-11 ${tone}`} />}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -313,7 +320,10 @@ function Audiences() {
   return (
     <section className="mx-auto grid max-w-6xl gap-4 px-5 pb-20 lg:grid-cols-2 lg:pb-28">
       <div className="rounded-3xl bg-surface p-7 ring-1 ring-line sm:p-10">
-        <LegMark className="h-10 w-auto text-brand" />
+        <div className="flex items-end gap-3 text-brand">
+          <LegMark className="h-10 w-auto" />
+          <ArmMark className="h-auto w-[68px]" />
+        </div>
         <h3 className="mt-6 font-display text-[30px] leading-tight">{s.forPatients}</h3>
         <ul className="mt-6">
           {s.forPatientsList.map((item) => (
@@ -325,7 +335,7 @@ function Audiences() {
         </ul>
       </div>
       <div className="relative isolate overflow-hidden rounded-3xl bg-hero p-7 text-on-hero ring-1 ring-white/8 sm:p-10">
-        <LegLattice opacity={0.3} />
+        <LimbLattice opacity={0.3} />
         <svg width="40" height="40" viewBox="0 0 24 24" aria-hidden="true" className="text-brand-light">
           <path d="M4 20V4m0 16h16M8 15l3.5-4 3 2.5L20 7" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -349,7 +359,7 @@ function Finale() {
   const demo = useDemo()
   return (
     <section className="relative isolate overflow-hidden bg-hero-2 text-on-hero ring-1 ring-white/6">
-      <LegLattice mask="[mask-image:radial-gradient(ellipse_60%_100%_at_100%_30%,black_20%,transparent_80%)]" opacity={0.45} />
+      <LimbLattice mask="[mask-image:radial-gradient(ellipse_60%_100%_at_100%_30%,black_20%,transparent_80%)]" opacity={0.45} />
       <div className="mx-auto max-w-6xl px-5 py-20 sm:py-28">
         <h2 className="max-w-[15ch] font-display text-[40px] leading-[1.02] sm:text-[64px]">{s.moveTitle}</h2>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-on-hero-2 sm:text-xl">{s.moveBody}</p>

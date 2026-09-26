@@ -2,11 +2,10 @@ import { useId, useState, type InputHTMLAttributes, type ReactNode } from 'react
 import { Link } from 'react-router-dom'
 import { AngleGauge } from '../../components/AngleGauge'
 import { LanguageToggle } from '../../components/LanguageToggle'
-import { LegLattice } from '../../components/LegLattice'
+import { LimbLattice } from '../../components/LimbLattice'
 import { Logo } from '../../components/Logo'
-import { EXERCISES } from '../../lib/exercises'
+import { useJointTour, toward } from '../../lib/useJointTour'
 import { useLanguage } from '../../lib/language'
-import { useDemoLoop } from '../../lib/useDemoLoop'
 import { useReducedMotion } from '../../lib/useReducedMotion'
 
 export const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -45,26 +44,27 @@ export function AuthLayout({ title, sub, children, footer }: { title: string; su
   )
 }
 
-/** The product in miniature: a live knee gauge over the leg lattice, and the pitch. */
+/** The product in miniature: a live gauge touring the joints over the limb lattice, and the pitch. */
 function BrandPanel() {
   const { s, lang } = useLanguage()
   const reduced = useReducedMotion()
-  const demo = useDemoLoop(EXERCISES.knee.rest, 90, !reduced)
-  const angle = reduced ? 78 : demo.angle
-  const cue = EXERCISES.knee.copy[lang].steps[reduced ? 2 : demo.phase].title
+  const { part, exercise: ex, demo } = useJointTour(!reduced)
+  const angle = reduced ? toward(ex, 0.87) : demo.angle
+  const copy = ex.copy[lang]
+  const cue = copy.steps[reduced ? 2 : demo.phase].title
 
   return (
     <aside className="hidden p-3 lg:block" aria-hidden="true">
       <div className="relative isolate flex h-full min-h-[640px] flex-col overflow-hidden rounded-3xl bg-hero-2 p-10 text-on-hero ring-1 ring-white/8 xl:p-12">
-        <LegLattice mask="[mask-image:radial-gradient(ellipse_80%_70%_at_100%_0%,black_25%,transparent_75%)]" />
+        <LimbLattice mask="[mask-image:radial-gradient(ellipse_80%_70%_at_100%_0%,black_25%,transparent_75%)]" />
         <p className="label-mono flex items-center gap-2.5 text-brand-light">
           <span className="h-px w-6 bg-current" />
           {s.heroEyebrow}
         </p>
 
         <div className="my-auto w-full max-w-[360px] self-center rounded-3xl bg-stage p-6 ring-1 ring-white/10">
-          <AngleGauge angle={angle} target={90} onDark>
-            <p className="label-mono text-white/55">{s.liveAngle}</p>
+          <AngleGauge key={part} angle={angle} target={ex.target} min={ex.min} max={ex.max} name={copy.angleLabel} onDark>
+            <p className="label-mono text-white/55">{copy.angleLabel}</p>
             <p className="text-[44px] font-bold leading-none tabular-nums text-white">{Math.round(angle)}°</p>
           </AngleGauge>
           <div className="mt-5 flex items-center gap-3 border-t border-white/10 pt-4">
