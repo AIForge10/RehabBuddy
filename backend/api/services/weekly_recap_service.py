@@ -6,7 +6,8 @@ isn't configured, audio_url is null and the browser reads the recap.
 
 Gemini's recaps stay in memory until something the recap depends on changes,
 so reopening the home screen doesn't call Gemini again, and tts_service
-replays the same text without spending ElevenLabs credits.
+replays the same text without spending ElevenLabs credits. A recap Gemini
+finishes after the timeout is still kept, for the patient's next visit.
 """
 import asyncio
 import logging
@@ -23,7 +24,8 @@ from api.services.tts_service import tts_service
 
 log = logging.getLogger(__name__)
 
-GEMINI_TIMEOUT_S = 6
+GEMINI_TIMEOUT_S = 6  # how long the patient waits before getting the template
+GEMINI_GIVE_UP_S = 30  # how long Gemini may keep writing for the next visit
 MAX_RECAPS = 500  # a few hundred bytes each
 
 # The best angle's name mid-sentence, as `best` in frontend/src/lib/exercises.ts.
@@ -102,6 +104,7 @@ def recap_facts(o: dict, now: datetime) -> RecapFacts:
         first_name=o["patient"]["full_name"].split()[0],
         joint=a["exercise"]["joint"],
         exercise=a["exercise"]["name"],
+        measure=BEST.get(a["exercise"]["joint"], BEST["knee"])[0],
         times_per_week=a["times_per_week"],
         target=round(a["target_angle"]),
         sessions_7d=len(recent),
@@ -157,9 +160,9 @@ def _cache_key(o: dict, language: str, today: date) -> tuple:
 
 
 async def _ask_gemini(key: tuple, facts: RecapFacts, language: str) -> Optional[str]:
-    """Gemini's recap, cached under `key`; None when Gemini fails, is slow, or skips a red flag."""
+    """Gemini's recap, cached under `key`; None when Gemini fails, runs out of time, or skips a red flag."""
     try:
-        ai = await asyncio.wait_for(get_gemini_service().generate_weekly_recap(facts, language), GEMINI_TIMEOUT_S)
+        ai = await asyncio.wait_for(get_gemini_service().generate_weekly_recap(facts, language), GEMINI_GIVE_UP_S)
         text = ai.recap.strip()
         if not text:
             raise ValueError("Gemini returned an empty recap.")
@@ -184,8 +187,14 @@ async def _gemini_recap(o: dict, facts: RecapFacts, language: str, today: date) 
     if task is None:
         task = _writing[key] = asyncio.create_task(_ask_gemini(key, facts, language))
         task.add_done_callback(lambda _: _writing.pop(key, None))
-    # Shielded, so a patient who leaves mid-request doesn't cancel it for anyone else waiting.
-    return await asyncio.shield(task)
+    # Past the timeout the patient gets the template, but Gemini keeps writing:
+    # under load it can take 10 s or more, and its recap is cached for next time.
+    # Waiting this way also never cancels the task for anyone else waiting on it.
+    done, _ = await asyncio.wait({task}, timeout=GEMINI_TIMEOUT_S)
+    if not done:
+        log.warning("Gemini weekly recap is slow; sending the template while it finishes")
+        return None
+    return task.result()
 
 
 async def weekly_recap(o: dict, language: str) -> WeeklyRecapResponse:

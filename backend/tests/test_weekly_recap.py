@@ -3,6 +3,7 @@
 Run from backend/:  python -m pytest tests/test_weekly_recap.py
 """
 import asyncio
+import time
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -141,6 +142,7 @@ def test_recap_is_written_from_the_last_7_days_voiced_and_cached(client, monkeyp
     assert (facts.sessions_7d, facts.times_per_week, facts.target) == (4, 5, 90)
     assert facts.angles_7d == [78, 80, 83, 86]  # whole degrees, oldest first; the 74° session is older than 7 days
     assert facts.red_flags_7d == []
+    assert facts.measure == "deepest bend"
 
     # Opening the home screen again reuses the recap and its audio.
     again = client.get(RECAP, params={"language": "es"}).json()
@@ -195,13 +197,29 @@ def test_gemini_down_falls_back_to_template(client, monkeypatch):
     assert (res["text"], res["is_fallback"]) == ("¡Buena semana, Maria!", False)
 
 
-def test_slow_gemini_falls_back_to_template(client, monkeypatch):
+def test_slow_gemini_falls_back_to_template_and_keeps_its_recap_for_next_time(client, monkeypatch):
     monkeypatch.setattr(weekly_recap_service, "GEMINI_TIMEOUT_S", 0.05)
-    use_gemini(monkeypatch, FakeGemini(delay=5))
+    gemini = use_gemini(monkeypatch, FakeGemini("¡Buena semana, Maria!", delay=0.3))
     use_elevenlabs(monkeypatch)
 
     res = client.get(RECAP, params={"language": "es"}).json()
     assert (res["text"], res["is_fallback"]) == (TEMPLATE_ES, True)
+
+    time.sleep(0.4)  # Gemini finishes after the patient got the template...
+    res = client.get(RECAP, params={"language": "es"}).json()
+    assert (res["text"], res["is_fallback"]) == ("¡Buena semana, Maria!", False)  # ...and it's ready next time
+    assert len(gemini.calls) == 1
+
+
+def test_gemini_that_never_answers_is_given_up_on(client, monkeypatch):
+    monkeypatch.setattr(weekly_recap_service, "GEMINI_TIMEOUT_S", 0.05)
+    monkeypatch.setattr(weekly_recap_service, "GEMINI_GIVE_UP_S", 0.1)
+    use_gemini(monkeypatch, FakeGemini(delay=5))
+    use_elevenlabs(monkeypatch)
+
+    assert client.get(RECAP, params={"language": "es"}).json()["is_fallback"] is True
+    time.sleep(0.2)
+    assert weekly_recap_service._writing == {}  # so the next visit asks Gemini again
 
 
 def test_after_a_red_flag_the_recap_sends_the_patient_to_their_therapist(client, db, monkeypatch):

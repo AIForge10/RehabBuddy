@@ -9,6 +9,7 @@ class RecapFacts:
     first_name: str
     joint: str
     exercise: str
+    measure: str  # what the angle is, in English: "deepest bend", "highest raise"...
     times_per_week: int
     target: int
     sessions_7d: int

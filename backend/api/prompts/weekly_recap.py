@@ -12,8 +12,8 @@ Recap rules:
 - Write in the requested language. No emojis, lists or markdown: it is spoken.
 - Use only the facts given, in whole degrees. Say "the past 7 days", not
   "this week".
-- Cover how many sessions they did against their plan, how their best angle
-  is trending against their target, and one encouraging next step.
+- Cover how many sessions they did against their plan, how their angle is
+  trending against their target, and one encouraging next step.
 - The next step is about following the plan their therapist set, such as the
   next session. Never give medical advice: no diagnoses, medication, new
   exercises, or changes to the plan or target.
@@ -35,9 +35,9 @@ def build_weekly_recap_prompt(facts: RecapFacts, language: str) -> str:
     return f"""
 Reply language: {LANGUAGE_NAMES.get(language, "English")}
 Patient's first name: {facts.first_name}
-Exercise: {facts.exercise} ({facts.joint})
-Plan: {facts.times_per_week} sessions a week, target angle {facts.target}°
+Exercise: {facts.exercise} ({facts.joint}), measured by their {facts.measure}
+Plan: {facts.times_per_week} sessions a week, target {facts.measure} {facts.target}°
 Sessions in the past 7 days: {facts.sessions_7d} of {facts.times_per_week} planned
-Best angle in each of those sessions, oldest first: {trend}
+{facts.measure.capitalize()} in each of those sessions, oldest first: {trend}
 Pain red flags in the past 7 days: {"; ".join(facts.red_flags_7d) or "none"}
 """
