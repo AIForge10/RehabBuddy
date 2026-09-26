@@ -187,3 +187,11 @@ def test_clip_streams_to_listeners_who_join_early_or_late():
         return await early, await late
 
     assert asyncio.run(scenario()) == (b"abc", b"abc")
+
+
+def test_score_runs_from_zero_to_ten():
+    """0-10, the standard numeric rating scale: 0 is no pain."""
+    assert PainCheckRequest(session_id="s1", pain_score=0, notes="").pain_score == 0
+    for bad in (-1, 11):
+        with pytest.raises(ValueError):
+            PainCheckRequest(session_id="s1", pain_score=bad, notes="")

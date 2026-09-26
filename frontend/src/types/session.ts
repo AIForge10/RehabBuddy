@@ -136,7 +136,7 @@ export interface SignupRequest {
 // POST /pain-check
 export interface PainCheckRequest {
   session_id: UUID
-  pain_score: number // 1–10
+  pain_score: number // 0–10
   notes: string
   language: Language
   /** The patient stopped the session mid-way because it hurt: flagged for the therapist whatever the score. */
@@ -163,7 +163,7 @@ export type PainSymptom = 'sharp' | 'swelling' | 'stiffness' | 'clicking' | 'fel
 export interface PainTranscriptResponse {
   /** What they said, as speech-to-text heard it; empty when they said nothing. */
   transcript: string
-  /** 1–10; null when no score was heard, so the patient taps one. */
+  /** 0–10; null when no score was heard, so the patient taps one. */
   pain_score: number | null
   symptoms: PainSymptom[]
   /** What they said about how it feels, besides the number, in their language. */
