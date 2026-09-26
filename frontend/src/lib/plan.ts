@@ -170,7 +170,8 @@ export function suggestPlan(o: PatientOverview, now = Date.now()): PlanSuggestio
   const traced = recent.slice(-3).filter((s) => s.stats?.rep_peaks.length)
   if (traced.length) {
     const reps = traced.flatMap((s) => s.stats!.rep_peaks)
-    evidence.push(`${reps.filter((r) => r >= a.target_angle - REACHED_WITHIN).length} of ${reps.length} reps reached ${target}°, last ${traced.length}`)
+    const last = traced.length === 1 ? 'last session' : `last ${traced.length} sessions`
+    evidence.push(`${reps.filter((r) => r >= a.target_angle - REACHED_WITHIN).length} of ${reps.length} reps reached ${target}°, ${last}`)
   }
   evidence.push(`${done} of ${plan} sessions, past 7 days`)
   if (flags.length) evidence.push(flags.length === 1 ? 'Red flag' : `${flags.length} red flags`)
