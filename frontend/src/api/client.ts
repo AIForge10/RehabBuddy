@@ -21,6 +21,7 @@ import type {
   PatientOverview,
   SummaryResponse,
   TranslateResponse,
+  UpdateAssignmentRequest,
   UUID,
 } from '../types/session'
 import { mockBackend, fallbackPainCheck, fallbackSummary } from './mock'
@@ -84,6 +85,12 @@ export function createSession(body: CreateSessionRequest): Promise<CreateSession
 export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
   if (USE_MOCKS) return mockBackend.getDashboard(therapistId)
   return request<DashboardResponse>(`/therapist/${therapistId}/dashboard`)
+}
+
+/** Therapist changes a patient's plan; resolves to the saved assignment. */
+export function updateAssignment(assignmentId: UUID, body: UpdateAssignmentRequest): Promise<Assignment> {
+  if (USE_MOCKS) return mockBackend.updateAssignment(assignmentId, body)
+  return request<Assignment>(`/assignments/${assignmentId}`, { method: 'PATCH', body: JSON.stringify(body) })
 }
 
 // --- AI endpoints (never throw; template fallback) --------------------------

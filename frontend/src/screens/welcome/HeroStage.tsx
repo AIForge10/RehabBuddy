@@ -7,7 +7,8 @@ import { useLanguage } from '../../lib/language'
 import { useReducedMotion } from '../../lib/useReducedMotion'
 
 // The splash hero: the product running on its own. The seated figure does one
-// rep per joint, touring legs and arms in turn (useJointTour), while the
+// rep per joint, touring legs and arms in turn (useJointTour), the camera
+// gliding in on each joint as she settles into its start position, while the
 // readouts, the rep counter and the coach's cue follow it, and a card shows
 // what lands on the therapist's side. The readout's label names the movement
 // on stage. The cue is the live language, so the EN/ES toggle visibly
@@ -21,7 +22,7 @@ const STILL = 0.87
 export function HeroStage() {
   const { s, lang } = useLanguage()
   const reduced = useReducedMotion()
-  const { part, exercise: ex, demo, reps, totalReps } = useJointTour(!reduced)
+  const { exercise: ex, demo, reps, totalReps } = useJointTour(!reduced)
   const angle = reduced ? toward(ex, STILL) : demo.angle
   const phase = reduced ? 2 : demo.phase
   const reached = angle >= ex.target - 2
@@ -31,8 +32,8 @@ export function HeroStage() {
   return (
     <div className="relative animate-rise [animation-delay:120ms] sm:pb-16">
       <div className="relative aspect-[4/5] overflow-hidden rounded-3xl bg-stage ring-1 ring-white/8 min-[440px]:aspect-square">
-        {/* Keyed by joint: each exercise frames the stage its own way, so it fades in rather than cutting. */}
-        <div key={part} className="absolute inset-x-0 bottom-[76px] top-[140px] animate-rise sm:bottom-20 sm:top-[150px]">
+        {/* One figure for the whole tour: each joint's framing is a camera move on her, not a new picture. */}
+        <div className="absolute inset-x-0 bottom-[76px] top-[140px] sm:bottom-20 sm:top-[150px]">
           <ExerciseFigure exercise={ex} angle={angle} target={ex.target} showLabel={false} />
         </div>
         {/* Scrims keep the readouts legible over the figure without boxing them in. */}
