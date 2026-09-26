@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, PublicOnly, RequireAuth } from './lib/auth'
 import { LanguageProvider } from './lib/language'
@@ -10,6 +10,9 @@ import PainCheck from './screens/PainCheck'
 import SessionDone from './screens/SessionDone'
 import TherapistDashboard from './screens/TherapistDashboard'
 import Welcome from './screens/Welcome'
+
+// Developer tool, not linked from the app; loaded only when visited.
+const PoseDebug = lazy(() => import('./pose/debug/PoseDebug'))
 
 // BrowserRouter keeps the old scroll position; each screen should start at its top.
 // Braces matter: newer browsers return a Promise from scrollTo, and an effect
@@ -40,6 +43,8 @@ export default function App() {
             <Route path="/pain-check" element={<RequireAuth role="patient"><PainCheck /></RequireAuth>} />
             <Route path="/done" element={<RequireAuth role="patient"><SessionDone /></RequireAuth>} />
             <Route path="/therapist" element={<RequireAuth role="therapist"><TherapistDashboard /></RequireAuth>} />
+
+            <Route path="/pose-debug" element={<Suspense fallback={null}><PoseDebug /></Suspense>} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>

@@ -272,12 +272,14 @@ def main():
                     current_side = side
                     smoother.reset()
                 a, j, b = get_joint_points(lm, cfg, side, joint)
-                angle = smoother.push(joint_angle(cfg, a, j, b))
+                # Landmarks are normalized per axis (x by width, y by height), so
+                # measure on pixels: on a 16:9 camera a 45 deg bend reads ~29 deg otherwise.
+                h, w = frame.shape[:2]
+                angle = smoother.push(joint_angle(cfg, *(DummyPoint(p.x * w, p.y * h) for p in (a, j, b))))
                 ev = counter.update(angle, now_ms)
                 if ev:
                     last_msg = f"Rep {ev['count']}: peak {ev['peak']:.0f} deg {' '.join(ev['warnings'])}"
                     print(f"[{joint}] {last_msg}")
-                h, w = frame.shape[:2]
                 pts = [(int(p.x * w), int(p.y * h)) for p in (a, j, b)]
                 color = (0, 200, 255) if counter.bent else (0, 220, 0)
                 draw_limb(frame, pts, color, f"{angle:.0f}")

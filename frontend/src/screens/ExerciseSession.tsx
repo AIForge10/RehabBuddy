@@ -4,6 +4,7 @@ import { getAssignment } from '../api/client'
 import { useAuth } from '../lib/auth'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useCamera } from '../lib/useCamera'
+import { preloadPose } from '../pose'
 import type { Assignment } from '../types/session'
 import { Brief } from './session/Brief'
 import { Live } from './session/Live'
@@ -26,6 +27,9 @@ export default function ExerciseSession() {
   const [part, setPart] = useState<BodyPart | null>(null)
   const [step, setStep] = useState<Step>('brief')
   const { attach, status } = useCamera(step !== 'brief')
+
+  // The pose model takes a few seconds to download; fetch it while they read the brief.
+  useEffect(preloadPose, [])
 
   useEffect(() => {
     if (!assignment) getAssignment(patientId).then(setAssignment).catch(() => navigate('/'))

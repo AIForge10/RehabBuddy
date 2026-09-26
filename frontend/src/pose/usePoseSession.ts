@@ -9,6 +9,7 @@ import { useCallback, useRef, useState } from 'react'
 import { usePose, type PoseFrame, type PreferredSide } from './usePose'
 import { RepCounter } from './repCounter'
 import { JOINTS, type JointName } from './joints'
+import type { PoseTuning } from './tracker'
 
 export interface RepInfo {
   count: number
@@ -29,6 +30,8 @@ export interface PoseSessionOptions {
   joint?: JointName
   preferredSide?: PreferredSide
   externalVideo?: HTMLVideoElement | null
+  /** Overrides for DEFAULT_TUNING in tracker.ts (tune them on /pose-debug). */
+  tuning?: Partial<PoseTuning>
   targetAngle?: number // from the therapist's plan; defaults to the joint's default
   targetReps?: number // when reached, onComplete fires automatically
   onRep?: (rep: RepInfo) => void
@@ -103,6 +106,7 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     joint,
     preferredSide: opts.preferredSide,
     externalVideo: opts.externalVideo,
+    tuning: opts.tuning,
     onFrame,
   })
 
@@ -143,24 +147,34 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
 
 export type PoseSession = ReturnType<typeof usePoseSession>
 
+// The canvas takes the video's own resolution, so with the same object-fit as the
+// video (cover, fill, ...) the two always crop and scale identically.
 function drawOverlay(canvas: HTMLCanvasElement | null, f: PoseFrame, bent: boolean) {
   const ctx = canvas?.getContext('2d')
   if (!ctx || !canvas) return
+  if (canvas.width !== f.videoWidth || canvas.height !== f.videoHeight) {
+    canvas.width = f.videoWidth
+    canvas.height = f.videoHeight
+  }
   ctx.clearRect(0, 0, canvas.width, canvas.height)
   if (!f.points) return
+  const scale = canvas.width / 640
   const pts = f.points.map((p) => [p.x * canvas.width, p.y * canvas.height] as const)
+  ctx.globalAlpha = f.held ? 0.45 : 1
   ctx.strokeStyle = bent ? '#f59e0b' : '#5eb5a6'
-  ctx.lineWidth = 6
+  ctx.lineWidth = 6 * scale
   ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
   ctx.beginPath()
   ctx.moveTo(...pts[0])
   ctx.lineTo(...pts[1])
   ctx.lineTo(...pts[2])
   ctx.stroke()
   ctx.fillStyle = '#ffffff'
-  for (const [x, y] of pts) {
+  for (const [x, y] of pts.slice(f.anchor === 'vertical' ? 1 : 0)) {
     ctx.beginPath()
-    ctx.arc(x, y, 8, 0, Math.PI * 2)
+    ctx.arc(x, y, 8 * scale, 0, Math.PI * 2)
     ctx.fill()
   }
+  ctx.globalAlpha = 1
 }

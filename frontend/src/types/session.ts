@@ -21,7 +21,7 @@ export type UUID = string
 export interface AngleSample {
   /** Milliseconds since the session started. */
   t_ms: number
-  /** Knee flexion in degrees, already smoothed (last-5-frame average). */
+  /** Joint angle in degrees, already smoothed (see src/pose/tracker.ts). */
   angle: number
 }
 
@@ -69,6 +69,16 @@ export interface Assignment {
   patient_id: UUID
   therapist_id: UUID
   exercise: Exercise
+  target_angle: number
+  reps: number
+  times_per_week: number
+}
+
+// PATCH /assignments/{assignment_id}  → Assignment
+// The therapist edits the plan. Every field is sent, changed or not.
+export interface UpdateAssignmentRequest {
+  /** Switches the exercise to this joint's ('knee', 'hip', …); the backend looks up its exercise row. */
+  joint: string
   target_angle: number
   reps: number
   times_per_week: number
