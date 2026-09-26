@@ -473,7 +473,7 @@ function RepStrip({
   return (
     <section>
       <h4 className="label-mono text-muted">Rep by rep</h4>
-      <p className="mt-1 text-sm text-ink-2">Peak of each rep against the {target}° target. Pick one to play it.</p>
+      <p className="mt-1 text-sm text-ink-2">Peak of each rep against the {target}° target; a filled bar reached it (within {REACHED_WITHIN}°). Pick one to play it.</p>
       {reps.length === 0 ? (
         <p className="mt-4 text-muted">No complete reps.</p>
       ) : (
