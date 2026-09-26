@@ -8,6 +8,7 @@ import { ExerciseFigure } from '../../components/ExerciseFigure'
 import { playCue, preloadCues, stopCoach, type CoachCue } from '../../lib/coach'
 import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
+import { warningCue, warningLabel } from '../../lib/formWarnings'
 import { useLanguage } from '../../lib/language'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import type { CameraStatus } from '../../lib/useCamera'
@@ -71,7 +72,8 @@ export function Live({
   const trackedPose: LivePoseState = {
     angle: trackedSession.angle,
     reps: trackedSession.reps,
-    form_warning: trackedSession.lastRep?.warnings[0] ?? null,
+    rep_warnings: trackedSession.lastRep?.warnings ?? [],
+    form_warning: trackedSession.fault,
     confidence: trackedSession.confidence,
   }
 
@@ -165,27 +167,36 @@ export function Live({
     lastReps.current = pose.reps
     const peak = rec.current.repPeak
     rec.current.repPeak = 0
+    // Read through the ref: as a dependency, a new array every render would rerun
+    // this effect and cancel the finish timer below.
+    const warnings = poseRef.current.rep_warnings
+    rec.current.warnings.push(...warnings)
     if (pose.reps >= goal) {
       say('done')
       const id = setTimeout(finish, 1500)
       return () => clearTimeout(id)
     }
+    const fix = warnings.map(warningCue).find((cue) => cue != null)
     if (pose.reps === goal - 1) say('last_rep')
     else if (pose.reps === Math.floor(goal / 2)) say('halfway')
+    else if (fix) say(fix)
     else if (peak < target - 10) say('bend_deeper')
     else say('good_rep')
   }, [pose.reps, goal, target, say, finish])
 
-  // ...and to each new form problem.
+  // ...and to each form fault as it appears. A fault that clears and comes back
+  // counts again; one seen before "go" (getting into position) or after the
+  // last rep (it would cut off "Session complete") doesn't count.
   const lastWarning = useRef<string | null>(null)
   useEffect(() => {
     const w = pose.form_warning
-    if (w && w !== lastWarning.current) {
-      rec.current.warnings.push(w)
-      say('knee_in')
-    }
+    const fresh = w != null && w !== lastWarning.current
     lastWarning.current = w
-  }, [pose.form_warning, say])
+    if (!fresh || phase !== 'running' || pose.reps >= goal) return
+    rec.current.warnings.push(w)
+    const cue = warningCue(w)
+    if (cue) say(cue)
+  }, [pose.form_warning, pose.reps, goal, phase, say])
 
   useEffect(() => stopCoach, [])
 
@@ -287,13 +298,13 @@ export function Live({
       {/* Bottom HUD */}
       <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5">
         <div className="mb-4 flex flex-col items-center gap-2 lg:pr-[360px]">
-          {pose.form_warning && (
+          {pose.form_warning && phase !== 'countdown' && (
             <div className="flex animate-rise items-center gap-2 rounded-full bg-warn-soft px-4 py-2 text-sm font-semibold text-warn shadow-lg">
               <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="shrink-0">
                 <path d="M8 1.5 15 14H1L8 1.5Z" fill="currentColor" />
                 <path d="M8 6v3.5M8 11.5v.5" className="stroke-warn-soft" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
-              {pose.form_warning}
+              {warningLabel(pose.form_warning, lang)}
             </div>
           )}
           {saveError && (

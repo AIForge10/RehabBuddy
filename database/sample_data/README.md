@@ -44,5 +44,7 @@ the core of the **Best Use of Tiger Data** prize, so the endpoint should insert 
 
 ## Conventions
 - Angles in degrees. Knee = flexion (straight leg = 0°, target 90°).
-- `form_warnings` are codes: `not_deep_enough`, `too_fast`; the frontend turns them into text.
+- `form_warnings` are codes, one entry per occurrence: `not_deep_enough`, `too_fast` (per rep), and the
+  camera's form faults `thigh_moving`, `leaning_back`, `elbow_drifting`, `shrugging`. The frontend turns
+  them into text (`frontend/src/lib/formWarnings.ts`); older rows may hold free text, shown as-is.
 - Every AI endpoint must return a fallback on error (never 500 during the demo).

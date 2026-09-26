@@ -9,6 +9,7 @@
 // which starts near 90° because sitting is already hip flexion.
 
 import { REST_POSE, TRUNK, type Joint, type Pose } from './bodyGeometry'
+import type { FormFault } from '../pose/joints'
 import type { Assignment, Language } from '../types/session'
 
 export type BodyPart = 'knee' | 'hip' | 'shoulder' | 'elbow' | 'wrist'
@@ -46,7 +47,7 @@ interface Copy {
   /** Results: the session's best angle, and the progress chart's subtitle. */
   best: string
   bestSub: string
-  /** Coach lines that name the movement; the rest of the coach is shared. */
+  /** Coach lines that name the movement; the rest of the coach is shared. `form` is said when `formWarning` is seen. */
   cues: { start: string; bend_deeper: string; form: string }
 }
 
@@ -73,8 +74,8 @@ export interface Exercise {
   /** MediaPipe Pose landmark indices of the measured points, for whichever side faces the camera. */
   landmarks: { left: readonly [number, number, number]; right: readonly [number, number, number] }
   reading: 'flexion' | 'direct'
-  /** Form cue stored with the session (English, for the therapist). */
-  formWarning: string
+  /** The form fault the camera checks on this exercise, as in JOINTS[part].fault (pose/joints.ts); null when it checks none. */
+  formWarning: FormFault | null
   /** Height of the camera line in setup, stage units. */
   cameraY: number
   view: View
@@ -99,7 +100,7 @@ const knee: Exercise = {
   labels: ['left', 'above', 'below'],
   landmarks: { left: [23, 25, 27], right: [24, 26, 28] },
   reading: 'flexion',
-  formWarning: 'Knee caving inward',
+  formWarning: 'thigh_moving',
   cameraY: 270,
   view: { x: 28, y: 0, w: 720, h: 450 },
   copy: {
@@ -124,7 +125,7 @@ const knee: Exercise = {
       painTitle: 'How does your knee feel?',
       best: 'Deepest bend',
       bestSub: 'Deepest bend, each session',
-      cues: { start: 'Let’s begin. Bend your knee slowly.', bend_deeper: 'Try to bend a little deeper.', form: 'Keep your knee in line with your foot.' },
+      cues: { start: 'Let’s begin. Bend your knee slowly.', bend_deeper: 'Try to bend a little deeper.', form: 'Keep your thigh still on the chair.' },
     },
     es: {
       part: 'Rodilla',
@@ -147,7 +148,7 @@ const knee: Exercise = {
       painTitle: '¿Cómo sientes la rodilla?',
       best: 'Flexión máxima',
       bestSub: 'Flexión máxima por sesión',
-      cues: { start: 'Empecemos. Dobla la rodilla despacio.', bend_deeper: 'Intenta doblar un poco más.', form: 'Mantén la rodilla alineada con el pie.' },
+      cues: { start: 'Empecemos. Dobla la rodilla despacio.', bend_deeper: 'Intenta doblar un poco más.', form: 'Mantén el muslo quieto sobre la silla.' },
     },
   },
 }
@@ -173,7 +174,7 @@ const hip: Exercise = {
   labels: ['above', 'left', 'above'],
   landmarks: { left: [11, 23, 25], right: [12, 24, 26] },
   reading: 'flexion',
-  formWarning: 'Leaning back',
+  formWarning: 'leaning_back',
   cameraY: 270,
   view: { x: 30, y: 10, w: 672, h: 420 },
   copy: {
@@ -242,7 +243,7 @@ const shoulder: Exercise = {
   labels: ['left', 'left', 'right'],
   landmarks: { left: [23, 11, 13], right: [24, 12, 14] },
   reading: 'direct',
-  formWarning: 'Shoulder shrugging',
+  formWarning: 'shrugging',
   cameraY: 170,
   view: { x: -20, y: -70, w: 800, h: 500 },
   copy: {
@@ -309,7 +310,7 @@ const elbow: Exercise = {
   labels: ['left', 'left', 'right'],
   landmarks: { left: [11, 13, 15], right: [12, 14, 16] },
   reading: 'flexion',
-  formWarning: 'Elbow drifting forward',
+  formWarning: 'elbow_drifting',
   cameraY: 170,
   view: { x: 58, y: 10, w: 640, h: 400 },
   copy: {
@@ -376,7 +377,8 @@ const wrist: Exercise = {
   labels: ['left', 'below', 'right'],
   landmarks: { left: [13, 15, 19], right: [14, 16, 20] },
   reading: 'flexion',
-  formWarning: 'Forearm lifting',
+  // The wrist angle is still experimental, so its form isn't judged.
+  formWarning: null,
   cameraY: 240,
   view: { x: 150, y: 22, w: 448, h: 280 },
   copy: {
