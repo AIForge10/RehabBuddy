@@ -58,6 +58,12 @@ const strings = {
     planUpdated: 'Your therapist updated your plan',
     timesPerWeek: (n: number) => (n === 1 ? 'Once a week' : `${n} times a week`),
     dismiss: 'Dismiss',
+    // The coach's weekly recap on the home screen. The recap itself comes from the backend.
+    weeklyRecap: 'Coach’s recap',
+    weeklyRecapSub: 'Last 7 days',
+    weeklyListen: 'Listen',
+    weeklyWriting: 'Your coach is writing your recap…',
+    weeklyEmpty: 'After your first session, I’ll sum up your week here, and read it to you if you like.',
 
     stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
     briefTitle: 'How to do it',
@@ -282,6 +288,11 @@ const strings = {
     planUpdated: 'Tu terapeuta actualizó tu plan',
     timesPerWeek: (n: number) => (n === 1 ? 'Una vez por semana' : `${n} veces por semana`),
     dismiss: 'Cerrar',
+    weeklyRecap: 'Resumen del entrenador',
+    weeklyRecapSub: 'Últimos 7 días',
+    weeklyListen: 'Escuchar',
+    weeklyWriting: 'Tu entrenador está escribiendo tu resumen…',
+    weeklyEmpty: 'Después de tu primera sesión, aquí te resumiré tu semana y te la leeré si quieres.',
 
     stepOf: (n: number, total: number) => `Paso ${n} de ${total}`,
     briefTitle: 'Cómo hacerlo',
