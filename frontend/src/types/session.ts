@@ -171,6 +171,24 @@ export interface SessionRecord {
   flagged: boolean
   /** See CreateSessionRequest.joint. */
   joint?: string
+  /** From the session's angle_samples; null when no trace was recorded. Only on overview sessions. */
+  stats?: SessionStats | null
+}
+
+/**
+ * Worked out in SQL over every angle sample (backend/api/data/queries.py
+ * SESSION_STATS), or by lib/replay.ts sessionStats in mock mode, on the same
+ * 10 Hz trace and with the same rep thresholds as the replay.
+ */
+export interface SessionStats {
+  /** Each complete rep's peak, in order, whole degrees. */
+  rep_peaks: number[]
+  /** First 3 reps' average peak minus the last 3's, degrees; positive = the later reps fell short. null under 6 reps. */
+  fade: number | null
+  /** Seconds within 5° of the session's deepest bend. */
+  end_range_sec: number
+  /** The longest unbroken stretch of end_range_sec. */
+  longest_hold_sec: number
 }
 
 // GET /sessions/{session_id}/samples → AngleSampleRow[]

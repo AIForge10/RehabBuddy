@@ -14,6 +14,7 @@ import { planChanges, planOf, type Plan } from '../lib/plan'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag } from '../types/session'
 import { SessionReplay } from './therapist/SessionReplay'
+import { EndRange, RepPeaks } from './therapist/SessionStats'
 
 const POLL_MS = 3000
 const DAY_MS = 86_400_000
@@ -532,6 +533,8 @@ function PatientDetail({
                 <th className="px-6 py-3 font-medium sm:pl-7">Date</th>
                 <th className="px-3 py-3 text-right font-medium">Reps</th>
                 <th className="px-3 py-3 text-right font-medium">Peak</th>
+                <th className="whitespace-nowrap px-3 py-3 font-medium" title="Each rep’s peak against the target">Rep by rep</th>
+                <th className="whitespace-nowrap px-3 py-3 text-right font-medium" title="Seconds within 5° of the session’s deepest bend">End range</th>
                 <th className="px-3 py-3 text-right font-medium">Time</th>
                 <th className="px-3 py-3 font-medium">Form</th>
                 <th className="px-6 py-3 text-right font-medium sm:pr-7">Pain</th>
@@ -574,6 +577,12 @@ function PatientDetail({
                       <span className="text-muted">/{assignment.reps}</span>
                     </td>
                     <td className={`px-3 py-3.5 text-right font-bold ${s.max_angle >= assignment.target_angle ? 'text-brand-ink' : ''}`}>{s.max_angle}°</td>
+                    <td className="px-3 py-2.5">
+                      <RepPeaks stats={s.stats} target={assignment.target_angle} />
+                    </td>
+                    <td className="px-3 py-3.5 text-right text-ink-2">
+                      <EndRange stats={s.stats} />
+                    </td>
                     <td className="px-3 py-3.5 text-right text-ink-2">{formatDuration(s.duration_sec)}</td>
                     <td className="px-3 py-3.5 text-ink-2">{s.form_warnings.length ? [...new Set(s.form_warnings)].join(', ') : '—'}</td>
                     <td className="px-6 py-3.5 text-right sm:pr-7">

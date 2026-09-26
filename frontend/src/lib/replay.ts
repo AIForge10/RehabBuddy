@@ -3,7 +3,7 @@
 // out. Reps are found with the same thresholds the live counter uses, so the
 // replay counts what the patient saw counted.
 
-import type { AngleSampleRow } from '../types/session'
+import type { AngleSampleRow, SessionStats } from '../types/session'
 import { BENT, STRAIGHT } from './simulatedPose'
 
 export interface TracePoint {
@@ -42,6 +42,11 @@ const PAUSE_WOBBLE = 2
 const PAUSE_BELOW = 8
 /** The live screen calls the target reached within 2°. */
 export const REACHED_WITHIN = 2
+/** Within this many degrees of the session's deepest bend is end range. */
+export const END_RANGE_WITHIN = 5
+/** Fade compares the first and last this-many reps, and is worth pointing out from FADE_FLAG°. */
+const FADE_REPS = 3
+export const FADE_FLAG = 5
 
 export function toTrace(rows: AngleSampleRow[], startedAt: string): TracePoint[] {
   const t0 = Date.parse(startedAt)
@@ -137,8 +142,37 @@ function repList(ns: number[]) {
   return `${ns.length === 1 ? 'rep' : 'reps'} ${runs.join(', ')}`
 }
 
-/** What's worth a therapist's eye, most important first. */
-export function findingsFor(reps: Rep[], target: number): Finding[] {
+const fadeOf = (peaks: number[]) =>
+  peaks.length >= 2 * FADE_REPS ? Math.round(mean(peaks.slice(0, FADE_REPS)) - mean(peaks.slice(-FADE_REPS))) : null
+
+/**
+ * The per-session numbers the backend works out in SQL (SESSION_STATS in
+ * backend/api/data/queries.py), for mock mode: each rep's peak, how far the
+ * last reps fell short of the first, and the time spent at end range. A gap
+ * in tracking counts as no time and ends a hold, as in the SQL.
+ */
+export function sessionStats(trace: TracePoint[], target: number): SessionStats {
+  const peaks = findReps(trace, target).map((r) => r.peak)
+  const deepest = trace.reduce((max, p) => Math.max(max, p.angle), -Infinity)
+  let total = 0
+  let hold = 0
+  let longest = 0
+  trace.forEach((p, i) => {
+    const near = p.angle >= deepest - END_RANGE_WITHIN
+    if (!near || (i > 0 && p.t - trace[i - 1].t > GAP_MS)) hold = 0
+    if (!near) return
+    const next = trace[i + 1]
+    const ms = next && next.t - p.t <= GAP_MS ? next.t - p.t : 0
+    total += ms
+    hold += ms
+    longest = Math.max(longest, hold)
+  })
+  const seconds = (ms: number) => Math.round(ms / 100) / 10
+  return { rep_peaks: peaks, fade: fadeOf(peaks), end_range_sec: seconds(total), longest_hold_sec: seconds(longest) }
+}
+
+/** What's worth a therapist's eye, most important first. `stats` adds the time at end range. */
+export function findingsFor(reps: Rep[], target: number, stats?: SessionStats | null): Finding[] {
   if (!reps.length) return [{ tone: 'neutral', text: 'No complete reps in this trace.' }]
   const out: Finding[] = []
   const peaks = reps.map((r) => r.peak)
@@ -149,10 +183,9 @@ export function findingsFor(reps: Rep[], target: number): Finding[] {
     out.push({ tone: 'warn', text: `Stalled partway up in ${repList(paused.map((r) => r.n))}, around ${around}°.` })
   }
 
-  if (reps.length >= 6) {
-    const k = 3
-    const drop = Math.round(mean(peaks.slice(0, k)) - mean(peaks.slice(-k)))
-    if (drop >= 5) out.push({ tone: 'warn', text: `Last ${k} reps averaged ${drop}° below the first ${k}.` })
+  const drop = fadeOf(peaks)
+  if (drop != null && drop >= FADE_FLAG) {
+    out.push({ tone: 'warn', text: `Last ${FADE_REPS} reps averaged ${drop}° below the first ${FADE_REPS}.` })
   }
 
   const reached = reps.filter((r) => r.peak >= target - REACHED_WITHIN).length
@@ -165,6 +198,13 @@ export function findingsFor(reps: Rep[], target: number): Finding[] {
           ? `No rep reached the ${target}° target; deepest was ${Math.max(...peaks)}°.`
           : `${reached} of ${plural(reps.length, 'rep')} reached the ${target}° target.`,
   })
+
+  if (stats) {
+    out.push({
+      tone: 'neutral',
+      text: `${stats.end_range_sec.toFixed(1)} s within ${END_RANGE_WITHIN}° of the deepest bend, held for ${stats.longest_hold_sec.toFixed(1)} s at most.`,
+    })
+  }
 
   const tempo = mean(reps.map((r) => r.end - r.start)) / 1000
   const spread = Math.max(...peaks) - Math.min(...peaks)
