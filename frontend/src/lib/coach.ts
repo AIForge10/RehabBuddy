@@ -2,8 +2,12 @@
 // public/audio/{lang}/{cue}.mp3; if a clip is missing or fails to load, falls
 // back to the browser's speech synthesis so the coach is never silent.
 //
-// Cue ids below are the file-name contract with Shan.
+// Cue ids below are the file-name contract with Shan. Three cues name the
+// movement (start, bend_deeper, knee_in), so for exercises other than the knee
+// their text comes from the exercise and the clip is {cue}_{part}.mp3, e.g.
+// start_shoulder.mp3; until those are recorded, speech synthesis reads them.
 
+import type { Exercise } from './exercises'
 import type { Language } from '../types/session'
 
 export type CoachCue = 'start' | 'good_rep' | 'bend_deeper' | 'knee_in' | 'halfway' | 'last_rep' | 'done'
@@ -56,15 +60,19 @@ function stop() {
   busy = false
 }
 
+const NAMED: Partial<Record<CoachCue, keyof Exercise['copy']['en']['cues']>> = { start: 'start', bend_deeper: 'bend_deeper', knee_in: 'form' }
+
 /** Speak a cue. Returns the line spoken so the UI can show it as a caption. */
-export function playCue(cue: CoachCue, lang: Language): string {
-  const text = CUE_TEXT[lang][cue]
+export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): string {
+  const named = exercise && exercise.part !== 'knee' ? NAMED[cue] : undefined
+  const text = named ? exercise!.copy[lang].cues[named] : CUE_TEXT[lang][cue]
+  const clip = named ? `${cue}_${exercise!.part}` : cue
   if (busy) {
     if (!PRIORITY.includes(cue)) return text
     stop()
   }
   busy = true
-  const audio = new Audio(`/audio/${lang}/${cue}.mp3`)
+  const audio = new Audio(`/audio/${lang}/${clip}.mp3`)
   current = audio
   audio.onended = () => {
     busy = false

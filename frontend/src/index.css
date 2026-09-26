@@ -174,6 +174,11 @@
   --animate-draw: draw 900ms cubic-bezier(0.6, 0, 0.2, 1) both;
   --animate-grow: grow 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 250ms both;
   --animate-knee: knee 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+  --animate-splash-mark: splash-mark 760ms cubic-bezier(0.3, 1.3, 0.5, 1) both;
+  --animate-splash-word: splash-word 720ms cubic-bezier(0.6, 0, 0.2, 1) 280ms both;
+  --animate-splash-tag: rise 500ms cubic-bezier(0.2, 0.7, 0.2, 1) 760ms both;
+  --animate-splash-out: splash-out 460ms ease-in 1650ms both;
+  --animate-float: float 6s ease-in-out infinite;
 }
 
 @keyframes rise {
@@ -198,6 +203,32 @@
 @keyframes grow {
   from {
     transform: scaleX(0);
+  }
+}
+/* Splash intro: the leg swings in, the wordmark wipes on, the whole card fades. */
+@keyframes splash-mark {
+  from {
+    opacity: 0;
+    transform: scale(0.6) rotate(-16deg);
+  }
+}
+@keyframes splash-word {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes splash-out {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+@keyframes float {
+  50% {
+    transform: translateY(-6px);
   }
 }
 /* Slow seated knee bend for decorative figures: straight, bend, hold, return. */

@@ -4,8 +4,9 @@ import { createSession } from '../../api/client'
 import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
-import { LegFigure } from '../../components/LegFigure'
+import { ExerciseFigure } from '../../components/ExerciseFigure'
 import { playCue, stopCoach, type CoachCue } from '../../lib/coach'
+import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { useLanguage } from '../../lib/language'
 import { useSimulatedPose } from '../../lib/simulatedPose'
@@ -22,14 +23,17 @@ type Phase = 'countdown' | 'running' | 'saving'
 
 export function Live({
   assignment,
+  exercise,
   camera,
   attach,
 }: {
   assignment: Assignment
+  exercise: Exercise
   camera: CameraStatus
   attach: (el: HTMLVideoElement | null) => void
 }) {
   const { s, lang } = useLanguage()
+  const copy = exercise.copy[lang]
   const navigate = useNavigate()
   const [phase, setPhase] = useState<Phase>('countdown')
   const [count, setCount] = useState(COUNTDOWN)
@@ -46,17 +50,19 @@ export function Live({
   const target = assignment.target_angle
   const goal = assignment.reps
   const simulated = !POSE_READY || camera !== 'on'
-  const pose = useSimulatedPose(phase === 'running' && simulated, target)
+  const pose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
 
   const poseRef = useRef(pose)
   const langRef = useRef(lang)
+  const exerciseRef = useRef(exercise)
   useEffect(() => {
     poseRef.current = pose
     langRef.current = lang
+    exerciseRef.current = exercise
   })
   const rec = useRef({ startedAt: new Date(), t0: 0, samples: [] as AngleSample[], max: 0, repPeak: 0, warnings: [] as string[] })
 
-  const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current)), [])
+  const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current, exerciseRef.current)), [])
 
   useEffect(() => {
     if (phase !== 'countdown') return
@@ -108,13 +114,14 @@ export function Live({
         assignment_id: assignment.id,
         patient_id: assignment.patient_id,
         started_at: r.startedAt.toISOString(),
+        joint: exercise.part,
       })
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment } })
     } catch {
       setSaveError(true)
       setPhase('running')
     }
-  }, [assignment, navigate])
+  }, [assignment, exercise, navigate])
 
   // Coach reacts to each completed rep...
   const lastReps = useRef(0)
@@ -161,7 +168,7 @@ export function Live({
       {camera !== 'on' && (
         <div className="absolute inset-0 flex items-center justify-center pb-40 pt-20 lg:pb-8 lg:pr-[360px]">
           <div className="aspect-[16/10] w-full max-w-4xl">
-            <LegFigure angle={angle} target={target} showLabel={false} />
+            <ExerciseFigure exercise={exercise} angle={angle} target={target} showLabel={false} />
           </div>
         </div>
       )}
@@ -181,7 +188,7 @@ export function Live({
             </svg>
           </button>
           <div className="min-w-0">
-            <p className="truncate font-bold">{assignment.exercise.name}</p>
+            <p className="truncate font-bold">{copy.name}</p>
             <p className="flex items-center gap-1.5 text-sm tabular-nums text-white/65">
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
@@ -196,13 +203,13 @@ export function Live({
       <aside className="absolute right-5 top-24 hidden w-[340px] lg:block">
         <Glass className="p-5">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium text-white/70">{s.kneeBend}</p>
+            <p className="text-sm font-medium text-white/70">{copy.angleLabel}</p>
             <span className={`rounded-full bg-brand-glow px-2.5 py-1 text-xs font-semibold text-stage transition-opacity duration-300 ${reached ? 'opacity-100' : 'opacity-0'}`}>
               {s.reached}
             </span>
           </div>
           <div className="mx-auto mt-3 max-w-64">
-            <AngleGauge angle={angle} target={target} onDark>
+            <AngleGauge angle={angle} target={target} min={exercise.min} max={exercise.max} name={copy.angleLabel} onDark>
               <BigAngle angle={angle} reached={reached} />
             </AngleGauge>
           </div>
@@ -213,7 +220,7 @@ export function Live({
           <div className="mt-5 border-t border-white/10 pt-4">
             <p className="text-xs font-medium text-white/55">{s.liveAngle}</p>
             <div className="mt-2">
-              <AngleTrace samples={trace} target={target} onDark />
+              <AngleTrace samples={trace} target={target} min={exercise.min} onDark />
             </div>
           </div>
         </Glass>
@@ -251,7 +258,7 @@ export function Live({
               {s.saveError}
             </p>
           )}
-          {phase !== 'countdown' && angle == null && <p className="rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur-md">{s.legHidden}</p>}
+          {phase !== 'countdown' && angle == null && <p className="rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur-md">{copy.hidden}</p>}
           {caption && phase !== 'countdown' && (
             <p
               key={caption}
@@ -282,7 +289,7 @@ export function Live({
               </div>
               {/* Compact angle for small screens */}
               <div className="text-right lg:hidden">
-                <p className="text-sm font-medium text-white/70">{s.kneeBend}</p>
+                <p className="text-sm font-medium text-white/70">{copy.angleLabel}</p>
                 <BigAngle angle={angle} reached={reached} small />
                 <p className="text-xs text-white/55">
                   {s.target} {target}°

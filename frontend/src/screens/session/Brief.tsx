@@ -1,5 +1,7 @@
-import { LegFigure } from '../../components/LegFigure'
+import { ExerciseFigure } from '../../components/ExerciseFigure'
+import { JointPicker } from '../../components/JointPicker'
 import { Button, PatientScreen } from '../../components/Screen'
+import type { BodyPart, Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 import { useDemoLoop } from '../../lib/useDemoLoop'
 import type { Assignment } from '../../types/session'
@@ -7,27 +9,43 @@ import { StepHeader } from './StepHeader'
 
 // One rep on a loop beside its four steps, in the same card as camera setup so
 // the two screens read as one flow. The step that's playing lights up and the
-// rail between steps fills as the rep moves through it.
+// rail between steps fills as the rep moves through it. The joint picker above
+// swaps the exercise: same figure, new pose.
 
-export function Brief({ assignment, onNext }: { assignment: Assignment; onNext: () => void }) {
-  const { s } = useLanguage()
+export function Brief({
+  assignment,
+  exercise,
+  onPick,
+  onNext,
+}: {
+  assignment: Assignment
+  exercise: Exercise
+  onPick: (part: BodyPart) => void
+  onNext: () => void
+}) {
+  const { s, lang } = useLanguage()
+  const copy = exercise.copy[lang]
   const target = assignment.target_angle
-  const demo = useDemoLoop(target)
-  const last = s.demoSteps.length - 1
+  const demo = useDemoLoop(exercise.rest, target)
+  const last = copy.steps.length - 1
 
   return (
     <PatientScreen wide>
-      <StepHeader step={1} title={assignment.exercise.name} sub={s.briefSub(assignment.reps, target)} />
+      <StepHeader step={1} title={copy.name} sub={copy.briefSub(assignment.reps, target)} />
 
-      <section className="mt-6 grid overflow-hidden rounded-[28px] bg-surface shadow-lift ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mt-5">
+        <JointPicker value={exercise.part} onChange={onPick} />
+      </div>
+
+      <section className="mt-4 grid overflow-hidden rounded-[28px] bg-surface shadow-lift ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
         <div className="aspect-[4/3] bg-stage sm:aspect-[16/10]">
-          <LegFigure angle={demo.angle} target={target} tracking={false} />
+          <ExerciseFigure exercise={exercise} angle={demo.angle} target={target} tracking={false} />
         </div>
 
         <div className="flex flex-col p-4 sm:p-5">
           <h2 className="px-1.5 text-xs font-bold uppercase tracking-[0.14em] text-muted">{s.briefTitle}</h2>
           <ol className="mt-3">
-            {s.demoSteps.map((step, i) => {
+            {copy.steps.map((step, i) => {
               const active = i === demo.phase
               const fill = i < demo.phase ? 1 : active ? demo.progress : 0
               return (
@@ -61,7 +79,7 @@ export function Brief({ assignment, onNext }: { assignment: Assignment; onNext: 
                 <circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" strokeWidth="1.6" />
                 <path d="M10 5.8v5.2M10 13.8v.2" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" />
               </svg>
-              {s.briefSafety}
+              {copy.safety}
             </p>
             <Button onClick={onNext} className="mt-4 w-full">
               {s.briefCta}

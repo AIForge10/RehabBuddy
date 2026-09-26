@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react'
 
 // One perfect rep on a loop, split into the phases the briefing narrates.
+// `from`/`to` are fractions of the way from the start angle to the target.
 export const DEMO_PHASES = [
-  { ms: 1400, from: 0, to: 0 }, // sit tall, leg straight
-  { ms: 2400, from: 0, to: 1 }, // bend slowly to target
+  { ms: 1400, from: 0, to: 0 }, // start position
+  { ms: 2400, from: 0, to: 1 }, // move slowly to target
   { ms: 1000, from: 1, to: 1 }, // hold
-  { ms: 2200, from: 1, to: 0 }, // straighten fully
+  { ms: 2200, from: 1, to: 0 }, // return fully
 ] as const
 
 const TOTAL = DEMO_PHASES.reduce((n, p) => n + p.ms, 0)
@@ -18,8 +19,8 @@ export interface DemoFrame {
   progress: number
 }
 
-export function useDemoLoop(target: number, running = true): DemoFrame {
-  const [frame, setFrame] = useState<DemoFrame>({ angle: 0, phase: 0, progress: 0 })
+export function useDemoLoop(rest: number, target: number, running = true): DemoFrame {
+  const [frame, setFrame] = useState<DemoFrame>({ angle: rest, phase: 0, progress: 0 })
 
   useEffect(() => {
     if (!running) return
@@ -34,13 +35,13 @@ export function useDemoLoop(target: number, running = true): DemoFrame {
       }
       const p = DEMO_PHASES[phase]
       const progress = t / p.ms
-      const angle = (p.from + (p.to - p.from) * ease(progress)) * target
+      const angle = rest + (p.from + (p.to - p.from) * ease(progress)) * (target - rest)
       setFrame({ angle, phase, progress })
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [target, running])
+  }, [rest, target, running])
 
   return frame
 }

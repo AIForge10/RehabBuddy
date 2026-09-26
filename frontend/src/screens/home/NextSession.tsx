@@ -1,71 +1,94 @@
-import { useId } from 'react'
-import { LEG_PATH } from '../../components/Logo'
+import { SeatedBody } from '../../components/SeatedBody'
+import { FLOOR_Y, KNEE, ankleAt } from '../../lib/bodyGeometry'
+import { exerciseFor, type Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 import type { Assignment } from '../../types/session'
 
-/** Today's exercise and the one button that matters. */
+const ARC_R = 58
+/** Tight around the chair and the swing of the leg; the stage view leaves room for the camera overlay. */
+const KNEE_CROP = { x: 200, y: 16, w: 470, h: 404 }
+
+/** Today's exercise, shown doing the movement, and the one button that matters. */
 export function NextSession({ assignment, onStart }: { assignment: Assignment; onStart: () => void }) {
-  const { s } = useLanguage()
-  const stats = [
-    { value: `${assignment.reps}`, label: s.reps },
-    { value: `${assignment.target_angle}°`, label: s.target },
-    { value: s.sessionLength, label: s.doneTime },
-  ]
+  const { s, lang } = useLanguage()
+  const ex = exerciseFor(assignment.exercise.joint)
+  const copy = ex.copy[lang]
+  // The catalog has the name in both languages; an exercise it doesn't know keeps the API's name.
+  const name = ex.part === assignment.exercise.joint ? copy.name : assignment.exercise.name
+  const plan = [s.chipReps(assignment.reps), copy.toTarget(assignment.target_angle), s.chipTime]
 
   return (
     <section
       aria-labelledby="next-session"
-      className="relative isolate flex min-h-[340px] animate-rise flex-col overflow-hidden rounded-[32px] bg-hero bg-[linear-gradient(155deg,var(--rb-hero)_0%,var(--rb-hero-2)_100%)] p-6 text-on-hero shadow-lift ring-1 ring-white/6 sm:min-h-[420px] sm:p-9"
+      className="grid animate-rise overflow-hidden rounded-[28px] bg-hero text-on-hero lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]"
     >
-      <LegPattern />
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-brand-light">{s.today}</p>
-      <h2 id="next-session" className="mt-3 max-w-[12ch] font-display text-[34px] leading-[1.04] sm:text-[52px]">
-        {assignment.exercise.name}
-      </h2>
+      <div className="flex flex-col p-6 pt-2 sm:p-10 sm:pt-4 lg:pt-10">
+        <p className="text-[15px] font-semibold text-brand-light">{s.today}</p>
+        <h2 id="next-session" className="mt-2 max-w-[14ch] font-display text-[36px] leading-[1.04] sm:text-[52px]">
+          {name}
+        </h2>
+        <ul className="mt-4 flex flex-wrap gap-x-2 text-lg text-on-hero-2">
+          {plan.map((item, i) => (
+            <li key={item} className="whitespace-nowrap">
+              {i > 0 && (
+                <span aria-hidden="true" className="mr-2 text-on-hero/30">
+                  ·
+                </span>
+              )}
+              {item}
+            </li>
+          ))}
+        </ul>
 
-      {/* Equal columns on phones so a long label ("Repeticiones") can't squeeze its neighbours. */}
-      <dl className="mt-auto grid grid-cols-3 pt-8 sm:flex">
-        {stats.map((st, i) => (
-          <div key={st.label} className={`flex min-w-0 flex-col-reverse ${i ? 'border-l border-white/12 pl-4 sm:ml-7 sm:pl-7' : ''}`}>
-            <dt className="mt-1.5 truncate text-sm text-on-hero-2">{st.label}</dt>
-            <dd className="whitespace-nowrap font-display text-2xl leading-none sm:text-[32px]">{st.value}</dd>
-          </div>
-        ))}
-      </dl>
-
-      <button
-        type="button"
-        onClick={onStart}
-        className="group mt-7 inline-flex h-16 w-full items-center justify-between rounded-2xl bg-brand pl-6 pr-2 font-display text-lg text-on-brand shadow-[0_10px_24px_-16px_var(--rb-brand)] transition-[background-color,box-shadow,transform] duration-200 hover:bg-brand-strong hover:shadow-[0_14px_30px_-14px_var(--rb-brand)] focus-visible:outline-brand-light active:scale-[0.98] sm:mt-8"
-      >
-        {s.start}
-        <span className="grid size-12 place-items-center rounded-xl bg-on-brand text-brand transition-transform duration-200 group-hover:translate-x-0.5">
-          <svg width="20" height="20" viewBox="0 0 18 18" aria-hidden="true">
-            <path d="M4 9h10m-4-4 4 4-4 4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <button
+          type="button"
+          onClick={onStart}
+          className="group mt-8 inline-flex h-14 w-full items-center justify-center gap-3 rounded-xl bg-brand px-8 font-display text-lg text-on-brand transition-[background-color,transform] duration-200 hover:bg-brand-strong focus-visible:outline-brand-light active:scale-[0.98] sm:w-auto sm:self-start lg:mt-auto"
+        >
+          {s.start}
+          <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" className="transition-transform duration-200 group-hover:translate-x-1">
+            <path d="M3 9h11m-4.5-4.5L14 9l-4.5 4.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-        </span>
-      </button>
+        </button>
+      </div>
+
+      <Demo ex={ex} target={assignment.target_angle} />
     </section>
   )
 }
 
 /**
- * The cover-art motif: rows of legs on an 8° tilt, the same lattice as the
- * brand thumbnail, fading out of the top-right corner so the copy stays clean.
+ * The patient's own figure doing the movement. For the knee the shin swings
+ * to the prescribed angle on a slow loop, against a dashed line where it
+ * should end up; other exercises hold the target pose.
  */
-function LegPattern() {
-  const id = useId()
+function Demo({ ex, target }: { ex: Exercise; target: number }) {
+  const knee = ex.part === 'knee'
+  const { x, y, w, h } = knee ? KNEE_CROP : ex.view
+  const end = ankleAt(target)
+  // A protractor arc at the knee, from straight out (0°) to the target, labelled at its middle.
+  const at = (deg: number, r: number) => ({ x: KNEE.x + r * Math.cos((deg * Math.PI) / 180), y: KNEE.y + r * Math.sin((deg * Math.PI) / 180) })
+  const a0 = at(0, ARC_R)
+  const a1 = at(target, ARC_R)
+  // Above the knee: the shin swings below it, so nothing ever crosses the number.
+  const label = { x: KNEE.x + 66, y: KNEE.y - 46 }
+
   return (
-    <svg
-      aria-hidden="true"
-      className="pointer-events-none absolute inset-0 -z-10 h-full w-full text-brand [mask-image:radial-gradient(ellipse_70%_95%_at_100%_22%,black_30%,transparent_78%)] sm:[mask-image:radial-gradient(ellipse_56%_88%_at_100%_30%,black_30%,transparent_80%)]"
-    >
-      <defs>
-        <pattern id={id} width="124" height="148" patternUnits="userSpaceOnUse" patternTransform="rotate(8) translate(24 -18)">
-          <path d={LEG_PATH} transform="translate(22 10) scale(0.8)" fill="currentColor" />
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill={`url(#${id})`} opacity="0.6" />
-    </svg>
+    <div className="relative order-first px-4 pt-4 text-brand-light sm:px-8 sm:pt-6 lg:order-last lg:flex lg:items-end lg:px-10 lg:pt-8">
+      <svg viewBox={`${x} ${y} ${w} ${h}`} preserveAspectRatio="xMidYMax meet" className="block h-auto max-h-[300px] w-full lg:h-[340px] lg:max-h-none" aria-hidden="true">
+        <line x1={x} x2={x + w} y1={FLOOR_Y} y2={FLOOR_Y} stroke="currentColor" strokeOpacity={0.2} strokeWidth={2} />
+        {knee ? <SeatedBody mode="flat" animateTo={target} /> : <SeatedBody mode="flat" pose={ex.pose(target)} />}
+        {knee && (
+          <g className="text-brand">
+            <line x1={KNEE.x} y1={KNEE.y} x2={end.x} y2={end.y} stroke="currentColor" strokeWidth={3} strokeDasharray="2 9" strokeLinecap="round" />
+            <circle cx={end.x} cy={end.y} r={6} fill="currentColor" />
+            <path d={`M ${a0.x} ${a0.y} A ${ARC_R} ${ARC_R} 0 ${target > 180 ? 1 : 0} 1 ${a1.x} ${a1.y}`} fill="none" stroke="currentColor" strokeWidth={2.5} />
+            <text x={label.x} y={label.y} textAnchor="middle" dominantBaseline="central" fill="currentColor" className="font-display text-[26px]">
+              {target}°
+            </text>
+          </g>
+        )}
+      </svg>
+    </div>
   )
 }

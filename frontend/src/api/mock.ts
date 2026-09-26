@@ -180,7 +180,10 @@ export function fallbackSummary(): SummaryResponse {
 
 function templateSummary(db: MockDb, patientId: UUID): string {
   const p = db.patients.find((x) => x.id === patientId)
-  const s = db.sessions.filter((x) => x.patient_id === patientId).sort((a, b) => a.started_at.localeCompare(b.started_at))
+  const joint = db.assignments.find((a) => a.patient_id === patientId)?.exercise.joint
+  const s = db.sessions
+    .filter((x) => x.patient_id === patientId && (x.joint ?? joint) === joint)
+    .sort((a, b) => a.started_at.localeCompare(b.started_at))
   if (!p || s.length === 0) return 'No sessions recorded yet.'
   const first = s[0].max_angle
   const last = s[s.length - 1].max_angle
@@ -199,8 +202,9 @@ function overview(db: MockDb, assignment: Assignment): PatientOverview {
   // "This week" = today plus the 6 days before it, matching the patient home screen.
   const weekAgo = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
   const patient = db.patients.find((p) => p.id === assignment.patient_id)!
+  const joint = assignment.exercise.joint
   const sessions = db.sessions
-    .filter((s) => s.patient_id === patient.id)
+    .filter((s) => s.patient_id === patient.id && (s.joint ?? joint) === joint)
     .sort((a, b) => b.started_at.localeCompare(a.started_at))
   const recent = sessions.filter((s) => Date.parse(s.started_at) > weekAgo).length
   return {
@@ -233,6 +237,7 @@ export const mockBackend = {
       duration_sec: body.duration_sec,
       pain_score: null,
       flagged: false,
+      joint: body.joint,
     })
     save(db)
     return delay({ session_id: id })

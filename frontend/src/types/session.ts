@@ -80,6 +80,10 @@ export interface CreateSessionRequest extends SessionResult {
   assignment_id: UUID
   patient_id: UUID
   started_at: ISODateString
+  /** Joint the session worked ('knee', 'hip', 'shoulder', 'elbow', 'wrist'). The
+   *  patient can try a joint other than the assigned one, so the backend keeps
+   *  each joint's sessions apart; omitted means the assignment's own joint. */
+  joint?: string
 }
 export interface CreateSessionResponse {
   session_id: UUID
@@ -132,6 +136,8 @@ export interface SessionRecord {
   duration_sec: number
   pain_score: number | null
   flagged: boolean
+  /** See CreateSessionRequest.joint. */
+  joint?: string
 }
 
 export interface RedFlag {
@@ -145,6 +151,7 @@ export interface RedFlag {
 export interface PatientOverview {
   patient: Patient
   assignment: Assignment
+  // sessions, adherence and summary cover the assignment's joint only.
   /** Sessions in the last 7 days / assignment.times_per_week, 0–1 (can exceed 1). */
   adherence_7d: number
   /** Most recent first. */

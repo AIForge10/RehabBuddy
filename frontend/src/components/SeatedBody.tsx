@@ -1,5 +1,5 @@
-import { useId, type CSSProperties } from 'react'
-import { ANKLE_H, FLOOR_Y, KNEE, MAX_FLEX, SHIN, ankleAt, soleAt } from '../lib/bodyGeometry'
+import { useId, type CSSProperties, type ReactNode } from 'react'
+import { ANKLE_H, ELBOW, FLOOR_Y, HIP, KNEE, MAX_FLEX, REST_POSE, SHIN, SHOULDER, WRIST, ankleAt, shinPoint, type Pose } from '../lib/bodyGeometry'
 
 // Side view of a woman sitting on a wooden dining chair, her near (right) leg
 // free to swing at the knee. One set of shapes drives every figure in the app:
@@ -13,6 +13,12 @@ import { ANKLE_H, FLOOR_Y, KNEE, MAX_FLEX, SHIN, ankleAt, soleAt } from '../lib/
 // SVG rotate, so their shading turns with the limb as it would on a real leg.
 // The shoe and sock are drawn standing (toes → +x, sole on y = 0, ankle joint
 // 20 above it) and placed under the ankle by SHOE_AT.
+//
+// She's a puppet rigged the same way throughout (see Pose in bodyGeometry):
+// the arm is drawn hanging straight down and turned at the shoulder, elbow
+// and wrist; the thigh turns at the hip. Every exercise is a pose, not a
+// drawing. Lifting the thigh splits the lap along the hip crease so her seat
+// stays on the chair while the leg rises.
 
 type Pt = readonly [number, number] | readonly [number, number, 1]
 type P2 = [number, number]
@@ -73,19 +79,33 @@ const SHIRT = outline([
   [344.8, 249.6, 1], [326, 252.8], [302, 254], [281.4, 251.4, 1], [279.6, 242], [281, 230], [279.4, 214],
   [276, 196], [274.8, 176], [275.8, 154], [278.6, 134], [281.8, 121], [286.4, 108.6, 1], [296, 109.8], [307, 111.8],
 ])
-const SLEEVE = outline([
-  [282.4, 121], [287.4, 112.2], [296.4, 108.6], [307.6, 110.8], [315.6, 117.6], [319.8, 128], [321.4, 142],
-  [321.9, 156], [321.8, 167, 1], [309, 169.2], [295, 168.8], [282.2, 166.2, 1], [280.8, 150], [280.8, 134],
+// Arm, drawn hanging straight down in segments that each turn about a joint.
+// (v, u): v across the limb (+ = front, the side the elbow bends toward), u
+// down it from the segment's joint.
+type Vu = readonly [number, number] | readonly [number, number, 1]
+const limb = (at: { x: number; y: number }, pts: readonly Vu[]) =>
+  outline(pts.map(([v, u, c]) => (c ? ([at.x + v, at.y + u, 1] as const) : ([at.x + v, at.y + u] as const))))
+
+const SLEEVE = limb(SHOULDER, [
+  [-16.6, -3], [-11.6, -11.8], [-2.6, -15.4], [8.6, -13.2], [16.6, -6.4], [20.8, 4], [22.4, 18], [22.9, 32],
+  [22.8, 43, 1], [10, 45.2], [-4, 44.8], [-16.8, 42.2, 1], [-18.2, 26], [-18.2, 10],
 ])
-const ARM = outline([
-  [286.6, 150, 1], [285.6, 172], [287.8, 192], [291, 206], [295.4, 214.6], [300.6, 219.4], [308, 222.6], [320, 228.4],
-  [334, 235.4], [348, 241.6], [357.6, 245], [363.6, 247.2], [370.4, 249.6], [379, 250.8], [388.6, 251.4],
-  [397.4, 252], [404.4, 252.8], [408.4, 252.2], [409.4, 249.8], [407.4, 246.4], [401.4, 240.6], [395.6, 237.4],
-  [388.8, 234.4], [380.6, 233], [372, 232.8], [365.8, 231.6], [358, 227.4], [348, 220], [337, 212.4],
-  [326.4, 206], [320.4, 202.4], [316.6, 199.2], [315.8, 194.6], [316.8, 184], [317, 168], [316, 150, 1],
+const UPPER_ARM = limb(SHOULDER, [
+  [-14, 8, 1], [-15, 28], [-15, 48], [-14, 64], [-12.5, 76], [-9.5, 88], [-4, 95], [3, 96], [9, 92], [12.5, 84],
+  [14, 72], [15.5, 58], [16, 42], [15.5, 24], [14, 8, 1],
 ])
-// Ring and middle fingers, reaching a little past the little finger.
-const FINGERS = outline([[391, 235.6], [400.6, 238.2], [407.6, 242.4], [411.8, 247.4], [413.2, 251.4], [411.2, 253.4], [405, 252.8], [396, 250.2], [389, 247.4]])
+const FOREARM = limb(ELBOW, [
+  [-12.5, -2], [-12.6, 10], [-11.8, 24], [-10.4, 38], [-9, 52], [-8, 63], [-7.6, 70], [-5, 75], [0, 76.5],
+  [5.4, 75], [8, 70], [8.8, 62], [10.6, 48], [12.8, 32], [13.8, 18], [13.6, 6], [11.6, -4], [6.6, -10.6],
+  [0, -12.6], [-6.6, -10.6], [-10.8, -6],
+])
+// Seen from the little-finger side: palm at −v, back of the hand at +v.
+const HAND = limb(WRIST, [
+  [-7.6, -3], [-9.2, 6], [-10, 14], [-9.6, 22], [-8.6, 28], [-7.4, 34], [-6.8, 40], [-7, 45], [-7.8, 49.4],
+  [-7.4, 53], [-4.6, 54.2], [-2, 51.6], [0, 47], [2.2, 41], [4.6, 34.6], [6.8, 28], [8.4, 20], [8.8, 12], [8.4, 4],
+  [7.6, -3], [4, -7], [0, -8], [-4, -7],
+])
+const at = (o: { x: number; y: number }, v: number, u: number) => `${o.x + v} ${o.y + u}`
 const THIGH = outline([
   [296, 246], [322, 244.2], [348, 244.4], [372, 246.6], [396, 249.8], [414, 253.4], [424, 254.2], [431, 254],
   [440, 256.6], [445.4, 263.6], [446, 270], [444.2, 277.6], [438.6, 283.6], [430, 286], [420, 288.4], [410, 289.8],
@@ -103,6 +123,13 @@ const SHIN_SKIN = outline([
   [415.4, 276], [414, 270], [415.6, 262], [421, 256.4],
 ])
 const KNEE_R = 16
+
+// Lap split for a lifted thigh: her seat and waistband stay put (FIXED, stage
+// space) while the thigh and shorts leg turn about the hip (LIFTED, drawn in
+// the thigh's own frame so the cut turns with it). They overlap near the hip
+// so no seam opens.
+const FIXED_CLIP = 'M0 -200H720V247H322V650H0Z'
+const LIFTED_CLIP = 'M300 241H720V650H300Z'
 
 // Foot frame: toes → +x, sole on y = 0, ankle joint at (0, -ANKLE_H).
 const SOCK = outline([[-13.8, -12, 1], [-13, -20], [-11.4, -27], [-10.8, -35.6, 1], [0, -36.8], [11, -35.8, 1], [11.2, -28], [10.6, -20], [9, -12, 1]])
@@ -168,13 +195,16 @@ export type BodyMode = 'shaded' | 'flat' | 'ghost' | 'silhouette'
 
 export function SeatedBody({
   angle = 0,
+  pose: posed,
   mode = 'shaded',
   animateTo,
   farLeg = true,
   chair: showChair = true,
 }: {
-  /** Knee flexion in degrees. Ignored when `animateTo` is set. */
+  /** Knee flexion in degrees, with the rest of her in the resting pose. Ignored when `pose` or `animateTo` is set. */
   angle?: number
+  /** Full rig pose, for exercises other than the knee. */
+  pose?: Pose
   mode?: BodyMode
   /** Drive the shin with the CSS `knee` keyframes to this angle (decorative figures). */
   animateTo?: number
@@ -185,23 +215,67 @@ export function SeatedBody({
   const id = (name: string) => `${name}-${uid}`
   const url = (name: string) => `url(#${id(name)})`
   const css = animateTo != null
-  const deg = css ? 0 : Math.max(0, Math.min(MAX_FLEX, angle))
+  const p: Pose = posed ?? { ...REST_POSE, knee: css ? 0 : angle }
+  const deg = css ? 0 : Math.max(0, Math.min(MAX_FLEX, p.knee))
   const turn: { className?: string; style?: CSSProperties; transform?: string } = css
     ? { className: 'animate-knee', style: { transformOrigin: `${KNEE.x}px ${KNEE.y}px`, ['--bend' as string]: `${animateTo}deg` } }
     : { transform: `rotate(${deg.toFixed(2)} ${KNEE.x} ${KNEE.y})` }
+  const lifted = !css && p.hip > 0
+  const thigh = lifted ? `rotate(${(-p.hip).toFixed(2)} ${HIP.x} ${HIP.y})` : undefined
+  const shoulderTurn = `rotate(${(-p.shoulder).toFixed(2)} ${SHOULDER.x} ${SHOULDER.y})`
+  const elbowTurn = `rotate(${(-p.elbow).toFixed(2)} ${ELBOW.x} ${ELBOW.y})`
+  const wristTurn = `rotate(${(-p.wrist).toFixed(2)} ${WRIST.x} ${WRIST.y})`
+
+  /** The lap as one piece, or split at the hip crease when the thigh lifts. */
+  const lap = (node: ReactNode) =>
+    lifted ? (
+      <>
+        <g clipPath={url('fixed')}>{node}</g>
+        <g transform={thigh}>
+          <g clipPath={url('lifted')}>{node}</g>
+        </g>
+      </>
+    ) : (
+      node
+    )
+  const lapDefs = lifted && (
+    <>
+      <clipPath id={id('fixed')}>
+        <path d={FIXED_CLIP} />
+      </clipPath>
+      <clipPath id={id('lifted')}>
+        <path d={LIFTED_CLIP} />
+      </clipPath>
+    </>
+  )
 
   // Silhouettes, fill inherited: used by the flat and ghost figures and for masks.
+  const armShapes = (
+    <g transform={shoulderTurn}>
+      <g transform={elbowTurn}>
+        <path d={FOREARM} />
+        <g transform={wristTurn}>
+          <path d={HAND} />
+        </g>
+      </g>
+      <path d={UPPER_ARM} />
+      <path d={SLEEVE} />
+    </g>
+  )
   const torsoShapes = (
     <>
       <path d={SHIRT} />
       <path d={HEAD} />
       <path d={HAIR} />
       <path d={BUN} />
-      <path d={SHORTS} />
-      <path d={THIGH} />
-      <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} />
-      <path d={SLEEVE} />
-      <path d={ARM} />
+      {lap(
+        <>
+          <path d={SHORTS} />
+          <path d={THIGH} />
+          <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} />
+        </>,
+      )}
+      {armShapes}
     </>
   )
   const shinShapes = (
@@ -214,6 +288,13 @@ export function SeatedBody({
       </g>
     </>
   )
+  const nearShin = (node: ReactNode, extra?: { opacity?: string }) => (
+    <g transform={thigh} {...extra}>
+      <g {...turn}>{node}</g>
+    </g>
+  )
+  // The far thigh only shows once the near one lifts off it.
+  const farThigh = (node: ReactNode) => lifted && <g clipPath={url('lifted')}>{node}</g>
   const farShapes = (
     <g transform={FAR_DEPTH}>
       <g transform={`rotate(${FAR_DEG} ${KNEE.x} ${KNEE.y})`}>
@@ -223,6 +304,12 @@ export function SeatedBody({
         <path d={SOCK} />
         <path d={SHOE} />
       </g>
+      {farThigh(
+        <>
+          <path d={THIGH} />
+          <path d={SHORTS} />
+        </>,
+      )}
     </g>
   )
   const chairShapes = (far: boolean) => (
@@ -240,20 +327,21 @@ export function SeatedBody({
     const union = (
       <>
         {torsoShapes}
-        <g {...turn}>{shinShapes}</g>
+        {nearShin(shinShapes)}
       </>
     )
     return (
       <g aria-hidden="true">
         <defs>
-          <mask id={id('ghost')} maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="450">
-            <rect width="720" height="450" fill="white" />
+          {lapDefs}
+          <mask id={id('ghost')} maskUnits="userSpaceOnUse" x="-200" y="-200" width="1120" height="850">
+            <rect x="-200" y="-200" width="1120" height="850" fill="white" />
             <g fill="black" stroke="black" strokeWidth="0.5">
               {union}
             </g>
           </mask>
-          <mask id={id('ghost-chair')} maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="450">
-            <rect width="720" height="450" fill="white" />
+          <mask id={id('ghost-chair')} maskUnits="userSpaceOnUse" x="-200" y="-200" width="1120" height="850">
+            <rect x="-200" y="-200" width="1120" height="850" fill="white" />
             <g fill="black" stroke="black" strokeWidth="0.5">
               {chairShapes(false)}
               {union}
@@ -278,10 +366,11 @@ export function SeatedBody({
   if (mode === 'silhouette') {
     return (
       <g aria-hidden="true" fill="currentColor">
+        {lapDefs && <defs>{lapDefs}</defs>}
         {showChair && chairShapes(false)}
         {farLeg && farShapes}
         {torsoShapes}
-        <g {...turn}>{shinShapes}</g>
+        {nearShin(shinShapes)}
       </g>
     )
   }
@@ -292,11 +381,12 @@ export function SeatedBody({
     return (
       <g aria-hidden="true" fill="currentColor">
         <defs>
-          <mask id={id('flat')} maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="450">
-            <rect width="720" height="450" fill="white" />
+          {lapDefs}
+          <mask id={id('flat')} maskUnits="userSpaceOnUse" x="-200" y="-200" width="1120" height="850">
+            <rect x="-200" y="-200" width="1120" height="850" fill="white" />
             <g fill="black">
               {torsoShapes}
-              <g {...turn}>{shinShapes}</g>
+              {nearShin(shinShapes)}
             </g>
           </mask>
         </defs>
@@ -311,35 +401,40 @@ export function SeatedBody({
         </g>
         <g opacity="0.3">
           {torsoShapes}
-          <g {...turn}>
-            <path d={SHIN_SKIN} />
-            <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} />
-          </g>
+          {nearShin(
+            <>
+              <path d={SHIN_SKIN} />
+              <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} />
+            </>,
+          )}
         </g>
-        <g opacity="0.5" {...turn}>
+        {nearShin(
           <g transform={SHOE_AT}>
             <path d={SHOE} />
-          </g>
-        </g>
+          </g>,
+          { opacity: '0.5' },
+        )}
       </g>
     )
   }
 
   // ---- Shaded ----
-  const sole = soleAt(deg)
+  const sole = shinPoint({ ...p, knee: deg }, { x: KNEE.x + SHIN + ANKLE_H, y: KNEE.y - 20 })
   const contact = css ? 0 : Math.max(0, Math.min(1, (sole.y - (FLOOR_Y - 60)) / 60))
   const patella = css ? 0 : deg * 0.8
 
   return (
     <g aria-hidden="true">
       <defs>
+        {lapDefs}
         {/* Skin */}
         <linearGradient id={id('face')} x1="276" y1="0" x2="338" y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor={C.skinLo} />
           <stop offset="0.55" stopColor={C.skin} />
           <stop offset="1" stopColor={C.skinHi} />
         </linearGradient>
-        <linearGradient id={id('arm')} x1="336" y1="186" x2="302" y2="240" gradientUnits="userSpaceOnUse">
+        {/* Across the hanging arm, lit on the front; every segment shares it, so the straight arm reads as one limb and each part's copy turns with it. */}
+        <linearGradient id={id('arm')} x1={SHOULDER.x + 16} y1="0" x2={SHOULDER.x - 15} y2="0" gradientUnits="userSpaceOnUse">
           <stop offset="0" stopColor={C.skinHi} />
           <stop offset="0.45" stopColor={C.skin} />
           <stop offset="1" stopColor={C.skinLo} />
@@ -430,8 +525,16 @@ export function SeatedBody({
           <path d={SHORTS} />
           <path d={THIGH} />
         </clipPath>
-        <clipPath id={id('clipArm')}>
-          <path d={ARM} />
+        {/* The lap where it is now, for the arm's shadow */}
+        <clipPath id={id('clipLapPosed')}>
+          <path d={SHORTS} transform={thigh} />
+          <path d={THIGH} transform={thigh} />
+        </clipPath>
+        <clipPath id={id('clipUpperArm')}>
+          <path d={UPPER_ARM} />
+        </clipPath>
+        <clipPath id={id('clipHand')}>
+          <path d={HAND} />
         </clipPath>
       </defs>
 
@@ -463,6 +566,12 @@ export function SeatedBody({
               <path d="M-16.3 -5.4C6 -6.6 38 -7 59.6 -5.4" fill="none" stroke={C.shoeLo} strokeWidth="1.2" />
               <path d="M-5 -13C8 -10 22 -11 36 -15.4" fill="none" stroke={C.accent} strokeWidth="1.8" strokeLinecap="round" />
             </g>
+            {farThigh(
+              <>
+                <path d={THIGH} fill={url('leg')} />
+                <path d={SHORTS} fill={url('shorts')} />
+              </>,
+            )}
           </g>
           <g fill={C.shade} opacity="0.5">
             {farShapes}
@@ -475,35 +584,38 @@ export function SeatedBody({
 
       {/* Near leg, under the thigh so the knee reads as one joint */}
       <g filter={url('rim')}>
-        <g {...turn}>
-          <path d={SHIN_SKIN} fill={url('leg')} />
-          <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} fill={url('leg')} />
-          <ellipse cx="468" cy="283" rx="24" ry="5" fill={C.skinHi} opacity="0.28" filter={url('soft')} />
-          <path d="M456 257.6C480 259 510 260.6 540 261.4" fill="none" stroke={C.skinHi} strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />
-          <g transform={SHOE_AT}>
-            <path d={SOCK} fill={url('sock')} />
-            <path d={SHOE} fill={url('shoe')} />
-            <path d="M-16.3 -5.4C6 -6.6 38 -7 59.6 -5.4" fill="none" stroke={C.shoeLo} strokeWidth="1.2" />
-            <path d="M-14.2 -1.4L56 -1.4" fill="none" stroke={C.tread} strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M46.6 -15.6C50.4 -12 51.4 -8.6 51 -6.4" fill="none" stroke={C.shoeLo} strokeWidth="1" />
-            <path d="M-5 -13C8 -10 22 -11 36 -15.4" fill="none" stroke={C.accent} strokeWidth="1.8" strokeLinecap="round" />
-            <path d="M-13.2 -20.2C-15.2 -16.6 -16.2 -13.4 -16.6 -10.4" fill="none" stroke={C.accent} strokeWidth="2.4" strokeLinecap="round" />
-            <g stroke={C.shoeLo} strokeWidth="1.2" strokeLinecap="round">
-              <path d="M6 -27.4l2.6 3.4" />
-              <path d="M12 -25l2.4 3.4" />
-              <path d="M18 -22.8l2.2 3.2" />
-              <path d="M24 -20.8l2 3" />
+        {nearShin(
+          <>
+            <path d={SHIN_SKIN} fill={url('leg')} />
+            <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} fill={url('leg')} />
+            <ellipse cx="468" cy="283" rx="24" ry="5" fill={C.skinHi} opacity="0.28" filter={url('soft')} />
+            <path d="M456 257.6C480 259 510 260.6 540 261.4" fill="none" stroke={C.skinHi} strokeWidth="1.6" strokeLinecap="round" opacity="0.6" />
+            <g transform={SHOE_AT}>
+              <path d={SOCK} fill={url('sock')} />
+              <path d={SHOE} fill={url('shoe')} />
+              <path d="M-16.3 -5.4C6 -6.6 38 -7 59.6 -5.4" fill="none" stroke={C.shoeLo} strokeWidth="1.2" />
+              <path d="M-14.2 -1.4L56 -1.4" fill="none" stroke={C.tread} strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M46.6 -15.6C50.4 -12 51.4 -8.6 51 -6.4" fill="none" stroke={C.shoeLo} strokeWidth="1" />
+              <path d="M-5 -13C8 -10 22 -11 36 -15.4" fill="none" stroke={C.accent} strokeWidth="1.8" strokeLinecap="round" />
+              <path d="M-13.2 -20.2C-15.2 -16.6 -16.2 -13.4 -16.6 -10.4" fill="none" stroke={C.accent} strokeWidth="2.4" strokeLinecap="round" />
+              <g stroke={C.shoeLo} strokeWidth="1.2" strokeLinecap="round">
+                <path d="M6 -27.4l2.6 3.4" />
+                <path d="M12 -25l2.4 3.4" />
+                <path d="M18 -22.8l2.2 3.2" />
+                <path d="M24 -20.8l2 3" />
+              </g>
             </g>
-          </g>
-        </g>
+          </>,
+        )}
       </g>
       <g filter={url('rim')}>
         {/* Torso */}
         <path d={SHIRT} fill={url('shirt')} />
         <g clipPath={url('clipShirt')}>
           {/* arm's shadow on the side of the shirt */}
-          <path d={SLEEVE} transform="translate(-6 3)" fill={C.shirtDeep} opacity="0.55" filter={url('soft')} />
-          <path d={ARM} transform="translate(-6 3)" fill={C.shirtDeep} opacity="0.55" filter={url('soft')} />
+          <g transform="translate(-6 3)" fill={C.shirtDeep} opacity="0.55" filter={url('soft')}>
+            {armShapes}
+          </g>
           {/* folds gathering above the lap */}
           <g fill="none" stroke={C.shirtDeep} strokeLinecap="round" opacity="0.5" filter={url('soft')}>
             <path d="M300 236C314 232 328 232 341 236" strokeWidth="2.2" />
@@ -549,27 +661,33 @@ export function SeatedBody({
         </g>
 
         {/* Shorts and thigh */}
-        <path d={THIGH} fill={url('leg')} />
-        <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} fill={url('leg')} />
-        <path d={SHORTS} fill={url('shorts')} />
-        <g clipPath={url('clipLap')}>
-          {/* shirt hem and shorts hem cast soft shadows */}
-          <path d="M279 250C300 256 326 256 346 250L346 258C326 263 300 263 279 258Z" fill={C.shade} opacity="0.45" filter={url('soft')} />
-          <path d="M379 244L384 292L390 292L385 244Z" fill={C.skinDeep} opacity="0.55" filter={url('soft')} />
-          {/* folds from the hip crease, side seam, hem */}
-          <g fill="none" stroke={C.shortsLo} strokeLinecap="round" opacity="0.75" filter={url('soft')}>
-            <path d="M350 247.4C344 252 338 258 334 265" strokeWidth="2" />
-            <path d="M363 246.6C360 252 358.6 258 358.4 264" strokeWidth="1.6" />
-          </g>
-          <path d="M352 246C346 251 341 256 337.6 262" fill="none" stroke={C.shortsHi} strokeWidth="0.8" opacity="0.4" />
-          <path d="M300 240C330 250 356 262 380 268" fill="none" stroke={C.shortsHi} strokeWidth="0.9" opacity="0.35" />
-          <path d="M375.6 245.2C376.6 260 377.4 276 378.4 291" fill="none" stroke={C.shortsLo} strokeWidth="1.2" opacity="0.8" />
-        </g>
+        {lap(
+          <>
+            <path d={THIGH} fill={url('leg')} />
+            <circle cx={KNEE.x} cy={KNEE.y} r={KNEE_R} fill={url('leg')} />
+            <path d={SHORTS} fill={url('shorts')} />
+            <g clipPath={url('clipLap')}>
+              {/* shirt hem and shorts hem cast soft shadows */}
+              <path d="M279 250C300 256 326 256 346 250L346 258C326 263 300 263 279 258Z" fill={C.shade} opacity="0.45" filter={url('soft')} />
+              <path d="M379 244L384 292L390 292L385 244Z" fill={C.skinDeep} opacity="0.55" filter={url('soft')} />
+              {/* folds from the hip crease, side seam, hem */}
+              <g fill="none" stroke={C.shortsLo} strokeLinecap="round" opacity="0.75" filter={url('soft')}>
+                <path d="M350 247.4C344 252 338 258 334 265" strokeWidth="2" />
+                <path d="M363 246.6C360 252 358.6 258 358.4 264" strokeWidth="1.6" />
+              </g>
+              <path d="M352 246C346 251 341 256 337.6 262" fill="none" stroke={C.shortsHi} strokeWidth="0.8" opacity="0.4" />
+              <path d="M300 240C330 250 356 262 380 268" fill="none" stroke={C.shortsHi} strokeWidth="0.9" opacity="0.35" />
+              <path d="M375.6 245.2C376.6 260 377.4 276 378.4 291" fill="none" stroke={C.shortsLo} strokeWidth="1.2" opacity="0.8" />
+            </g>
+          </>,
+        )}
       </g>
 
       {/* Kneecap rides over the joint as it bends */}
-      <g transform={css ? undefined : `rotate(${patella.toFixed(2)} ${KNEE.x} ${KNEE.y})`}>
-        <ellipse cx={KNEE.x + 1} cy={KNEE.y - 12.5} rx="9" ry="5.5" fill={url('knee')} />
+      <g transform={thigh}>
+        <g transform={css ? undefined : `rotate(${patella.toFixed(2)} ${KNEE.x} ${KNEE.y})`}>
+          <ellipse cx={KNEE.x + 1} cy={KNEE.y - 12.5} rx="9" ry="5.5" fill={url('knee')} />
+        </g>
       </g>
 
       {/* Near side of the chair: in front of her hips, and of her calf when it tucks under */}
@@ -591,27 +709,42 @@ export function SeatedBody({
         </>
       )}
 
-      {/* Near arm, hand resting on the thigh */}
-      <g clipPath={url('clipLap')}>
-        <path d={ARM} transform="translate(-3 4)" fill={C.shade} opacity="0.45" filter={url('soft')} />
-      </g>
-      <path d={FINGERS} fill={url('arm')} />
-      <path d={FINGERS} fill={C.skinDeep} opacity="0.3" />
-      <path d={ARM} fill={url('arm')} />
-      <g clipPath={url('clipArm')}>
-        <path d="M282 166L322 166L322 171.5L282 171.5Z" fill={C.skinDeep} opacity="0.35" filter={url('soft')} />
-        <path d="M296 208C300 214 306 218 312 220" fill="none" stroke={C.skinDeep} strokeWidth="2" opacity="0.35" filter={url('soft')} />
-        <g fill="none" stroke={C.skinLo} strokeWidth="0.8" strokeLinecap="round" opacity="0.85">
-          <path d="M400.8 242.2C400.4 244.2 399.6 246 398.6 247.6" />
-          <path d="M406.6 247.2C406.4 248.4 405.8 249.6 405 250.6" />
-          <path d="M390.4 235.6C394.6 237.4 398.2 239.6 401.4 242.6" opacity="0.5" />
+      {/* Near arm: its shadow on the lap, then hand, forearm and upper arm, each turned at its joint */}
+      <g clipPath={url('clipLapPosed')}>
+        <g transform="translate(-3 4)" fill={C.shade} opacity="0.45" filter={url('soft')}>
+          {armShapes}
         </g>
-        <ellipse cx="389" cy="235.4" rx="2.6" ry="1.3" fill={C.skinHi} opacity="0.6" />
-        <ellipse cx="366" cy="232.6" rx="2.2" ry="1.2" fill={C.skinHi} opacity="0.5" />
-        <path d="M407.2 247.6C408.4 248.2 409 249 409.2 250" fill="none" stroke={C.skinHi} strokeWidth="0.9" strokeLinecap="round" opacity="0.8" />
       </g>
-      <path d={SLEEVE} fill={url('sleeve')} />
-      <path d="M282.6 164.6C295 167.4 309 167.8 321.4 165.6" fill="none" stroke={C.shirtDeep} strokeWidth="2.4" opacity="0.5" />
+      <g transform={shoulderTurn}>
+        <g transform={elbowTurn}>
+          <path d={FOREARM} fill={url('arm')} />
+          {/* crease where the forearm meets the elbow */}
+          <path d={`M${at(ELBOW, 7, -9)}C${at(ELBOW, 11, -3)} ${at(ELBOW, 12.5, 4)} ${at(ELBOW, 12.6, 10)}`} fill="none" stroke={C.skinDeep} strokeWidth="1.6" strokeLinecap="round" opacity="0.3" filter={url('soft')} />
+          <g transform={wristTurn}>
+            <path d={HAND} fill={url('arm')} />
+            <g clipPath={url('clipHand')}>
+              {/* palm in shadow, a knuckle catching the light, the line between the fingers */}
+              <path d={`M${at(WRIST, -12, 8)}C${at(WRIST, -8, 24)} ${at(WRIST, -5, 40)} ${at(WRIST, -2, 54)}L${at(WRIST, -12, 54)}Z`} fill={C.skinDeep} opacity="0.3" filter={url('soft')} />
+              <ellipse cx={WRIST.x + 6} cy={WRIST.y + 28.5} rx="1.4" ry="2.8" fill={C.skinHi} opacity="0.6" />
+              <path d={`M${at(WRIST, -1.6, 31)}C${at(WRIST, -1.6, 38)} ${at(WRIST, -2.4, 45)} ${at(WRIST, -4.4, 51)}`} fill="none" stroke={C.skinLo} strokeWidth="0.8" strokeLinecap="round" opacity="0.8" />
+            </g>
+          </g>
+        </g>
+        {/* Upper arm over the forearm, so the elbow reads as one joint */}
+        <path d={UPPER_ARM} fill={url('arm')} />
+        <g clipPath={url('clipUpperArm')}>
+          {/* the sleeve's shadow across the arm */}
+          <path d={`M${at(SHOULDER, -17, 42)}L${at(SHOULDER, 23, 42)}L${at(SHOULDER, 23, 47.5)}L${at(SHOULDER, -17, 47.5)}Z`} fill={C.skinDeep} opacity="0.35" filter={url('soft')} />
+        </g>
+        <path d={SLEEVE} fill={url('sleeve')} />
+        <path
+          d={`M${at(SHOULDER, -16.4, 40.6)}C${at(SHOULDER, -4, 43.4)} ${at(SHOULDER, 10, 43.8)} ${at(SHOULDER, 22.4, 41.6)}`}
+          fill="none"
+          stroke={C.shirtDeep}
+          strokeWidth="2.4"
+          opacity="0.5"
+        />
+      </g>
     </g>
   )
 }

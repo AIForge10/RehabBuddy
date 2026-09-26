@@ -4,6 +4,7 @@ import { painCheck } from '../api/client'
 import { LogoMark } from '../components/Logo'
 import { Button, PatientScreen } from '../components/Screen'
 import { sayText } from '../lib/coach'
+import { exerciseFor } from '../lib/exercises'
 import { useLanguage } from '../lib/language'
 import type { Assignment, PainCheckResponse, SessionResult } from '../types/session'
 
@@ -36,6 +37,7 @@ export default function PainCheck() {
   const [response, setResponse] = useState<PainCheckResponse | null>(null)
 
   if (!flow) return <Navigate to="/" replace />
+  const { painTitle } = exerciseFor(flow.assignment.exercise.joint).copy[lang]
 
   const toggleChip = (i: number) => setChips((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))
 
@@ -54,11 +56,11 @@ export default function PainCheck() {
 
   return (
     <PatientScreen>
-      <h1 className="mt-10 font-display text-[36px] font-medium leading-[1.1] tracking-tight">{s.painTitle}</h1>
+      <h1 className="mt-10 font-display text-[36px] font-medium leading-[1.1] tracking-tight">{painTitle}</h1>
       <p className="mt-2 text-lg text-ink-2">{s.painSub}</p>
 
       <fieldset className="mt-8" disabled={locked}>
-        <legend className="sr-only">{s.painTitle}</legend>
+        <legend className="sr-only">{painTitle}</legend>
         <div className="rounded-[28px] bg-surface p-4 shadow-card ring-1 ring-line sm:p-5">
           <div className="grid grid-cols-5 gap-2 sm:grid-cols-10 sm:gap-1.5">
             {SCORES.map((n) => {
