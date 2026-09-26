@@ -13,6 +13,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   DashboardResponse,
+  Joint,
   Language,
   Patient,
   PainCheckRequest,
@@ -434,17 +435,23 @@ function withStats(sessions: SessionRecord[], target: number): SessionRecord[] {
   })
 }
 
-function overview(db: MockDb, assignment: Assignment): PatientOverview {
+function overview(db: MockDb, assignment: Assignment, joint?: Joint): PatientOverview {
   // "This week" = today plus the 6 days before it, matching the patient home screen.
   const weekAgo = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
   const patient = db.patients.find((p) => p.id === assignment.patient_id)!
-  const sessions = db.sessions
-    .filter((s) => s.patient_id === patient.id && jointOf(s) === assignment.exercise.joint)
+  const shown = joint ?? (assignment.exercise.joint as Joint)
+  const mine = db.sessions
+    .filter((s) => s.patient_id === patient.id)
     .sort((a, b) => b.started_at.localeCompare(a.started_at))
+  const sessions = mine.filter((s) => jointOf(s) === shown)
   const recent = sessions.filter((s) => Date.parse(s.started_at) > weekAgo).length
+  // Most recently worked first, matching queries.worked_joints.
+  const worked = [...new Set(mine.map((s) => jointOf(s)))].filter(Boolean) as Joint[]
   return {
     patient,
     assignment,
+    joint: shown,
+    joints_with_history: worked,
     adherence_7d: recent / assignment.times_per_week,
     sessions: withStats(sessions, assignment.target_angle),
     red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
@@ -532,11 +539,11 @@ export const mockBackend = {
     return delay({ text: templateWeeklyRecap(overview(db, assignment), language), language, audio_url: null, is_fallback: false }, 500)
   },
 
-  async getPatientOverview(patientId: UUID): Promise<PatientOverview> {
+  async getPatientOverview(patientId: UUID, joint?: Joint): Promise<PatientOverview> {
     const db = load()
     const assignment = db.assignments.find((a) => a.patient_id === patientId)
     if (!assignment) throw new Error(`No assignment for patient ${patientId}`)
-    return delay(overview(db, assignment))
+    return delay(overview(db, assignment, joint))
   },
 
   async getDashboard(therapistId: UUID): Promise<DashboardResponse> {

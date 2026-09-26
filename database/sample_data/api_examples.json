@@ -104,6 +104,10 @@
         "reps": 10,
         "times_per_week": 5
       },
+      "joint": "knee",
+      "joints_with_history": [
+        "knee"
+      ],
       "adherence_7d": 0.8,
       "sessions": [
         {
@@ -376,6 +380,10 @@
             "reps": 10,
             "times_per_week": 5
           },
+          "joint": "knee",
+          "joints_with_history": [
+            "knee"
+          ],
           "adherence_7d": 0.8,
           "sessions": [
             {
@@ -642,6 +650,10 @@
             "reps": 10,
             "times_per_week": 5
           },
+          "joint": "knee",
+          "joints_with_history": [
+            "knee"
+          ],
           "adherence_7d": 0.4,
           "sessions": [
             {
@@ -772,6 +784,10 @@
             "reps": 10,
             "times_per_week": 5
           },
+          "joint": "knee",
+          "joints_with_history": [
+            "knee"
+          ],
           "adherence_7d": 0.8,
           "sessions": [
             {

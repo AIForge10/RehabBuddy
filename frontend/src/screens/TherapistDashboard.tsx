@@ -475,6 +475,9 @@ function PatientDetail({
   const reduced = useReducedMotion()
 
   const ex = exerciseFor(assignment.exercise.joint)
+  // Joints this patient has a history on other than the prescribed one; their sessions are real
+  // but sit outside this view, which is keyed to the plan's joint.
+  const offPlan = (p.joints_with_history ?? []).filter((j) => j !== assignment.exercise.joint)
   const first = sessions.at(-1)
   const latest = sessions[0]
   const done = Math.round(p.adherence_7d * assignment.times_per_week)
@@ -600,7 +603,18 @@ function PatientDetail({
           {first && <p className="label-mono text-muted">Since {shortDate(first.started_at)}</p>}
         </div>
         <div className="mt-6">
-          {sessions.length ? <RomChart sessions={sessions} target={assignment.target_angle} /> : <p className="text-muted">No sessions yet.</p>}
+          {sessions.length ? (
+            <RomChart sessions={sessions} target={assignment.target_angle} />
+          ) : offPlan.length ? (
+            // They have worked, just not the prescribed joint (the brief lets them pick another).
+            // Saying "no sessions yet" here would report an empty week that isn't empty.
+            <p className="text-muted">
+              No {ex.copy.en.name.toLowerCase()} yet. This patient has been doing{' '}
+              {offPlan.map((j) => exerciseFor(j).copy.en.name.toLowerCase()).join(', ')} instead.
+            </p>
+          ) : (
+            <p className="text-muted">No sessions yet.</p>
+          )}
         </div>
       </div>
 
