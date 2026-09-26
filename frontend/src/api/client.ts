@@ -22,6 +22,8 @@ import type {
   LoginResponse,
   PainCheckRequest,
   PainCheckResponse,
+  PainTranscriptResponse,
+  CoachLineResponse,
   PatientOverview,
   SignupRequest,
   SummaryResponse,
@@ -30,7 +32,7 @@ import type {
   UUID,
   WeeklyRecapResponse,
 } from '../types/session'
-import { saveToken } from '../lib/native'
+import { isNativeApp, saveToken } from '../lib/native'
 import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
 
 /** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
@@ -176,6 +178,40 @@ export async function painCheck(body: PainCheckRequest): Promise<PainCheckRespon
   } catch (err) {
     console.warn('[api] /pain-check failed, using fallback', err)
     return fallbackPainCheck(body)
+  }
+}
+
+/**
+ * Whether the pain check can take a spoken answer. Mock mode has no speech-to-text, so the mic is hidden there.
+ * So is the iOS and Android app's: mobile/ doesn't ask for the microphone yet, and iOS ends an app that opens it without asking.
+ */
+export const VOICE_ANSWERS = !USE_MOCKS && !isNativeApp
+
+/**
+ * The patient's spoken pain answer (a MediaRecorder clip, sent as the raw body
+ * with its own type) → what they said, and the score and symptoms in it.
+ * Throws: there's no template for what someone said, so the screen tells them
+ * it didn't catch that and they tap instead. The audio isn't stored anywhere.
+ */
+export function transcribePain(sessionId: UUID, audio: Blob, language: Language): Promise<PainTranscriptResponse> {
+  if (USE_MOCKS) return Promise.reject(new ApiError(501, 'No speech-to-text in mock mode'))
+  return request<PainTranscriptResponse>(`/pain-check/transcribe?session_id=${encodeURIComponent(sessionId)}&language=${language}`, {
+    method: 'POST',
+    body: audio,
+    headers: { 'Content-Type': audio.type || 'audio/webm' },
+  })
+}
+
+/** A pain-check line (its question) in the coach's ElevenLabs voice. null → browser speech; never throws. */
+export async function coachLine(text: string, language: Language): Promise<string | null> {
+  if (USE_MOCKS) return null
+  try {
+    const { audio_url } = await post<CoachLineResponse>('/pain-check/speak', { text, language })
+    // A path from the API's origin, as in painCheck.
+    return audio_url ? new URL(audio_url, API_URL).href : null
+  } catch (err) {
+    console.warn('[api] /pain-check/speak failed, using browser speech', err)
+    return null
   }
 }
 

@@ -130,6 +130,29 @@ const strings = {
     painFlagged: 'Your therapist has been notified',
     coach: 'Coach',
     continue: 'Continue',
+    // Answering the pain check out loud (screens/pain/VoiceAnswer.tsx).
+    painSubVoice: 'Tell me, or tap a number. Your therapist sees this.',
+    /** What the coach asks as the pain check opens; `title` is the exercise's painTitle. */
+    painAsk: (title: string, mic: boolean, stopped: boolean) =>
+      `${stopped ? 'You stopped because it hurt. ' : ''}${title.replace(/\?$/, '')}, from 1 to 10? ${
+        mic ? (stopped ? 'Tap the microphone and tell me what you felt.' : 'Tap the microphone and tell me.') : 'Tap a number.'
+      }`,
+    painStopped: 'Session stopped for pain',
+    painStoppedSub: 'You stopped because it hurt. Tell me what you felt, or tap a number. Your therapist sees this.',
+    painVoiceTitle: 'Say it out loud',
+    painVoiceHint: 'Tap, then say a number and anything you feel.',
+    painVoiceStart: 'Answer by voice',
+    painVoiceStop: 'Stop recording',
+    painListening: 'Listening… tap when you’re done',
+    painThinking: 'Got it, one moment…',
+    painHeard: 'You said',
+    painHeardScore: (n: number) => `I put ${n}. Check it, then send.`,
+    painNoScore: 'I didn’t catch a number. Tap the one that fits.',
+    painNoSpeech: 'I didn’t hear anything. Try again, or tap a number.',
+    painVoiceError: 'I couldn’t make that out. Try again, or tap a number.',
+    painMicBlocked: 'The microphone is blocked. Tap a number instead.',
+    painVoicePrivate: 'Your voice isn’t saved, only the words.',
+    painVoiceOff: 'Voice answers aren’t available right now. Tap a number instead.',
 
     doneTitle: 'Session complete',
     doneSub: (name: string) => `Nice work, ${name}.`,
@@ -156,6 +179,14 @@ const strings = {
     doneProgressSub: 'Deepest bend, each session',
     doneSent: 'Results sent to your therapist.',
     backHome: 'Done',
+    // After a flagged pain check: calm, no celebration.
+    doneRestTitle: 'Rest for today',
+    doneRestSub: 'Your therapist has been notified. Skip any more exercises today.',
+    // The first session that ever reaches the target.
+    milestone: 'Milestone',
+    milestoneTitle: (deg: number) => `First time at ${deg}°`,
+    milestoneDay: (n: number) => `Day ${n} of your recovery.`,
+    milestoneGoal: 'Goal reached for the first time',
 
     // Splash
     navLogin: 'Log in',
@@ -370,6 +401,27 @@ const strings = {
     painFlagged: 'Hemos avisado a tu terapeuta',
     coach: 'Entrenador',
     continue: 'Continuar',
+    painSubVoice: 'Cuéntamelo o toca un número. Tu terapeuta lo verá.',
+    painAsk: (title: string, mic: boolean, stopped: boolean) =>
+      `${stopped ? 'Paraste porque te dolía. ' : ''}${title.replace(/\?$/, '')}, del 1 al 10? ${
+        mic ? (stopped ? 'Toca el micrófono y cuéntame qué sentiste.' : 'Toca el micrófono y cuéntamelo.') : 'Toca un número.'
+      }`,
+    painStopped: 'Sesión detenida por dolor',
+    painStoppedSub: 'Paraste porque te dolía. Cuéntame qué sentiste o toca un número. Tu terapeuta lo verá.',
+    painVoiceTitle: 'Dilo en voz alta',
+    painVoiceHint: 'Toca y di un número y lo que sientas.',
+    painVoiceStart: 'Responder con la voz',
+    painVoiceStop: 'Dejar de grabar',
+    painListening: 'Te escucho… toca al terminar',
+    painThinking: 'Entendido, un momento…',
+    painHeard: 'Dijiste',
+    painHeardScore: (n: number) => `Marqué ${n}. Revísalo y envíalo.`,
+    painNoScore: 'No entendí un número. Toca el que corresponda.',
+    painNoSpeech: 'No te escuché. Inténtalo de nuevo o toca un número.',
+    painVoiceError: 'No pude entenderlo. Inténtalo de nuevo o toca un número.',
+    painMicBlocked: 'El micrófono está bloqueado. Toca un número.',
+    painVoicePrivate: 'Tu voz no se guarda, solo las palabras.',
+    painVoiceOff: 'Ahora no puedo escuchar respuestas habladas. Toca un número.',
 
     doneTitle: 'Sesión terminada',
     doneSub: (name: string) => `¡Buen trabajo, ${name}!`,
@@ -395,6 +447,12 @@ const strings = {
     doneProgressSub: 'Flexión máxima por sesión',
     doneSent: 'Resultados enviados a tu terapeuta.',
     backHome: 'Listo',
+    doneRestTitle: 'Descansa por hoy',
+    doneRestSub: 'Hemos avisado a tu terapeuta. No hagas más ejercicios hoy.',
+    milestone: 'Hito',
+    milestoneTitle: (deg: number) => `Primera vez a ${deg}°`,
+    milestoneDay: (n: number) => `Día ${n} de tu recuperación.`,
+    milestoneGoal: 'Meta alcanzada por primera vez',
 
     navLogin: 'Iniciar sesión',
     navSignup: 'Empezar',
