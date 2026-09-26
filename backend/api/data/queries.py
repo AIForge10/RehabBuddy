@@ -6,12 +6,12 @@ def _f(x):
     return float(x) if x is not None else None
 
 
-def assignment(conn, patient_id: str) -> dict | None:
-    row = conn.execute(
-        """SELECT a.id, a.patient_id, a.therapist_id, a.target_angle, a.reps, a.times_per_week,
-                  e.id AS ex_id, e.name AS ex_name, e.joint AS ex_joint, e.instructions AS ex_instructions
-           FROM assignments a JOIN exercises e ON e.id = a.exercise_id
-           WHERE a.patient_id = %s ORDER BY a.id LIMIT 1""", (patient_id,)).fetchone()
+_ASSIGNMENT = """SELECT a.id, a.patient_id, a.therapist_id, a.target_angle, a.reps, a.times_per_week,
+                        e.id AS ex_id, e.name AS ex_name, e.joint AS ex_joint, e.instructions AS ex_instructions
+                 FROM assignments a JOIN exercises e ON e.id = a.exercise_id"""
+
+
+def _assignment(row) -> dict | None:
     if not row:
         return None
     return {
@@ -20,6 +20,15 @@ def assignment(conn, patient_id: str) -> dict | None:
                      "instructions": row["ex_instructions"]},
         "target_angle": _f(row["target_angle"]), "reps": row["reps"], "times_per_week": row["times_per_week"],
     }
+
+
+def assignment(conn, patient_id: str) -> dict | None:
+    return _assignment(conn.execute(_ASSIGNMENT + " WHERE a.patient_id = %s ORDER BY a.id LIMIT 1",
+                                    (patient_id,)).fetchone())
+
+
+def assignment_by_id(conn, assignment_id: str) -> dict | None:
+    return _assignment(conn.execute(_ASSIGNMENT + " WHERE a.id = %s", (assignment_id,)).fetchone())
 
 
 def patient(conn, patient_id: str) -> dict | None:
@@ -33,14 +42,15 @@ def patient(conn, patient_id: str) -> dict | None:
             "injury": row["injury"], "start_date": row["start_date"].isoformat() if row["start_date"] else None}
 
 
-def sessions(conn, patient_id: str) -> list[dict]:
+def sessions(conn, patient_id: str, joint: str) -> list[dict]:
+    """One joint's sessions, newest first: a plan moved to another joint starts a fresh history."""
     rows = conn.execute(
-        """SELECT s.id, s.patient_id, s.started_at, s.reps_done, s.max_angle, s.form_warnings, s.duration_sec,
+        """SELECT s.id, s.patient_id, s.joint, s.started_at, s.reps_done, s.max_angle, s.form_warnings, s.duration_sec,
                   pc.pain_score, COALESCE(pc.flagged, false) AS flagged
            FROM sessions s
            LEFT JOIN LATERAL (SELECT pain_score, flagged FROM pain_checkins
                               WHERE session_id = s.id ORDER BY created_at DESC LIMIT 1) pc ON true
-           WHERE s.patient_id = %s ORDER BY s.started_at DESC""", (patient_id,)).fetchall()
+           WHERE s.patient_id = %s AND s.joint = %s ORDER BY s.started_at DESC""", (patient_id, joint)).fetchall()
     return [{**r, "started_at": r["started_at"].isoformat(), "max_angle": _f(r["max_angle"]),
              "form_warnings": list(r["form_warnings"] or [])} for r in rows]
 
@@ -55,18 +65,18 @@ def red_flags(conn, patient_id: str) -> list[dict]:
              "reason": f"“{r['notes']}”" if r["notes"] else "Pain score at or above 7"} for r in rows]
 
 
-def adherence_7d(conn, patient_id: str, times_per_week: int) -> float:
+def adherence_7d(conn, patient_id: str, joint: str, times_per_week: int) -> float:
     n = conn.execute(
         """SELECT count(*) AS n FROM sessions
-           WHERE patient_id = %s AND started_at >= date_trunc('day', now()) - interval '6 days'""",
-        (patient_id,)).fetchone()["n"]
+           WHERE patient_id = %s AND joint = %s AND started_at >= date_trunc('day', now()) - interval '6 days'""",
+        (patient_id, joint)).fetchone()["n"]
     return round(n / times_per_week, 2) if times_per_week else 0.0
 
 
-def latest_summary(conn, patient_id: str) -> str | None:
-    row = conn.execute("""SELECT summary_text FROM ai_summaries WHERE patient_id = %s
-                          ORDER BY week_start DESC, id DESC LIMIT 1""", (patient_id,)).fetchone()
-    return row["summary_text"] if row else None
+def latest_summary(conn, patient_id: str) -> dict | None:
+    """The newest stored summary: {summary_text, source}, source 'gemini' or 'template'."""
+    return conn.execute("""SELECT summary_text, source FROM ai_summaries WHERE patient_id = %s
+                           ORDER BY week_start DESC, created_at DESC LIMIT 1""", (patient_id,)).fetchone()
 
 
 # ★ Tiger Data: reading the angle_samples hypertable back.
@@ -177,15 +187,18 @@ def overview(conn, patient_id: str) -> dict | None:
     a = assignment(conn, patient_id)
     if not p or not a:
         return None
-    ss = sessions(conn, patient_id)
+    joint = a["exercise"]["joint"]
+    ss = sessions(conn, patient_id, joint)
     stats = session_stats(conn, [s["id"] for s in ss], a["target_angle"])
     for s in ss:
         s["stats"] = stats[s["id"]]
+    summary = latest_summary(conn, patient_id)
     return {"patient": p, "assignment": a,
-            "adherence_7d": adherence_7d(conn, patient_id, a["times_per_week"]),
+            "adherence_7d": adherence_7d(conn, patient_id, joint, a["times_per_week"]),
             "sessions": ss, "red_flags": red_flags(conn, patient_id),
-            "latest_summary": latest_summary(conn, patient_id)}
+            "latest_summary": summary["summary_text"] if summary else None,
+            "latest_summary_is_ai": summary is not None and summary["source"] == "gemini"}
 
 
-__all__ = ["connect", "assignment", "patient", "sessions", "red_flags", "overview", "latest_summary",
-           "session_samples", "session_stats"]
+__all__ = ["connect", "assignment", "assignment_by_id", "patient", "sessions", "session_samples", "session_stats",
+           "red_flags", "overview", "latest_summary"]

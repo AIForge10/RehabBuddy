@@ -23,6 +23,7 @@ import type {
   PainCheckRequest,
   PainCheckResponse,
   PatientOverview,
+  SignupRequest,
   SummaryResponse,
   TranslateResponse,
   UpdateAssignmentRequest,
@@ -118,6 +119,11 @@ const post = <T>(path: string, body: unknown) =>
 /** Throws ApiError 401 on a wrong email or password. */
 export function login(body: LoginRequest): Promise<LoginResponse> {
   return post<LoginResponse>('/auth/login', body)
+}
+
+/** Throws ApiError 409 when the email already has an account. */
+export function signup(body: SignupRequest): Promise<LoginResponse> {
+  return post<LoginResponse>('/auth/signup', body)
 }
 
 // --- Data endpoints (throw on failure; screens show an error state) ---------

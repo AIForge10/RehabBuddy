@@ -1,4 +1,4 @@
-id,patient_id,week_start,summary_text
-sum-p-maria,p-maria,2026-09-20,Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.
-sum-p-james,p-james,2026-09-20,"James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing."
-sum-p-aisha,p-aisha,2026-09-20,Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target.
+id,patient_id,week_start,summary_text,source
+sum-p-maria,p-maria,2026-09-20,Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.,template
+sum-p-james,p-james,2026-09-20,"James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing.",template
+sum-p-aisha,p-aisha,2026-09-20,Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target.,template

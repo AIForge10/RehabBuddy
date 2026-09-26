@@ -14,7 +14,7 @@ import { warningNotes } from '../lib/formWarnings'
 import { planChanges, planOf, type Plan } from '../lib/plan'
 import { useLiveSessions, type LiveSession } from '../lib/useLiveSessions'
 import { useReducedMotion } from '../lib/useReducedMotion'
-import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag } from '../types/session'
+import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag, SummaryResponse } from '../types/session'
 import { LiveDot, LivePanel } from './therapist/LivePanel'
 import { SessionReplay } from './therapist/SessionReplay'
 import { EndRange, RepPeaks } from './therapist/SessionStats'
@@ -394,7 +394,7 @@ function PatientDetail({
   onPlanSaved: () => void
 }) {
   const { patient, assignment, sessions } = p
-  const [summary, setSummary] = useState<string | null>(null)
+  const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [regenerating, setRegenerating] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sentAt, setSentAt] = useState(0)
@@ -423,10 +423,13 @@ function PatientDetail({
 
   async function regenerate() {
     setRegenerating(true)
-    const res = await getSummary(patient.id)
-    setSummary(res.summary_text)
+    setSummary(await getSummary(patient.id))
     setRegenerating(false)
   }
+
+  const summaryText = summary ? summary.summary_text : p.latest_summary
+  // Credit Gemini only for text it wrote, not the template it falls back to.
+  const byGemini = summary ? !summary.is_fallback : p.latest_summary_is_ai
 
   return (
     <section aria-label={patient.full_name} className="min-w-0 animate-rise space-y-6">
@@ -436,8 +439,12 @@ function PatientDetail({
           <div className="min-w-0">
             <h2 className="truncate font-display text-[30px] leading-tight">{patient.full_name}</h2>
             <p className="label-mono mt-1.5 flex flex-wrap gap-x-2 gap-y-1 text-muted">
-              <span>{patient.injury}</span>
-              <span aria-hidden="true">·</span>
+              {patient.injury && (
+                <>
+                  <span>{patient.injury}</span>
+                  <span aria-hidden="true">·</span>
+                </>
+              )}
               <span>Day {rehabDay} of rehab</span>
               <span aria-hidden="true">·</span>
               <span>{patient.language === 'es' ? 'Spanish' : 'English'}</span>
@@ -528,9 +535,13 @@ function PatientDetail({
           </button>
         </div>
         <p className={`mt-5 border-l-2 border-brand pl-5 text-[17px] leading-relaxed text-ink transition-opacity ${regenerating ? 'opacity-40' : ''}`}>
-          {summary ?? p.latest_summary ?? 'No summary yet.'}
+          {summaryText ?? 'No summary yet.'}
         </p>
-        <p className="label-mono mt-5 text-[10px] text-muted">Drafted by Gemini from session data · Review before acting</p>
+        {summaryText && (
+          <p className="label-mono mt-5 text-[10px] text-muted">
+            {byGemini ? 'Drafted by Gemini from session data' : 'Template from session data, not Gemini'} · Review before acting
+          </p>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line">

@@ -134,10 +134,11 @@ def maria_overview(monkeypatch, db):
     monkeypatch.setattr(q, "patient", lambda conn, pid: {"id": pid, "full_name": "Maria Lopez", "language": "es",
                                                         "injury": "ACL reconstruction", "start_date": "2026-09-16"})
     monkeypatch.setattr(q, "assignment", lambda conn, pid: {"id": "a-p-maria", "target_angle": target["value"],
-                                                           "times_per_week": 5})
-    monkeypatch.setattr(q, "sessions", lambda conn, pid: [{"id": "s-maria-2", **session}, {"id": "s-maria-1", **session}])
+                                                           "times_per_week": 5, "exercise": {"joint": "knee"}})
+    monkeypatch.setattr(q, "sessions", lambda conn, pid, joint: [{"id": "s-maria-2", **session},
+                                                                 {"id": "s-maria-1", **session}])
     monkeypatch.setattr(q, "red_flags", lambda conn, pid: [])
-    monkeypatch.setattr(q, "adherence_7d", lambda conn, pid, n: 0.4)
+    monkeypatch.setattr(q, "adherence_7d", lambda conn, pid, joint, n: 0.4)
     monkeypatch.setattr(q, "latest_summary", lambda conn, pid: None)
     app.dependency_overrides[require_patient_access] = lambda: LEE
     return target

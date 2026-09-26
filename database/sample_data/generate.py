@@ -26,11 +26,14 @@ patients = [
     {"id": "p-james", "full_name": "James Carter", "language": "en", "injury": "Grade II MCL sprain", "start_days": 8,  "skip": [7, 6, 5, 3, 2], "from": 70, "to": 79},
     {"id": "p-aisha", "full_name": "Aisha Khan",   "language": "en", "injury": "Meniscus repair",     "start_days": 9,  "skip": [5, 2],          "from": 74, "to": 88},
 ]
+# One per joint, matching the app's catalog (frontend/src/lib/exercises.ts): the therapist's
+# plan editor can switch a patient to any of them.
 exercises = [
-    {"id": "ex-knee-bend",      "name": "Seated knee bends",   "joint": "knee",     "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."},
-    {"id": "ex-hip-flexion",    "name": "Standing hip flexion","joint": "hip",      "instructions": "Stand side-on, hold a chair for balance, lift your knee towards your chest, then lower it."},
-    {"id": "ex-elbow-flexion",  "name": "Elbow curls",         "joint": "elbow",    "instructions": "Sit side-on with your arm straight down, curl your forearm up, then lower it slowly."},
-    {"id": "ex-shoulder-abduct","name": "Shoulder raises",     "joint": "shoulder", "instructions": "Face the camera, arm at your side, raise it out sideways to shoulder height, then lower it."},
+    {"id": "ex-knee-bend",      "name": "Seated knee bends",  "joint": "knee",     "instructions": "Sit tall at the edge of a chair, side-on to the camera. Slowly bend your knee as far as is comfortable, then straighten it fully."},
+    {"id": "ex-hip-lift",       "name": "Seated knee lifts",  "joint": "hip",      "instructions": "Sit tall, side-on to the camera, feet flat. Lift your knee towards your chest, then set your foot back down."},
+    {"id": "ex-shoulder-raise", "name": "Seated arm raises",  "joint": "shoulder", "instructions": "Sit tall, side-on to the camera, arm straight down. Raise your straight arm forward as high as is comfortable, then lower it."},
+    {"id": "ex-elbow-bend",     "name": "Seated elbow bends", "joint": "elbow",    "instructions": "Sit tall, side-on to the camera, arm by your side, palm forward. Bend your elbow to bring your hand up, then straighten it fully."},
+    {"id": "ex-wrist-lift",     "name": "Seated wrist lifts", "joint": "wrist",    "instructions": "Rest your forearm on your thigh, palm down, side-on to the camera. Lift the back of your hand, then lower it gently."},
 ]
 
 rows = {k: [] for k in ["profiles", "therapist_patients", "exercises", "assignments", "sessions",
@@ -85,7 +88,7 @@ for p in patients:
         pc = {"id": f"pc-{sid}", "session_id": sid, "pain_score": pain, "notes": notes, "flagged": flagged,
               "created_at": iso(started + timedelta(seconds=duration + 30))}
         rows["pain_checkins"].append(pc)
-        rec = {**{k: s[k] for k in ["id", "patient_id", "started_at", "reps_done", "max_angle", "form_warnings", "duration_sec"]},
+        rec = {**{k: s[k] for k in ["id", "patient_id", "joint", "started_at", "reps_done", "max_angle", "form_warnings", "duration_sec"]},
                "pain_score": pain, "flagged": flagged}
         sessions_by_patient[p["id"]].append(rec)
         if flagged:
@@ -109,7 +112,9 @@ for p in patients:
         text += " No concerning pain reports; consider progressing the target."
     summaries[p["id"]] = text
 for pid, text in summaries.items():
-    rows["ai_summaries"].append({"id": f"sum-{pid}", "patient_id": pid, "week_start": (TODAY - timedelta(days=6)).date().isoformat(), "summary_text": text})
+    # Written by the template above, not Gemini, so the dashboard doesn't credit Gemini for them.
+    rows["ai_summaries"].append({"id": f"sum-{pid}", "patient_id": pid, "week_start": (TODAY - timedelta(days=6)).date().isoformat(),
+                                 "summary_text": text, "source": "template"})
 
 # ---- write table CSVs ----
 for name, data in rows.items():
@@ -170,7 +175,8 @@ def overview(p):
     week = [s for s in ss if s["started_at"] >= iso(TODAY - timedelta(days=6))]
     return {"patient": patient_obj(p), "assignment": assignment_obj(p["id"]),
             "adherence_7d": round(len(week) / 5, 2), "sessions": ss,
-            "red_flags": flags_by_patient[p["id"]], "latest_summary": summaries[p["id"]]}
+            "red_flags": flags_by_patient[p["id"]], "latest_summary": summaries[p["id"]],
+            "latest_summary_is_ai": False}
 
 maria = patients[0]
 sample_samples = [r for r in rows["angle_samples"] if r["session_id"] == f"s-p-maria-1"][:12]
@@ -180,15 +186,22 @@ api = {
         "response": {"access_token": "<JWT>", "token_type": "bearer",
                      "user": {"id": "p-maria", "full_name": "Maria Lopez", "role": "patient", "language": "es"}},
         "errors": {"401": "wrong email or password"}},
+    "POST /auth/signup": {
+        "request": {"full_name": "Ana Ruiz", "email": "ana@example.com", "password": "at-least-8", "role": "patient", "language": "es"},
+        "response": {"access_token": "<JWT>", "token_type": "bearer",
+                     "user": {"id": "p-3f6c1a2e7b8d", "full_name": "Ana Ruiz", "role": "patient", "language": "es"}},
+        "notes": "201. A patient starts on seated knee bends (10 x 90°, 5x/week) in SIGNUP_THERAPIST_ID's caseload (default t-lee).",
+        "errors": {"409": "email already has an account", "422": "missing name, bad email, or password under 8 characters"}},
     "GET /auth/me": {"headers": {"Authorization": "Bearer <JWT>"},
         "response": {"id": "p-maria", "full_name": "Maria Lopez", "role": "patient", "language": "es"}},
     "_access_rules": {
-        "all endpoints except /auth/login and /health": "require header Authorization: Bearer <JWT>, else 401",
+        "all endpoints except /auth/login, /auth/signup and /health": "require header Authorization: Bearer <JWT>, else 401",
         "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
         "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
         "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
         "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient; unknown session 404",
-        "POST /summary": "same rule as /patients/{id}"},
+        "POST /summary": "same rule as /patients/{id}",
+        "PATCH /assignments/{id}": "therapist only, for their assigned patients; else 403"},
     "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
     "GET /patients/{patient_id}/assignment": {"example_url": "/patients/p-maria/assignment", "response": assignment_obj("p-maria")},
     "GET /patients/{patient_id}/overview": {"example_url": "/patients/p-maria/overview", "response": overview(maria)},
@@ -203,6 +216,11 @@ api = {
     "GET /sessions/{session_id}/samples": {"example_url": "/sessions/s-p-maria-1/samples",
         "response_notes": "The whole session, oldest first, averaged into 100 ms buckets (time_bucket); first rows shown.",
         "response": [{"time": r["time"], "angle": r["angle"]} for r in sample_samples]},
+    "PATCH /assignments/{assignment_id}": {"example_url": "/assignments/a-p-maria",
+        "request": {"joint": "shoulder", "target_angle": 140, "reps": 10, "times_per_week": 5},
+        "response": {**assignment_obj("p-maria"), "exercise": ex_by_id["ex-shoulder-raise"], "target_angle": 140},
+        "notes": "Every field is sent. joint picks that joint's exercise; overview then lists only that joint's sessions.",
+        "errors": {"404": "no such assignment", "422": "no exercise for that joint, or a value out of range"}},
     "POST /pain-check": {
         "request": {"session_id": "s-p-james-1", "pain_score": 8, "notes": "sharp pain", "language": "en"},
         "response_flagged": {"flagged": True, "reply": "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.", "flag_reason": "“sharp pain”"},
