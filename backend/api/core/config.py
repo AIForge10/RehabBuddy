@@ -8,7 +8,6 @@ ENV_FILE = ROOT_DIR / ".env"
 class Settings(BaseSettings):
     PROJECT_NAME: str = "RehabBuddy API"
     API_V1_STR: str = "/api/v1"
-    
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.6-flash"
     # Thinking for the spoken pain-check reply. "minimal" is fastest; models
