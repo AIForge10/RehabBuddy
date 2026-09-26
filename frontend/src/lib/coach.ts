@@ -1,16 +1,24 @@
-// Voice coach. Plays Shan's cached ElevenLabs clips from
-// public/audio/{lang}/{cue}.mp3; if a clip is missing or fails to load, falls
-// back to the browser's speech synthesis so the coach is never silent.
+// Voice coach. Everything plays through one shared <audio> element:
+//  - Live-session cues are fixed lines, pre-generated with ElevenLabs by
+//    scripts/generate_audio.py into public/audio/{lang}/{clip}.mp3. Live
+//    preloads them when the session opens, so a cue plays the moment a rep
+//    lands.
+//  - Free-form lines (the AI pain-check reply) come with a backend URL that
+//    streams ElevenLabs audio while it is still being generated.
+// A line with no audio, or whose audio fails or doesn't start in time, is read
+// by the browser's speech synthesis, so the coach is never silent.
 //
 // Cue ids below are the file-name contract with Shan. Three cues name the
 // movement (start, bend_deeper, knee_in), so for exercises other than the knee
 // their text comes from the exercise and the clip is {cue}_{part}.mp3, e.g.
-// start_shoulder.mp3; until those are recorded, speech synthesis reads them.
+// start_shoulder.mp3.
 
 import type { Exercise } from './exercises'
 import type { Language } from '../types/session'
 
 export type CoachCue = 'start' | 'good_rep' | 'bend_deeper' | 'knee_in' | 'halfway' | 'last_rep' | 'done'
+
+export const CUES: readonly CoachCue[] = ['start', 'good_rep', 'bend_deeper', 'knee_in', 'halfway', 'last_rep', 'done']
 
 export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
   en: {
@@ -36,8 +44,41 @@ export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
 // Cues that may cut off whatever is playing.
 const PRIORITY: CoachCue[] = ['knee_in', 'done']
 
-let current: HTMLAudioElement | null = null
+// Audio that hasn't started by now (slow network or backend) is spoken instead.
+const START_TIMEOUT_MS = 4000
+
+// 10 ms of silence, played inside a tap to unlock the player (see unlockAudio).
+const SILENCE =
+  'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='
+
+const NAMED: Partial<Record<CoachCue, keyof Exercise['copy']['en']['cues']>> = { start: 'start', bend_deeper: 'bend_deeper', knee_in: 'form' }
+
+/** A cue's clip name and caption. frontend/scripts/cue-lines.mjs reads this to list the clips to generate. */
+export function cueLine(cue: CoachCue, lang: Language, exercise?: Exercise): { clip: string; text: string } {
+  const named = exercise && exercise.part !== 'knee' ? NAMED[cue] : undefined
+  return named ? { clip: `${cue}_${exercise!.part}`, text: exercise!.copy[lang].cues[named] } : { clip: cue, text: CUE_TEXT[lang][cue] }
+}
+
+let player: HTMLAudioElement | null = null
+const audio = () => (player ??= new Audio())
+let unlocked = false
 let busy = false
+// Bumped whenever a new line takes over, so callbacks from the old one do nothing.
+let turn = 0
+
+// Cue clips by path: an object URL once fetched, null if the file is missing.
+const clips = new Map<string, Promise<string | null>>()
+
+function loadClip(path: string): Promise<string | null> {
+  let clip = clips.get(path)
+  if (!clip) {
+    clip = fetch(path)
+      .then(async (r) => (r.ok && r.headers.get('content-type')?.startsWith('audio/') ? URL.createObjectURL(await r.blob()) : null))
+      .catch(() => null)
+    clips.set(path, clip)
+  }
+  return clip
+}
 
 function speak(text: string, lang: Language) {
   if (!('speechSynthesis' in window)) {
@@ -53,40 +94,80 @@ function speak(text: string, lang: Language) {
   window.speechSynthesis.speak(u)
 }
 
+function play(src: string, text: string, lang: Language) {
+  const me = turn
+  const a = audio()
+  let started = false
+  let fellBack = false
+  const finished = () => {
+    if (me === turn) busy = false
+  }
+  const fallBack = () => {
+    if (started || fellBack || me !== turn) return
+    fellBack = true
+    a.pause()
+    speak(text, lang)
+  }
+  a.onplaying = () => {
+    started = true
+  }
+  a.onended = finished
+  a.onerror = () => (started ? finished() : fallBack())
+  a.src = src
+  a.play().catch(fallBack)
+  setTimeout(fallBack, START_TIMEOUT_MS)
+}
+
 function stop() {
-  current?.pause()
-  current = null
+  turn++
+  player?.pause()
   if ('speechSynthesis' in window) window.speechSynthesis.cancel()
   busy = false
 }
 
-const NAMED: Partial<Record<CoachCue, keyof Exercise['copy']['en']['cues']>> = { start: 'start', bend_deeper: 'bend_deeper', knee_in: 'form' }
+/**
+ * Call from a tap handler before the coach will speak. iOS only lets audio play
+ * without a tap on an element that has already played inside one, and the coach
+ * speaks later (when a rep lands, when the AI replies), so the tap that leads
+ * there unlocks the shared player and speech synthesis.
+ */
+export function unlockAudio() {
+  if (unlocked) return
+  unlocked = true
+  const a = audio()
+  a.src = SILENCE
+  a.play().catch(() => {})
+  if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''))
+}
+
+/** Fetch every cue clip for this session up front, so none waits on the network mid-rep. */
+export function preloadCues(lang: Language, exercise: Exercise) {
+  for (const cue of CUES) loadClip(`/audio/${lang}/${cueLine(cue, lang, exercise).clip}.mp3`)
+}
 
 /** Speak a cue. Returns the line spoken so the UI can show it as a caption. */
 export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): string {
-  const named = exercise && exercise.part !== 'knee' ? NAMED[cue] : undefined
-  const text = named ? exercise!.copy[lang].cues[named] : CUE_TEXT[lang][cue]
-  const clip = named ? `${cue}_${exercise!.part}` : cue
+  const { clip, text } = cueLine(cue, lang, exercise)
   if (busy) {
     if (!PRIORITY.includes(cue)) return text
     stop()
   }
   busy = true
-  const audio = new Audio(`/audio/${lang}/${clip}.mp3`)
-  current = audio
-  audio.onended = () => {
-    busy = false
-  }
-  audio.onerror = () => speak(text, lang)
-  audio.play().catch(() => speak(text, lang))
+  const me = ++turn
+  loadClip(`/audio/${lang}/${clip}.mp3`).then((url) => {
+    if (me !== turn) return
+    if (url) play(url, text, lang)
+    else speak(text, lang)
+  })
   return text
 }
 
-/** Free-form line (e.g. the AI pain-check reply). Not cached, so browser TTS. */
-export function sayText(text: string, lang: Language) {
+/** Free-form line (e.g. the AI pain-check reply), streamed from `audioUrl` when the backend voiced it. */
+export function sayText(text: string, lang: Language, audioUrl?: string | null) {
   stop()
   busy = true
-  speak(text, lang)
+  if (audioUrl) play(audioUrl, text, lang)
+  else speak(text, lang)
 }
 
 export function stopCoach() {

@@ -1,61 +1,20 @@
-"""POST /pain-check, POST /summary, POST /translate (Gemini + template fallback).
+"""POST /summary, POST /translate (Gemini + template fallback).
 
-The red-flag decision is a fixed rule (pain >= 7 or warning words), NOT the AI.
-Gemini only writes the friendly reply / summary text.
+POST /pain-check lives in api/routers/v1/pain_check.py, since its reply is voiced.
 """
 import uuid
 from datetime import date, timedelta
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
-from api.auth import CurrentUser, get_current_user, require_patient, require_session_owner
+from api.auth import CurrentUser, get_current_user
 from api.auth.deps import can_view_patient
 
 from . import gemini
 from . import queries as q
 
 router = APIRouter(tags=["ai"])
-
-RED_FLAG_WORDS = ["sharp", "swelling", "swollen", "pop", "numb", "agudo", "hinchado", "hinchazón"]
-
-
-class PainCheckRequest(BaseModel):
-    session_id: str
-    pain_score: int = Field(ge=0, le=10)
-    notes: str = ""
-    language: str = "en"
-
-
-@router.post("/pain-check")
-def pain_check(body: PainCheckRequest, user: CurrentUser = Depends(require_patient)):
-    require_session_owner(body.session_id, user)
-    notes = body.notes.strip()
-    word = next((w for w in RED_FLAG_WORDS if w in notes.lower()), None)
-    flagged = body.pain_score >= 7 or bool(word)
-    es = body.language == "es"
-
-    if flagged:
-        fallback = ("Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy."
-                    if es else "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.")
-        reason = f"“{notes}”" if notes else (f"Mentioned “{word}”" if word else "Pain score at or above 7")
-    else:
-        fallback = ("¡Buen trabajo! Un poco de molestia es normal. Nos vemos en la próxima sesión."
-                    if es else "Great work! A little soreness is normal. See you next session.")
-        reason = None
-
-    ai = gemini.generate(
-        f"A knee-rehab patient rated pain {body.pain_score}/10 after exercising and said: \"{notes}\". "
-        f"{'Their therapist has been alerted; tell them to rest and stop exercising today.' if flagged else 'Encourage them.'} "
-        f"Reply in {'Spanish' if es else 'English'}, max 2 short sentences, warm, no diagnosis, no medical advice.",
-        system="You are a kind physical-therapy coach assistant.", max_tokens=120)
-
-    with q.connect() as conn:
-        conn.execute("""INSERT INTO pain_checkins (id, session_id, pain_score, notes, flagged)
-                        VALUES (%s, %s, %s, %s, %s)""",
-                     (f"pc-{uuid.uuid4()}", body.session_id, body.pain_score, notes, flagged))
-    return {"flagged": flagged, "reply": ai or fallback, "flag_reason": reason}
-
 
 class SummaryRequest(BaseModel):
     patient_id: str

@@ -5,7 +5,7 @@ import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { ExerciseFigure } from '../../components/ExerciseFigure'
-import { playCue, stopCoach, type CoachCue } from '../../lib/coach'
+import { playCue, preloadCues, stopCoach, type CoachCue } from '../../lib/coach'
 import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { useLanguage } from '../../lib/language'
@@ -88,6 +88,9 @@ export function Live({
   const rec = useRef({ startedAt: new Date(), t0: 0, samples: [] as AngleSample[], max: 0, repPeak: 0, warnings: [] as string[] })
 
   const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current, exerciseRef.current)), [])
+
+  // Clips load during the countdown, so the first cue doesn't wait on the network.
+  useEffect(() => preloadCues(lang, exercise), [lang, exercise])
 
   useEffect(() => {
     if (phase !== 'countdown') return

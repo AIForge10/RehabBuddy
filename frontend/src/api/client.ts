@@ -30,7 +30,8 @@ import type {
 } from '../types/session'
 import { mockBackend, fallbackPainCheck, fallbackSummary } from './mock'
 
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+/** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
+const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
 
 export const DEMO_PATIENT_ID: UUID = import.meta.env.VITE_DEMO_PATIENT_ID ?? 'p-maria'
@@ -153,7 +154,9 @@ export function updateAssignment(assignmentId: UUID, body: UpdateAssignmentReque
 export async function painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
   if (USE_MOCKS) return mockBackend.painCheck(body)
   try {
-    return await post<PainCheckResponse>('/pain-check', body)
+    const res = await post<PainCheckResponse>('/pain-check', body)
+    // audio_url is a path from the API's origin (/api/v1/tts/…), not from API_URL.
+    return res.audio_url ? { ...res, audio_url: new URL(res.audio_url, API_URL).href } : res
   } catch (err) {
     console.warn('[api] /pain-check failed, using fallback', err)
     return fallbackPainCheck(body)

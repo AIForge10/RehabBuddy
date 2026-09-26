@@ -1,0 +1,192 @@
+{
+  "en/bend_deeper": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to bend a little deeper.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/bend_deeper_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to bend a little further.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/bend_deeper_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to lift a little higher.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/bend_deeper_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to raise it a little higher.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/bend_deeper_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to lift your hand a little higher.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/done": {
+    "model": "eleven_multilingual_v2",
+    "text": "Great work. Session complete.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/good_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "Good rep.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/halfway": {
+    "model": "eleven_multilingual_v2",
+    "text": "Halfway there. Keep going.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/knee_in": {
+    "model": "eleven_multilingual_v2",
+    "text": "Keep your knee in line with your foot.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/knee_in_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Keep your elbow by your side.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/knee_in_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Sit tall. Don’t lean back.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/knee_in_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Keep your shoulder down, away from your ear.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/knee_in_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Keep your forearm down on your leg.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/last_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "One more.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/start": {
+    "model": "eleven_multilingual_v2",
+    "text": "Let's begin. Bend your knee slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/start_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Let’s begin. Bend your elbow slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/start_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Let’s begin. Lift your knee slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/start_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Let’s begin. Raise your arm slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/start_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Let’s begin. Lift your hand slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/bend_deeper": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta doblar un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/bend_deeper_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta doblar un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/bend_deeper_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta subir un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/bend_deeper_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta subirlo un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/bend_deeper_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta subir la mano un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/done": {
+    "model": "eleven_multilingual_v2",
+    "text": "Buen trabajo. Sesión terminada.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/good_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "Buena repetición.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/halfway": {
+    "model": "eleven_multilingual_v2",
+    "text": "Vas por la mitad. Sigue así.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/knee_in": {
+    "model": "eleven_multilingual_v2",
+    "text": "Mantén la rodilla alineada con el pie.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/knee_in_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Mantén el codo junto al cuerpo.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/knee_in_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Siéntate derecho. No te inclines hacia atrás.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/knee_in_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Mantén el hombro abajo, lejos de la oreja.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/knee_in_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Mantén el antebrazo apoyado en la pierna.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/last_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "Una más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/start": {
+    "model": "eleven_multilingual_v2",
+    "text": "Empecemos. Dobla la rodilla despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/start_elbow": {
+    "model": "eleven_multilingual_v2",
+    "text": "Empecemos. Dobla el codo despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/start_hip": {
+    "model": "eleven_multilingual_v2",
+    "text": "Empecemos. Levanta la rodilla despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/start_shoulder": {
+    "model": "eleven_multilingual_v2",
+    "text": "Empecemos. Levanta el brazo despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/start_wrist": {
+    "model": "eleven_multilingual_v2",
+    "text": "Empecemos. Levanta la mano despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  }
+}

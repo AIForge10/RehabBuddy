@@ -28,12 +28,18 @@ const strings = {
     sessionLength: '~3 min',
     lastSession: 'Last session',
     sessionNumber: (n: number) => `Session ${n}`,
-    vsPrevious: (d: number): string => (d > 0 ? `+${d}° vs previous` : d < 0 ? `−${-d}° vs previous` : 'Same as previous'),
-    toGo: (deg: number) => `${deg}° to your goal`,
+    // Angles are stored to a tenth of a degree, so a difference of two can come
+    // out as 4.200000000000003. These show whole degrees.
+    vsPrevious: (d: number): string => {
+      const n = Math.round(d)
+      return n > 0 ? `+${n}° vs previous` : n < 0 ? `−${-n}° vs previous` : 'Same as previous'
+    },
+    // Only shown while the goal isn't reached, so never "0°".
+    toGo: (deg: number) => `${Math.max(1, Math.round(deg))}° to your goal`,
     goalHit: 'Goal reached',
     pain: 'Pain',
     formNotes: (n: number) => (n === 1 ? '1 note' : `${n} notes`),
-    sinceStart: (deg: number) => `+${deg}° since you started`,
+    sinceStart: (deg: number) => `+${Math.round(deg)}° since you started`,
     chartHint: 'Tap the chart to look back',
     backToLatest: 'Back to latest',
     oneMore: 'One more session and your trend appears here.',
@@ -117,7 +123,10 @@ const strings = {
     doneTitle: 'Session complete',
     doneSub: (name: string) => `Nice work, ${name}.`,
     doneDeepest: 'Deepest bend',
-    doneVsLast: (d: number): string => (d > 0 ? `+${d}° vs last session` : d < 0 ? `${d}° vs last session` : 'Same as last session'),
+    doneVsLast: (d: number): string => {
+      const n = Math.round(d)
+      return n > 0 ? `+${n}° vs last session` : n < 0 ? `${n}° vs last session` : 'Same as last session'
+    },
     doneFirst: 'Your first session',
     doneReps: 'Reps',
     doneTime: 'Time',
@@ -247,12 +256,15 @@ const strings = {
     sessionLength: '~3 min',
     lastSession: 'Última sesión',
     sessionNumber: (n: number) => `Sesión ${n}`,
-    vsPrevious: (d: number): string => (d > 0 ? `+${d}° vs. la anterior` : d < 0 ? `−${-d}° vs. la anterior` : 'Igual que la anterior'),
-    toGo: (deg: number) => `Te faltan ${deg}°`,
+    vsPrevious: (d: number): string => {
+      const n = Math.round(d)
+      return n > 0 ? `+${n}° vs. la anterior` : n < 0 ? `−${-n}° vs. la anterior` : 'Igual que la anterior'
+    },
+    toGo: (deg: number) => `Te faltan ${Math.max(1, Math.round(deg))}°`,
     goalHit: 'Meta alcanzada',
     pain: 'Dolor',
     formNotes: (n: number) => (n === 1 ? '1 nota' : `${n} notas`),
-    sinceStart: (deg: number) => `+${deg}° desde que empezaste`,
+    sinceStart: (deg: number) => `+${Math.round(deg)}° desde que empezaste`,
     chartHint: 'Toca la gráfica para ver el historial',
     backToLatest: 'Volver a la última',
     oneMore: 'Una sesión más y aquí verás tu evolución.',
@@ -335,7 +347,10 @@ const strings = {
     doneTitle: 'Sesión terminada',
     doneSub: (name: string) => `¡Buen trabajo, ${name}!`,
     doneDeepest: 'Flexión máxima',
-    doneVsLast: (d: number): string => (d > 0 ? `+${d}° vs. la última sesión` : d < 0 ? `${d}° vs. la última sesión` : 'Igual que la última sesión'),
+    doneVsLast: (d: number): string => {
+      const n = Math.round(d)
+      return n > 0 ? `+${n}° vs. la última sesión` : n < 0 ? `${n}° vs. la última sesión` : 'Igual que la última sesión'
+    },
     doneFirst: 'Tu primera sesión',
     doneReps: 'Repeticiones',
     doneTime: 'Tiempo',

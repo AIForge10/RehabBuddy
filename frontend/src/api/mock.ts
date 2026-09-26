@@ -284,6 +284,7 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
         ? 'Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy.'
         : "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.",
       flag_reason: body.notes ? `“${body.notes}”` : word ? `Mentioned “${word}”` : 'Pain score at or above 7',
+      audio_url: null,
     }
   }
   return {
@@ -292,6 +293,7 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
       ? '¡Buen trabajo! Un poco de molestia es normal. Nos vemos en la próxima sesión.'
       : 'Great work! A little soreness is normal. See you next session.',
     flag_reason: null,
+    audio_url: null,
   }
 }
 
