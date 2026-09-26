@@ -11,7 +11,15 @@ class Settings(BaseSettings):
     
     GEMINI_API_KEY: str = ""
     GEMINI_MODEL: str = "gemini-3.6-flash"
-    
+    # Thinking for the spoken pain-check reply. "minimal" is fastest; models
+    # without it (gemini-2.5-flash, gemini-3.7-flash, ...) need "low".
+    GEMINI_THINKING_LEVEL: str = "minimal"
+
+    ELEVENLABS_API_KEY: str = ""
+    ELEVENLABS_VOICE_ID_EN: str = ""
+    ELEVENLABS_VOICE_ID_ES: str = ""
+    ELEVENLABS_MODEL: str = "eleven_flash_v2_5"  # lowest-latency model
+
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"
     POSTGRES_HOST: str = "localhost"

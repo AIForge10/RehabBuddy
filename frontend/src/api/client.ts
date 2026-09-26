@@ -4,6 +4,8 @@
 //   VITE_USE_MOCKS=true  → no network; uses the in-browser mock backend (src/api/mock.ts).
 //                          State lives in localStorage, so a patient tab and a
 //                          therapist tab on the same machine see the same data.
+//     + VITE_LIVE_AI=true → same, except the pain check goes to the real backend
+//                          (Gemini reply + ElevenLabs voice). Data stays mocked.
 //   otherwise            → real FastAPI backend at VITE_API_URL.
 //
 // Plan rule: "every AI call needs a fallback response so a quota error never
@@ -26,7 +28,10 @@ import type {
 import { mockBackend, fallbackPainCheck, fallbackSummary } from './mock'
 
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
+/** Every backend route is mounted under this (backend/api/core/config.py API_V1_STR). */
+const API_PREFIX = '/api/v1'
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
+const LIVE_AI = import.meta.env.VITE_LIVE_AI === 'true'
 
 export const DEMO_PATIENT_ID: UUID = import.meta.env.VITE_DEMO_PATIENT_ID ?? 'p-maria'
 export const DEMO_THERAPIST_ID: UUID = import.meta.env.VITE_DEMO_THERAPIST_ID ?? 't-lee'
@@ -45,7 +50,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(`${API_URL}${path}`, {
+    const res = await fetch(`${API_URL}${API_PREFIX}${path}`, {
       ...init,
       headers: { 'Content-Type': 'application/json', ...init?.headers },
       signal: controller.signal,
@@ -89,13 +94,17 @@ export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
 // --- AI endpoints (never throw; template fallback) --------------------------
 
 export async function painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
-  if (USE_MOCKS) return mockBackend.painCheck(body)
+  if (USE_MOCKS && !LIVE_AI) return mockBackend.painCheck(body)
+  let res: PainCheckResponse
   try {
-    return await post<PainCheckResponse>('/pain-check', body)
+    res = await post<PainCheckResponse>('/pain-check', body)
+    if (res.audio_url) res = { ...res, audio_url: `${API_URL}${res.audio_url}` }
   } catch (err) {
     console.warn('[api] /pain-check failed, using fallback', err)
-    return fallbackPainCheck(body)
+    res = fallbackPainCheck(body)
   }
+  if (USE_MOCKS) mockBackend.recordPainCheck(body, res)
+  return res
 }
 
 export async function getSummary(patientId: UUID): Promise<SummaryResponse> {

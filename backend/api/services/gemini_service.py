@@ -1,8 +1,12 @@
+from typing import Optional
+
 from google import genai
-from google.genai.types import GenerateContentConfig, AutomaticFunctionCallingConfig
+from google.genai.types import GenerateContentConfig, AutomaticFunctionCallingConfig, ThinkingConfig
 from fastapi import HTTPException, status
 from api.core.config import settings
+from api.schemas.pain_check import PainCheckReply, PainCheckRequest
 from api.schemas.summary import SessionSummaryRequest, SessionSummaryResponse
+from api.prompts import pain_check as pain_check_prompt
 from api.prompts.summary import SYSTEM_INSTRUCTION, build_summary_prompt
 
 
@@ -46,3 +50,23 @@ class GeminiService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Gemini generation failed: {str(e)}",
             )
+
+    async def generate_pain_reply(self, data: PainCheckRequest, rule_reason: Optional[str]) -> PainCheckReply:
+        """The coach's spoken reply to a pain check-in. Raises on any failure; the caller falls back."""
+        response = await self.client.aio.models.generate_content(
+            model=self.model,
+            contents=pain_check_prompt.build_pain_check_prompt(data.pain_score, data.notes, data.language, rule_reason),
+            config=GenerateContentConfig(
+                system_instruction=pain_check_prompt.SYSTEM_INSTRUCTION,
+                response_mime_type="application/json",
+                response_schema=PainCheckReply,
+                temperature=0.4,
+                max_output_tokens=1024,  # counts any thinking tokens too; the reply itself is ~60
+                # The patient is waiting to hear this, so keep thinking to a minimum.
+                thinking_config=ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL.upper()),
+                automatic_function_calling=AutomaticFunctionCallingConfig(disable=True),
+            ),
+        )
+        if not response.text:
+            raise ValueError("Empty response received from Gemini API.")
+        return PainCheckReply.model_validate_json(response.text)

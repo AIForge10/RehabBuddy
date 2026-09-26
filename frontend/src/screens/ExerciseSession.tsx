@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { DEMO_PATIENT_ID, getAssignment } from '../api/client'
+import { unlockAudio } from '../lib/coach'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useCamera } from '../lib/useCamera'
 import type { Assignment } from '../types/session'
@@ -37,7 +38,10 @@ export default function ExerciseSession() {
   const exercise = exerciseFor(part ?? assignment.exercise.joint)
   const session = assignmentFor(assignment, exercise)
   if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={() => setStep('setup')} />
-  if (step === 'setup')
-    return <Setup exercise={exercise} camera={status} attach={attach} onStart={() => setStep('live')} onBack={() => setStep('brief')} />
+  const start = () => {
+    unlockAudio() // the coach's first cue plays after the countdown, outside this tap
+    setStep('live')
+  }
+  if (step === 'setup') return <Setup exercise={exercise} camera={status} attach={attach} onStart={start} onBack={() => setStep('brief')} />
   return <Live assignment={session} exercise={exercise} camera={status} attach={attach} />
 }

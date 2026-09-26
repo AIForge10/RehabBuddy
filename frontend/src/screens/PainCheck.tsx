@@ -3,7 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { painCheck } from '../api/client'
 import { LogoMark } from '../components/Logo'
 import { ArrowRight, Button, PageHeader, PatientScreen } from '../components/Screen'
-import { sayText } from '../lib/coach'
+import { sayText, unlockAudio } from '../lib/coach'
 import { exerciseFor } from '../lib/exercises'
 import { useLanguage } from '../lib/language'
 import type { Assignment, PainCheckResponse, SessionResult } from '../types/session'
@@ -43,12 +43,13 @@ export default function PainCheck() {
 
   async function submit() {
     if (score == null || !flow) return
+    unlockAudio() // the reply plays after the request, outside this tap
     setSending(true)
     const text = [...chips.map((i) => s.painChips[i]), notes.trim()].filter(Boolean).join('. ')
     const res = await painCheck({ session_id: flow.sessionId, pain_score: score, notes: text, language: lang })
     setResponse(res)
     setSending(false)
-    sayText(res.reply, lang)
+    sayText(res.reply, lang, res.audio_url)
   }
 
   const next = () => navigate('/done', { state: { ...flow, pain: { score: score!, response: response! } } })

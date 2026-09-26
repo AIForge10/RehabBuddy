@@ -158,6 +158,7 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
         ? 'Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy.'
         : "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.",
       flag_reason: body.notes ? `“${body.notes}”` : word ? `Mentioned “${word}”` : 'Pain score at or above 7',
+      audio_url: null,
     }
   }
   return {
@@ -166,6 +167,7 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
       ? '¡Buen trabajo! Un poco de molestia es normal. Nos vemos en la próxima sesión.'
       : 'Great work! A little soreness is normal. See you next session.',
     flag_reason: null,
+    audio_url: null,
   }
 }
 
@@ -244,24 +246,28 @@ export const mockBackend = {
   },
 
   async painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
-    const db = load()
     const res = fallbackPainCheck(body)
-    const s = db.sessions.find((x) => x.id === body.session_id)
-    if (s) {
-      s.pain_score = body.pain_score
-      s.flagged = res.flagged
-      if (res.flagged) {
-        db.red_flags.push({
-          session_id: s.id,
-          patient_id: s.patient_id,
-          created_at: new Date().toISOString(),
-          pain_score: body.pain_score,
-          reason: res.flag_reason ?? '',
-        })
-      }
-      save(db)
-    }
+    mockBackend.recordPainCheck(body, res)
     return delay(res, 600)
+  },
+
+  /** Stores a check-in on its session (and raises the red flag) whoever wrote the reply. */
+  recordPainCheck(body: PainCheckRequest, res: PainCheckResponse) {
+    const db = load()
+    const s = db.sessions.find((x) => x.id === body.session_id)
+    if (!s) return
+    s.pain_score = body.pain_score
+    s.flagged = res.flagged
+    if (res.flagged) {
+      db.red_flags.push({
+        session_id: s.id,
+        patient_id: s.patient_id,
+        created_at: new Date().toISOString(),
+        pain_score: body.pain_score,
+        reason: res.flag_reason ?? '',
+      })
+    }
+    save(db)
   },
 
   async getSummary(patientId: UUID): Promise<SummaryResponse> {

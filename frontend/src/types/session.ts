@@ -102,6 +102,11 @@ export interface PainCheckResponse {
   reply: string
   /** Why it was flagged (for the therapist), null if not flagged. */
   flag_reason: string | null
+  /**
+   * Where `reply` streams as speech (GET, audio/mpeg). The backend sends a path
+   * from the API origin; client.ts makes it absolute. null → browser speech.
+   */
+  audio_url: string | null
 }
 
 // POST /summary
