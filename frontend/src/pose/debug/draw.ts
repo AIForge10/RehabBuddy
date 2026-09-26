@@ -13,6 +13,8 @@ export const COLORS = {
   // Measured limb, same as the live session: teal until the rep counter sees a bend.
   straight: '#5eb5a6',
   bent: '#f59e0b',
+  // The form check's two points once it has flagged a fault.
+  fault: '#ef4444',
   // Chart series.
   final: '#4baea7',
   raw: 'rgba(255,255,255,0.5)',
@@ -137,6 +139,18 @@ export function drawOverlay(canvas: HTMLCanvasElement | null, f: PoseFrame, o: O
       ctx.fill()
     }
     if (f.angle != null) label(ctx, `${Math.round(f.angle)}°`, J.x + dir * 18 * k, J.y - 22 * k, 30 * k, o.mirror, '#fff', true)
+  }
+
+  // What the form check measures: thin and dashed while it's judging, solid red once it flags a fault.
+  const form = f.form
+  if (form?.points && (form.active || form.value != null)) {
+    const [p, q] = form.points.map(px)
+    ctx.globalAlpha = 1
+    ctx.strokeStyle = form.active ? COLORS.fault : 'rgba(255,255,255,0.85)'
+    ctx.lineWidth = (form.active ? 5 : 2.5) * k
+    ctx.setLineDash(form.active ? [] : [6 * k, 5 * k])
+    segment(ctx, p, q)
+    ctx.setLineDash([])
   }
   ctx.globalAlpha = 1
 }

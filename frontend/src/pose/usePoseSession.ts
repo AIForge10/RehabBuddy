@@ -4,24 +4,25 @@
 //   const pose = usePoseSession({ joint: 'knee', targetAngle: 90, targetReps: 10,
 //                                 onRep: (r) => playCue(r), onComplete: (res) => save(res) })
 //   <PoseCamera pose={pose} />
-//   pose.angle, pose.reps, pose.finish()
+//   pose.angle, pose.reps, pose.fault, pose.finish()
 import { useCallback, useRef, useState } from 'react'
 import { usePose, type PoseFrame, type PreferredSide } from './usePose'
-import { RepCounter } from './repCounter'
-import { JOINTS, type JointName } from './joints'
+import { RepCounter, type RepWarning } from './repCounter'
+import { JOINTS, type FormFault, type JointName } from './joints'
 import type { PoseTuning } from './tracker'
 
 export interface RepInfo {
   count: number
   peak: number
-  warnings: string[] // 'not_deep_enough' | 'too_fast'
+  warnings: RepWarning[]
 }
 
 export interface PoseSessionResult {
   joint: JointName
   reps_done: number
   max_angle: number
-  form_warnings: string[]
+  /** Every rep warning and form fault, one entry per occurrence, in order. */
+  form_warnings: (RepWarning | FormFault)[]
   duration_sec: number
   angle_samples: { time: string; angle: number }[]
 }
@@ -54,6 +55,8 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
 
   const counter = useRef(makeCounter())
   const samples = useRef<{ time: string; angle: number }[]>([])
+  const warnings = useRef<(RepWarning | FormFault)[]>([])
+  const lastFault = useRef<FormFault | null>(null)
   const startedAt = useRef(Date.now())
   const done = useRef(false)
   const optsRef = useRef(opts)
@@ -66,6 +69,7 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
   const [visible, setVisible] = useState(false)
   const [confidence, setConfidence] = useState(0)
   const [activeSide, setActiveSide] = useState<PoseFrame['side']>(null)
+  const [fault, setFault] = useState<FormFault | null>(null)
 
   const buildResult = useCallback((): PoseSessionResult => {
     const c = counter.current
@@ -73,7 +77,7 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
       joint,
       reps_done: c.count,
       max_angle: Math.round(c.maxAngle * 10) / 10,
-      form_warnings: [...new Set(c.warnings)],
+      form_warnings: [...warnings.current],
       duration_sec: Math.round((Date.now() - startedAt.current) / 1000),
       angle_samples: samples.current,
     }
@@ -85,12 +89,21 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     setAngle(f.angle == null ? null : Math.round(f.angle))
     setConfidence(f.confidence)
     setActiveSide(f.side)
+    // A fault counts once each time it appears, however long it lasts: the
+    // tracker's hysteresis decides when it has really cleared.
+    const seen = f.form?.active ? f.form.fault : null
+    if (seen !== lastFault.current) {
+      lastFault.current = seen
+      setFault(seen)
+      if (seen && !done.current) warnings.current.push(seen)
+    }
     if (f.angle == null || done.current) return
 
     samples.current.push({ time: new Date().toISOString(), angle: Math.round(f.angle * 10) / 10 })
     const ev = counter.current.update(f.angle, f.timeMs)
     if (ev.type === 'rep') {
       const info = { count: ev.count, peak: Math.round(ev.peak), warnings: ev.warnings }
+      warnings.current.push(...ev.warnings)
       setReps(ev.count)
       setLastRep(info)
       optsRef.current.onRep?.(info)
@@ -119,10 +132,13 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
   const reset = useCallback(() => {
     counter.current = makeCounter()
     samples.current = []
+    warnings.current = []
+    lastFault.current = null
     startedAt.current = Date.now()
     done.current = false
     setReps(0)
     setLastRep(null)
+    setFault(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [joint, targetAngle])
 
@@ -134,6 +150,8 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     angle,
     reps,
     lastRep,
+    /** The form fault the camera sees right now, or null. */
+    fault,
     visible,
     confidence,
     activeSide,
