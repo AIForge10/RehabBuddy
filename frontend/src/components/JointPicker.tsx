@@ -1,16 +1,19 @@
-import { useRef } from 'react'
 import { BODY_PARTS, EXERCISES, type BodyPart } from '../lib/exercises'
+import { useHighlight } from '../lib/useHighlight'
 import { useLanguage } from '../lib/language'
 
 // Which joint the session works: a radio group styled like the language
-// toggle. Arrow keys move the choice, as in any radio group. On phones the
-// five options share the width equally, so none is ever out of view.
+// toggle, its pill sliding to the choice. Arrow keys move the choice, as in
+// any radio group. On phones the five options share the width equally, so
+// none is ever out of view.
 
 const LABEL = { en: 'Body part', es: 'Parte del cuerpo' }
 
-export function JointPicker({ value, onChange }: { value: BodyPart; onChange: (part: BodyPart) => void }) {
-  const { lang } = useLanguage()
-  const refs = useRef<(HTMLButtonElement | null)[]>([])
+/** `english` for the English-only therapist view. */
+export function JointPicker({ value, onChange, english = false }: { value: BodyPart; onChange: (part: BodyPart) => void; english?: boolean }) {
+  const current = useLanguage().lang
+  const lang = english ? 'en' : current
+  const { highlight, items: refs } = useHighlight<HTMLButtonElement>(BODY_PARTS.indexOf(value))
 
   const move = (from: number, step: number) => {
     const i = (from + step + BODY_PARTS.length) % BODY_PARTS.length
@@ -22,8 +25,13 @@ export function JointPicker({ value, onChange }: { value: BodyPart; onChange: (p
     <div
       role="radiogroup"
       aria-label={LABEL[lang]}
-      className="grid grid-cols-5 gap-1 rounded-full bg-surface p-1 shadow-card ring-1 ring-line sm:inline-flex"
+      className="relative grid grid-cols-5 gap-1 rounded-full bg-surface p-1 shadow-card ring-1 ring-line sm:inline-flex"
     >
+      <span
+        ref={highlight}
+        aria-hidden="true"
+        className="absolute left-0 top-0 rounded-full bg-brand transition-[transform,width,height] duration-300 ease-out motion-reduce:transition-none"
+      />
       {BODY_PARTS.map((part, i) => {
         const on = part === value
         return (
@@ -42,8 +50,8 @@ export function JointPicker({ value, onChange }: { value: BodyPart; onChange: (p
               else return
               e.preventDefault()
             }}
-            className={`h-10 min-w-0 whitespace-nowrap rounded-full px-1 text-[13px] font-bold transition-colors duration-200 sm:px-4 sm:text-[15px] ${
-              on ? 'bg-brand text-on-brand' : 'text-ink-2 hover:bg-raised hover:text-ink'
+            className={`relative h-10 min-w-0 whitespace-nowrap rounded-full px-1 text-[13px] font-bold transition-colors duration-300 sm:px-4 sm:text-[15px] ${
+              on ? 'text-on-brand' : 'text-ink-2 hover:bg-raised hover:text-ink'
             }`}
           >
             {EXERCISES[part].copy[lang].part}

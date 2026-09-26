@@ -15,7 +15,7 @@ import type { AngleSample, Assignment, LivePoseState, SessionResult } from '../.
 
 import { usePoseSession, type JointName } from '../../pose'
 
-const SAMPLE_MS = 100 // ~10 Hz into angle_samples
+const SAMPLE_MS = 100 // ~10 Hz for the on-screen trace
 const COUNTDOWN = 3
 
 // Real MediaPipe Pose Landmarker is wired and active.
@@ -64,6 +64,7 @@ export function Live({
     externalVideo: camera === 'on' ? videoEl : null,
   })
 
+  const finishPose = trackedSession.finish
   const simulated = !POSE_READY || camera !== 'on' || !trackedSession.ready
   const simulatedPose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
 
@@ -128,12 +129,19 @@ export function Live({
     const r = rec.current
     setPhase('saving')
     setSaveError(false)
+    // Every tracked frame since "go" goes to the angle_samples hypertable (the
+    // tracker also ran through the countdown). Without a camera it saw nothing,
+    // so the simulated trace stands in.
+    const since = r.startedAt.toISOString()
+    const tracked = finishPose().angle_samples.filter((p) => p.time >= since)
     const result: SessionResult = {
       reps_done: poseRef.current.reps,
       max_angle: Math.round(r.max),
       form_warnings: r.warnings,
       duration_sec: Math.round((performance.now() - r.t0) / 1000),
-      samples: r.samples,
+      angle_samples: tracked.length
+        ? tracked
+        : r.samples.map((p) => ({ time: new Date(r.startedAt.getTime() + p.t_ms).toISOString(), angle: p.angle })),
     }
     try {
       const { session_id } = await createSession({
@@ -148,7 +156,7 @@ export function Live({
       setSaveError(true)
       setPhase('running')
     }
-  }, [assignment, exercise, navigate])
+  }, [assignment, exercise, navigate, finishPose])
 
   // Coach reacts to each completed rep...
   const lastReps = useRef(0)
@@ -198,12 +206,7 @@ export function Live({
         className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${camera === 'on' ? '' : 'hidden'}`}
       />
       {camera === 'on' && trackedSession.ready && (
-        <canvas
-          ref={trackedSession.canvasRef}
-          width={640}
-          height={480}
-          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
-        />
+        <canvas ref={trackedSession.canvasRef} className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover" />
       )}
       {camera !== 'on' && (
         <div className="absolute inset-0 flex items-center justify-center pb-40 pt-20 lg:pb-8 lg:pr-[360px]">

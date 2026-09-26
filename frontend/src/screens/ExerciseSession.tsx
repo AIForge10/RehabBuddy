@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { DEMO_PATIENT_ID, getAssignment } from '../api/client'
+import { getAssignment } from '../api/client'
+import { useAuth } from '../lib/auth'
 import { unlockAudio } from '../lib/coach'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useCamera } from '../lib/useCamera'
+import { preloadPose } from '../pose'
 import type { Assignment } from '../types/session'
 import { Brief } from './session/Brief'
 import { Live } from './session/Live'
@@ -19,6 +21,7 @@ type Step = 'brief' | 'setup' | 'live'
 export default function ExerciseSession() {
   const navigate = useNavigate()
   const location = useLocation()
+  const patientId = useAuth().account!.id
   const [assignment, setAssignment] = useState<Assignment | null>(
     (location.state as { assignment?: Assignment } | null)?.assignment ?? null,
   )
@@ -26,9 +29,12 @@ export default function ExerciseSession() {
   const [step, setStep] = useState<Step>('brief')
   const { attach, status } = useCamera(step !== 'brief')
 
+  // The pose model takes a few seconds to download; fetch it while they read the brief.
+  useEffect(preloadPose, [])
+
   useEffect(() => {
-    if (!assignment) getAssignment(DEMO_PATIENT_ID).then(setAssignment).catch(() => navigate('/'))
-  }, [assignment, navigate])
+    if (!assignment) getAssignment(patientId).then(setAssignment).catch(() => navigate('/'))
+  }, [assignment, patientId, navigate])
 
   useEffect(() => {
     window.scrollTo(0, 0)

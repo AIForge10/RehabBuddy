@@ -1,4 +1,4 @@
-"""Pain check-in and its streamed voice, with Gemini and ElevenLabs faked.
+"""Pain check-in and its streamed voice, with Gemini, ElevenLabs, login and the database faked.
 
 Run from backend/:  python -m pytest tests
 """
@@ -7,8 +7,10 @@ import asyncio
 import pytest
 from fastapi.testclient import TestClient
 
+from api.auth import CurrentUser, require_patient
 from api.core.config import settings
 from api.main import app
+from api.routers.v1 import pain_check as pain_check_router
 from api.schemas.pain_check import PainCheckReply
 from api.services import pain_check_service
 from api.services.tts_service import Clip, tts_service
@@ -41,15 +43,28 @@ class FakeElevenLabs:
 
 
 @pytest.fixture
-def client(monkeypatch):
+def saved(monkeypatch):
+    """Check-ins the route stores, as (session_id, pain_score, flagged)."""
+    rows = []
+    monkeypatch.setattr(pain_check_router, "save_check_in",
+                        lambda data, res: rows.append((data.session_id, data.pain_score, res.flagged)))
+    return rows
+
+
+@pytest.fixture
+def client(monkeypatch, saved):
     monkeypatch.setattr(settings, "ELEVENLABS_API_KEY", "test-key")
     monkeypatch.setattr(settings, "ELEVENLABS_VOICE_ID_EN", "voice-en")
     monkeypatch.setattr(settings, "ELEVENLABS_VOICE_ID_ES", "voice-es")
     tts_service._clips.clear()
+    # Logged in as a patient who owns every session (tests/test_data_routes.py covers the real rules).
+    app.dependency_overrides[require_patient] = lambda: CurrentUser("p-maria", "patient", "Maria Lopez", "es")
+    monkeypatch.setattr(pain_check_router, "require_session_owner", lambda session_id, user: None)
     # One event loop for the whole test, like uvicorn, so synthesis started by
     # one request is still running when the next request reads it.
     with TestClient(app) as c:
         yield c
+    app.dependency_overrides.clear()
 
 
 def use_gemini(monkeypatch, reply=None, error=None):
@@ -88,13 +103,14 @@ def test_reply_is_voiced_and_streamed(client, monkeypatch):
     assert eleven.calls == 1
 
 
-def test_safety_rule_flags_even_when_the_ai_does_not(client, monkeypatch):
+def test_safety_rule_flags_even_when_the_ai_does_not(client, saved, monkeypatch):
     use_gemini(monkeypatch, PainCheckReply(reply="Good job.", flagged=False))
     use_elevenlabs(monkeypatch)
 
     res = client.post(PAIN_CHECK, json={"session_id": "s1", "pain_score": 4, "notes": "Sharp pain on the inside", "language": "en"}).json()
     assert res["flagged"] is True
     assert res["flag_reason"] == "Mentioned “sharp”"
+    assert saved == [("s1", 4, True)]  # so the therapist sees the red flag
 
 
 def test_gemini_down_falls_back_to_template(client, monkeypatch):

@@ -1,7 +1,8 @@
 // drop-in camera view for the app screens.
 //   const pose = usePoseSession({ joint: 'knee', targetAngle: 90 })
 //   <PoseCamera pose={pose} className="rounded-3xl" />
-// Style the wrapper however you like (className). Video + skeleton overlay are mirrored.
+// Style the wrapper however you like (className). Video + skeleton overlay are mirrored,
+// and both use object-cover so the overlay lines up at any wrapper size.
 import type { PoseSession } from './usePoseSession'
 
 interface Props {
@@ -14,8 +15,8 @@ export default function PoseCamera({ pose, className = '', showAngle = true }: P
   return (
     <div className={`relative w-full overflow-hidden bg-black ${className}`} style={{ aspectRatio: '4 / 3' }}>
       <div className="absolute inset-0" style={{ transform: 'scaleX(-1)' }}>
-        <video ref={pose.videoRef} playsInline muted className="absolute inset-0 h-full w-full" style={{ objectFit: 'fill' }} />
-        <canvas ref={pose.canvasRef} width={640} height={480} className="absolute inset-0 h-full w-full" />
+        <video ref={pose.videoRef} playsInline muted className="absolute inset-0 h-full w-full object-cover" />
+        <canvas ref={pose.canvasRef} className="absolute inset-0 h-full w-full object-cover" />
       </div>
 
       {!pose.ready && !pose.error && (

@@ -4,34 +4,35 @@
 //   VITE_USE_MOCKS=true  → no network; uses the in-browser mock backend (src/api/mock.ts).
 //                          State lives in localStorage, so a patient tab and a
 //                          therapist tab on the same machine see the same data.
-//     + VITE_LIVE_AI=true → same, except the pain check goes to the real backend
-//                          (Gemini reply + ElevenLabs voice). Data stays mocked.
-//   otherwise            → real FastAPI backend at VITE_API_URL.
+//   otherwise            → real FastAPI backend at VITE_API_URL, signed in with a
+//                          bearer token from POST /auth/login (docs/AUTH.md).
 //
 // Plan rule: "every AI call needs a fallback response so a quota error never
 // breaks the demo". painCheck / getSummary / translate therefore never throw;
 // they fall back to a local template if the backend call fails.
 
 import type {
+  AngleSampleRow,
   Assignment,
   CreateSessionRequest,
   CreateSessionResponse,
   DashboardResponse,
   Language,
+  LoginRequest,
+  LoginResponse,
   PainCheckRequest,
   PainCheckResponse,
   PatientOverview,
   SummaryResponse,
   TranslateResponse,
+  UpdateAssignmentRequest,
   UUID,
 } from '../types/session'
 import { mockBackend, fallbackPainCheck, fallbackSummary } from './mock'
 
-const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000').replace(/\/$/, '')
-/** Every backend route is mounted under this (backend/api/core/config.py API_V1_STR). */
-const API_PREFIX = '/api/v1'
+/** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
+const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
 export const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true'
-const LIVE_AI = import.meta.env.VITE_LIVE_AI === 'true'
 
 export const DEMO_PATIENT_ID: UUID = import.meta.env.VITE_DEMO_PATIENT_ID ?? 'p-maria'
 export const DEMO_THERAPIST_ID: UUID = import.meta.env.VITE_DEMO_THERAPIST_ID ?? 't-lee'
@@ -46,15 +47,55 @@ export class ApiError extends Error {
   }
 }
 
+// --- Auth token --------------------------------------------------------------
+// Kept in memory and in sessionStorage, so it survives a reload but not the tab.
+
+const TOKEN_KEY = 'rehabbuddy.token.v1'
+
+let token: string | null = (() => {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+})()
+
+let unauthorized = () => {}
+
+export const hasAuthToken = () => token != null
+
+export function setAuthToken(next: string | null) {
+  token = next
+  try {
+    if (next) sessionStorage.setItem(TOKEN_KEY, next)
+    else sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* private mode: the token lives in memory only */
+  }
+}
+
+/** Runs when the backend rejects the token (expired or revoked); the token is already cleared. */
+export function onUnauthorized(fn: () => void) {
+  unauthorized = fn
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const res = await fetch(`${API_URL}${API_PREFIX}${path}`, {
+    const res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...init?.headers,
+      },
       signal: controller.signal,
     })
+    if (res.status === 401 && token) {
+      setAuthToken(null)
+      unauthorized()
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new ApiError(res.status, body || res.statusText)
@@ -67,6 +108,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const post = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+/** Throws ApiError 401 on a wrong email or password. */
+export function login(body: LoginRequest): Promise<LoginResponse> {
+  return post<LoginResponse>('/auth/login', body)
+}
 
 // --- Data endpoints (throw on failure; screens show an error state) ---------
 
@@ -91,20 +137,30 @@ export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
   return request<DashboardResponse>(`/therapist/${therapistId}/dashboard`)
 }
 
+/** A session's angle trace, oldest first, for the therapist's replay. */
+export function getSessionSamples(sessionId: UUID): Promise<AngleSampleRow[]> {
+  if (USE_MOCKS) return mockBackend.getSessionSamples(sessionId)
+  return request<AngleSampleRow[]>(`/sessions/${sessionId}/samples`)
+}
+
+/** Therapist changes a patient's plan; resolves to the saved assignment. */
+export function updateAssignment(assignmentId: UUID, body: UpdateAssignmentRequest): Promise<Assignment> {
+  if (USE_MOCKS) return mockBackend.updateAssignment(assignmentId, body)
+  return request<Assignment>(`/assignments/${assignmentId}`, { method: 'PATCH', body: JSON.stringify(body) })
+}
+
 // --- AI endpoints (never throw; template fallback) --------------------------
 
 export async function painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
-  if (USE_MOCKS && !LIVE_AI) return mockBackend.painCheck(body)
-  let res: PainCheckResponse
+  if (USE_MOCKS) return mockBackend.painCheck(body)
   try {
-    res = await post<PainCheckResponse>('/pain-check', body)
-    if (res.audio_url) res = { ...res, audio_url: `${API_URL}${res.audio_url}` }
+    const res = await post<PainCheckResponse>('/pain-check', body)
+    // audio_url is a path from the API's origin (/api/v1/tts/…), not from API_URL.
+    return res.audio_url ? { ...res, audio_url: new URL(res.audio_url, API_URL).href } : res
   } catch (err) {
     console.warn('[api] /pain-check failed, using fallback', err)
-    res = fallbackPainCheck(body)
+    return fallbackPainCheck(body)
   }
-  if (USE_MOCKS) mockBackend.recordPainCheck(body, res)
-  return res
 }
 
 export async function getSummary(patientId: UUID): Promise<SummaryResponse> {

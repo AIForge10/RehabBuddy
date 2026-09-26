@@ -7,8 +7,10 @@ reply with its own speech.
 """
 import asyncio
 import logging
+import uuid
 from typing import Optional
 
+from api.auth.db import connect
 from api.core.config import settings
 from api.routers.deps import get_gemini_service
 from api.schemas.pain_check import PainCheckRequest, PainCheckResponse
@@ -62,3 +64,11 @@ async def check_in(data: PainCheckRequest) -> PainCheckResponse:
         flag_reason=reason,
         audio_url=f"{settings.API_V1_STR}/tts/{clip_id}" if clip_id else None,
     )
+
+
+def save_check_in(data: PainCheckRequest, res: PainCheckResponse) -> None:
+    """Stores the check-in, so the therapist's dashboard shows its pain score and any red flag."""
+    with connect() as conn:
+        conn.execute("""INSERT INTO pain_checkins (id, session_id, pain_score, notes, flagged)
+                        VALUES (%s, %s, %s, %s, %s)""",
+                     (f"pc-{uuid.uuid4()}", data.session_id, data.pain_score, data.notes.strip(), res.flagged))

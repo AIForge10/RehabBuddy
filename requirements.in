@@ -24,3 +24,4 @@ matplotlib
 # Dev tools
 jupyter
 pytest
+pyjwt

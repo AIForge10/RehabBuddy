@@ -1,228 +1,126 @@
 // webcam + MediaPipe Pose Landmarker hook, works for any joint in joints.ts.
+// This hook owns the frame loop (and the camera, unless you pass externalVideo);
+// the landmarks → angle pipeline lives in tracker.ts.
 import { useEffect, useRef, useState } from 'react'
-import { FilesetResolver, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision'
-import { jointAngle, Smoother } from './angle'
-import { JOINTS, type JointConfig, type JointName } from './joints'
+import { detect, loadLandmarker, setThresholds, type LoadedLandmarker } from './landmarker'
+import { DEFAULT_TUNING, JointTracker, type PoseTuning, type PreferredSide, type TrackFrame } from './tracker'
+import type { JointName } from './joints'
 
-const WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.0.1/wasm'
-const MODEL_URL =
-  'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task'
-const MIN_VISIBILITY = 0.5
+export type { PreferredSide }
 
-export type PreferredSide = 'auto' | 'left' | 'right'
-
-export interface PoseFrame {
-  angle: number | null                 // smoothed angle, null if the joint isn't visible
-  side: 'left' | 'right' | null
-  points: NormalizedLandmark[] | null  // [a, joint, b] for drawing
-  timeMs: number
-  confidence: number
+export interface PoseFrame extends TrackFrame {
+  /** How long MediaPipe took on this frame. */
+  inferenceMs: number
+  videoWidth: number
+  videoHeight: number
 }
 
 export interface UsePoseOptions {
   joint: JointName
   preferredSide?: PreferredSide
   externalVideo?: HTMLVideoElement | null
+  tuning?: Partial<PoseTuning>
   onFrame?: (f: PoseFrame) => void
 }
 
-function pickSide(
-  lm: NormalizedLandmark[],
-  cfg: JointConfig,
-  currentSide: 0 | 1 | null,
-  preferred: PreferredSide,
-): 0 | 1 | null {
-  if (preferred === 'left') {
-    const vis = Math.min(lm[cfg.joint[0]]?.visibility ?? 1, lm[cfg.b[0]]?.visibility ?? 1)
-    return vis >= 0.35 ? 0 : null
-  }
-  if (preferred === 'right') {
-    const vis = Math.min(lm[cfg.joint[1]]?.visibility ?? 1, lm[cfg.b[1]]?.visibility ?? 1)
-    return vis >= 0.35 ? 1 : null
-  }
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e))
 
-  // Auto mode: evaluate limb visibility (joint and distal point)
-  const vis = (i: 0 | 1) =>
-    Math.min(lm[cfg.joint[i]]?.visibility ?? 1, lm[cfg.b[i]]?.visibility ?? 1)
-  const l = vis(0),
-    r = vis(1)
-
-  if (Math.max(l, r) < MIN_VISIBILITY) return null
-
-  // Sticky hysteresis: if already tracking a side and it's still clearly in frame,
-  // do NOT swap back and forth between frames due to tiny visibility noise.
-  if (currentSide === 0 && l >= 0.4) return 0
-  if (currentSide === 1 && r >= 0.4) return 1
-
-  return l >= r ? 0 : 1
-}
-
-function getJointPoints(
-  lm: NormalizedLandmark[],
-  cfg: JointConfig,
-  side: 0 | 1,
-  jointName: JointName,
-): [NormalizedLandmark, NormalizedLandmark, NormalizedLandmark] {
-  const j = lm[cfg.joint[side]]
-  const b = lm[cfg.b[side]]
-  const hip = lm[cfg.a[side]]
-
-  if (jointName === 'shoulder') {
-    // When sitting at a desk or when camera cuts off the waist, hips are occluded or jitter.
-    // In that case, anchor the torso line straight down from the shoulder.
-    const hipVis = hip?.visibility ?? 1
-    const hipY = hip?.y ?? 1.5
-    if (hipY > 0.92 || hipVis < 0.4) {
-      const torsoDown: NormalizedLandmark = {
-        x: j.x,
-        y: j.y + 0.4,
-        z: j.z,
-        visibility: 1.0,
-      }
-      return [torsoDown, j, b]
-    }
-  }
-
-  return [hip, j, b]
-}
-
-export function usePose(
-  jointOrOptions: JointName | UsePoseOptions,
-  legacyOnFrame?: (f: PoseFrame) => void,
-) {
-  const opts: UsePoseOptions =
-    typeof jointOrOptions === 'string'
-      ? { joint: jointOrOptions, onFrame: legacyOnFrame }
-      : jointOrOptions
-
+export function usePose(opts: UsePoseOptions) {
   const { joint, preferredSide = 'auto', externalVideo, onFrame } = opts
+  const tuning: PoseTuning = { ...DEFAULT_TUNING, ...opts.tuning }
+  const { model, delegate, minDetection, minPresence, minTracking } = tuning
+  const tuningKey = JSON.stringify(tuning)
+
   const internalVideoRef = useRef<HTMLVideoElement>(null)
-  const [ready, setReady] = useState(false)
+  const [loaded, setLoaded] = useState<{ key: string; value: LoadedLandmarker } | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [tracker] = useState(() => new JointTracker(joint, preferredSide, tuning))
 
   const onFrameRef = useRef(onFrame)
-  onFrameRef.current = onFrame
-  const jointRef = useRef(joint)
-  jointRef.current = joint
-  const sidePrefRef = useRef(preferredSide)
-  sidePrefRef.current = preferredSide
-  const activeSideRef = useRef<0 | 1 | null>(null)
-  const smootherRef = useRef(new Smoother(5))
-
-  // Switching joint: reset smoothing & active side
   useEffect(() => {
-    jointRef.current = joint
-    smootherRef.current.reset()
-    activeSideRef.current = null
-  }, [joint])
+    onFrameRef.current = onFrame
+  })
+  useEffect(() => tracker.configure(joint, preferredSide), [tracker, joint, preferredSide])
+  useEffect(() => tracker.setTuning(JSON.parse(tuningKey)), [tracker, tuningKey])
 
-  // Switching preferred side: reset smoothing
-  useEffect(() => {
-    sidePrefRef.current = preferredSide
-    smootherRef.current.reset()
-    activeSideRef.current = null
-  }, [preferredSide])
+  // Only a landmarker for the model/delegate asked for right now; while a new one
+  // loads, the old one is being closed and must not be fed frames.
+  const modelKey = `${model}/${delegate}`
+  const active = loaded?.key === modelKey ? loaded.value : null
 
   useEffect(() => {
-    let landmarker: PoseLandmarker | null = null
-    let internalStream: MediaStream | null = null
-    let raf = 0
-    let stopped = false
-
-    async function start() {
-      try {
-        const vision = await FilesetResolver.forVisionTasks(WASM_URL)
-        const commonConfig = {
-          runningMode: 'VIDEO' as const,
-          numPoses: 1,
-          minPoseDetectionConfidence: 0.5,
-          minPosePresenceConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        }
-
-        try {
-          landmarker = await PoseLandmarker.createFromOptions(vision, {
-            baseOptions: { modelAssetPath: MODEL_URL, delegate: 'GPU' },
-            ...commonConfig,
-          })
-        } catch {
-          landmarker = await PoseLandmarker.createFromOptions(vision, {
-            baseOptions: { modelAssetPath: MODEL_URL, delegate: 'CPU' },
-            ...commonConfig,
-          })
-        }
-
-        const video = externalVideo ?? internalVideoRef.current
-        if (!video) return
-
-        if (!externalVideo) {
-          internalStream = await navigator.mediaDevices.getUserMedia({
-            video: { width: 640, height: 480 },
-          })
-          if (stopped) return
-          video.srcObject = internalStream
-          await video.play()
-        }
-
-        setReady(true)
-
-        let lastVideoTime = -1
-        const loop = () => {
-          if (stopped || !landmarker) return
-
-          const currentVid = externalVideo ?? internalVideoRef.current
-          if (currentVid && currentVid.readyState >= 2 && currentVid.currentTime !== lastVideoTime) {
-            lastVideoTime = currentVid.currentTime
-            const now = performance.now()
-            const res = landmarker.detectForVideo(currentVid, now)
-            const lm = res.landmarks[0] ?? null
-            const cfg = JOINTS[jointRef.current]
-
-            let angle: number | null = null
-            let side: PoseFrame['side'] = null
-            let points: NormalizedLandmark[] | null = null
-            let confidence = 0
-
-            if (lm) {
-              const s = pickSide(lm, cfg, activeSideRef.current, sidePrefRef.current)
-              if (s !== null) {
-                if (activeSideRef.current !== s) {
-                  activeSideRef.current = s
-                  smootherRef.current.reset()
-                }
-                const [a, j, b] = getJointPoints(lm, cfg, s, jointRef.current)
-                side = s === 0 ? 'left' : 'right'
-                points = [a, j, b]
-                confidence = Math.min(
-                  j?.visibility ?? 1,
-                  b?.visibility ?? 1,
-                  a?.visibility ?? 1,
-                )
-                angle = smootherRef.current.push(jointAngle(cfg, a, j, b))
-              } else {
-                activeSideRef.current = null
-              }
-            }
-
-            onFrameRef.current?.({ angle, side, points, timeMs: now, confidence })
-          }
-          raf = requestAnimationFrame(loop)
-        }
-        loop()
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e))
-      }
+    let cancelled = false
+    loadLandmarker(model, delegate).then(
+      (value) => !cancelled && setLoaded({ key: `${model}/${delegate}`, value }),
+      (e) => !cancelled && setError(message(e)),
+    )
+    return () => {
+      cancelled = true
     }
+  }, [model, delegate])
 
-    start()
+  useEffect(() => {
+    if (active) setThresholds(active, { minDetection, minPresence, minTracking })
+  }, [active, minDetection, minPresence, minTracking])
 
+  // Own camera, only when the caller doesn't bring a video.
+  useEffect(() => {
+    if (externalVideo) return
+    const video = internalVideoRef.current
+    if (!video) return
+    let stream: MediaStream | null = null
+    let stopped = false
+    navigator.mediaDevices
+      .getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
+      .then((s) => {
+        if (stopped) return s.getTracks().forEach((tr) => tr.stop())
+        stream = s
+        video.srcObject = s
+        return video.play()
+      })
+      .catch((e) => !stopped && setError(message(e)))
     return () => {
       stopped = true
-      cancelAnimationFrame(raf)
-      internalStream?.getTracks().forEach((t) => t.stop())
-      landmarker?.close()
+      stream?.getTracks().forEach((tr) => tr.stop())
     }
   }, [externalVideo])
 
-  return { videoRef: internalVideoRef, ready, error }
+  useEffect(() => {
+    const video = externalVideo ?? internalVideoRef.current
+    if (!active || !video) return
+    let raf = 0
+    let lastTime = -1
+    let failing = false
+    const tick = () => {
+      raf = requestAnimationFrame(tick)
+      // One detection per new video frame (the display refreshes faster than the camera).
+      if (video.readyState < 2 || !video.videoWidth || video.currentTime === lastTime) return
+      lastTime = video.currentTime
+      const t0 = performance.now()
+      let res
+      try {
+        res = detect(active.landmarker, video)
+      } catch (e) {
+        if (!failing) setError(message(e))
+        failing = true
+        return
+      }
+      if (failing) setError(null)
+      failing = false
+      const inferenceMs = performance.now() - t0
+      const f = tracker.process(res, video.videoWidth, video.videoHeight, t0)
+      onFrameRef.current?.({ ...f, inferenceMs, videoWidth: video.videoWidth, videoHeight: video.videoHeight })
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [active, externalVideo, tracker])
+
+  return {
+    videoRef: internalVideoRef,
+    ready: active != null,
+    error,
+    /** What actually loaded (GPU can fall back to CPU). */
+    delegate: active?.delegate ?? null,
+    reset: () => tracker.reset(),
+  }
 }
