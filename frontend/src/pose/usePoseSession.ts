@@ -6,14 +6,14 @@
 //   <PoseCamera pose={pose} />
 //   pose.angle, pose.reps, pose.finish()
 import { useCallback, useRef, useState } from 'react'
-import { usePose, type PoseFrame } from './usePose'
+import { usePose, type PoseFrame, type PreferredSide } from './usePose'
 import { RepCounter } from './repCounter'
 import { JOINTS, type JointName } from './joints'
 
 export interface RepInfo {
   count: number
   peak: number
-  warnings: string[]          // 'not_deep_enough' | 'too_fast'
+  warnings: string[] // 'not_deep_enough' | 'too_fast'
 }
 
 export interface PoseSessionResult {
@@ -27,8 +27,10 @@ export interface PoseSessionResult {
 
 export interface PoseSessionOptions {
   joint?: JointName
-  targetAngle?: number        // from the therapist's plan; defaults to the joint's default
-  targetReps?: number         // when reached, onComplete fires automatically
+  preferredSide?: PreferredSide
+  externalVideo?: HTMLVideoElement | null
+  targetAngle?: number // from the therapist's plan; defaults to the joint's default
+  targetReps?: number // when reached, onComplete fires automatically
   onRep?: (rep: RepInfo) => void
   onComplete?: (result: PoseSessionResult) => void
 }
@@ -39,7 +41,13 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
   const targetAngle = opts.targetAngle ?? cfg.target
 
   const makeCounter = () =>
-    new RepCounter({ bentThreshold: cfg.bent, straightThreshold: cfg.straight, targetAngle })
+    new RepCounter({
+      bentThreshold: cfg.bent,
+      straightThreshold: cfg.straight,
+      targetAngle,
+      minValidMs: 450,
+      minRepMs: 1200,
+    })
 
   const counter = useRef(makeCounter())
   const samples = useRef<{ time: string; angle: number }[]>([])
@@ -53,6 +61,8 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
   const [reps, setReps] = useState(0)
   const [lastRep, setLastRep] = useState<RepInfo | null>(null)
   const [visible, setVisible] = useState(false)
+  const [confidence, setConfidence] = useState(0)
+  const [activeSide, setActiveSide] = useState<PoseFrame['side']>(null)
 
   const buildResult = useCallback((): PoseSessionResult => {
     const c = counter.current
@@ -70,6 +80,8 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     drawOverlay(canvasRef.current, f, counter.current.isBent)
     setVisible(f.angle != null)
     setAngle(f.angle == null ? null : Math.round(f.angle))
+    setConfidence(f.confidence)
+    setActiveSide(f.side)
     if (f.angle == null || done.current) return
 
     samples.current.push({ time: new Date().toISOString(), angle: Math.round(f.angle * 10) / 10 })
@@ -87,7 +99,12 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     }
   }
 
-  const { videoRef, ready, error } = usePose(joint, onFrame)
+  const { videoRef, ready, error } = usePose({
+    joint,
+    preferredSide: opts.preferredSide,
+    externalVideo: opts.externalVideo,
+    onFrame,
+  })
 
   /** Call from an "End session" button. Returns the result object to save. */
   const finish = useCallback(() => {
@@ -106,10 +123,21 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
   }, [joint, targetAngle])
 
   return {
-    videoRef, canvasRef, ready, error,
-    angle, reps, lastRep, visible,
-    joint, targetAngle, tip: cfg.tip,
-    finish, reset,
+    videoRef,
+    canvasRef,
+    ready,
+    error,
+    angle,
+    reps,
+    lastRep,
+    visible,
+    confidence,
+    activeSide,
+    joint,
+    targetAngle,
+    tip: cfg.tip,
+    finish,
+    reset,
   }
 }
 
@@ -125,8 +153,14 @@ function drawOverlay(canvas: HTMLCanvasElement | null, f: PoseFrame, bent: boole
   ctx.lineWidth = 6
   ctx.lineCap = 'round'
   ctx.beginPath()
-  ctx.moveTo(...pts[0]); ctx.lineTo(...pts[1]); ctx.lineTo(...pts[2])
+  ctx.moveTo(...pts[0])
+  ctx.lineTo(...pts[1])
+  ctx.lineTo(...pts[2])
   ctx.stroke()
   ctx.fillStyle = '#ffffff'
-  for (const [x, y] of pts) { ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.fill() }
+  for (const [x, y] of pts) {
+    ctx.beginPath()
+    ctx.arc(x, y, 8, 0, Math.PI * 2)
+    ctx.fill()
+  }
 }

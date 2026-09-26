@@ -36,4 +36,7 @@ export class Smoother {
     if (this.buf.length > this.size) this.buf.shift()
     return this.buf.reduce((a, b) => a + b, 0) / this.buf.length
   }
+  reset(): void {
+    this.buf = []
+  }
 }
