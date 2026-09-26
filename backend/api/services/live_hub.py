@@ -2,10 +2,10 @@
 fanned out to the therapists watching them while they exercise.
 
 Keyed by patient id. The patient's session screen publishes an `update` every
-~250 ms (api/data/live.py validates it) and an `end` when they finish or
-leave. Subscribers get a snapshot of every session already under way, then
-each event as it arrives. A patient who goes quiet (tab closed, network gone)
-is ended as "lost" after STALE_AFTER_S.
+~250 ms (api/data/live.py validates it) and an `end` when they finish,
+leave, or stop because it hurts. Subscribers get a snapshot of every session
+already under way, then each event as it arrives. A patient who goes quiet
+(tab closed, network gone) is ended as "lost" after STALE_AFTER_S.
 
 Everything lives in this process's memory, so the API must run as a single
 worker: with several, a patient could publish to one and the therapist listen
@@ -89,7 +89,7 @@ class LiveHub:
         self._publish(event)
 
     def end(self, patient_id: str, started_at: str, reason: str) -> None:
-        """The patient finished or left. An end for an older session than the live one is ignored."""
+        """The patient finished, left or stopped for pain. An end for an older session than the live one is ignored."""
         self._ended[patient_id] = started_at
         session = self._sessions.get(patient_id)
         if session is None or session.started_at != started_at:

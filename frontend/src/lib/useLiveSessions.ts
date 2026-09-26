@@ -14,6 +14,8 @@ import type { AngleSample, UUID } from '../types/session'
 const STALE_MS = 6000
 /** How long an ended session stays on the dashboard, saying how it ended. */
 const LINGER_MS = 6000
+/** A stop for pain stays up long enough that a therapist who looked away still sees it. */
+const PAIN_LINGER_MS = 60_000
 /** ~30 s at 10 Hz: the rolling trace shows the last 12. */
 const KEEP_SAMPLES = 300
 
@@ -114,7 +116,7 @@ export function useLiveSessions(
       const next: Sessions = {}
       let changed = false
       for (const [id, s] of Object.entries(state.current)) {
-        if (s.ended && now - s.ended_at > LINGER_MS) {
+        if (s.ended && now - s.ended_at > (s.ended === 'pain' ? PAIN_LINGER_MS : LINGER_MS)) {
           changed = true
           continue
         }

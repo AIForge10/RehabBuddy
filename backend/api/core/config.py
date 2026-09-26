@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     ELEVENLABS_VOICE_ID_EN: str = ""
     ELEVENLABS_VOICE_ID_ES: str = ""
     ELEVENLABS_MODEL: str = "eleven_flash_v2_5"  # lowest-latency model
+    ELEVENLABS_STT_MODEL: str = "scribe_v2"  # speech-to-text for spoken pain check-ins
 
     POSTGRES_USER: str = "postgres"
     POSTGRES_PASSWORD: str = "postgres"

@@ -4,6 +4,8 @@ import { getAssignment } from '../api/client'
 import { useAuth } from '../lib/auth'
 import { unlockAudio } from '../lib/coach'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
+import { useLanguage } from '../lib/language'
+import { startListening } from '../lib/listen'
 import { keepAwake } from '../lib/native'
 import { useCamera } from '../lib/useCamera'
 import { preloadPose } from '../pose'
@@ -23,6 +25,7 @@ export default function ExerciseSession() {
   const navigate = useNavigate()
   const location = useLocation()
   const patientId = useAuth().account!.id
+  const { lang } = useLanguage()
   const [assignment, setAssignment] = useState<Assignment | null>(
     (location.state as { assignment?: Assignment } | null)?.assignment ?? null,
   )
@@ -55,6 +58,7 @@ export default function ExerciseSession() {
   if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={() => setStep('setup')} />
   const start = () => {
     unlockAudio() // the coach's first cue plays after the countdown, outside this tap
+    startListening(lang) // for "it hurts": some browsers only open the microphone from a tap
     setStep('live')
   }
   if (step === 'setup') return <Setup exercise={exercise} camera={status} attach={attach} onStart={start} onBack={() => setStep('brief')} />

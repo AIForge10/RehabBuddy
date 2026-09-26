@@ -33,8 +33,8 @@ const env = Object.fromEntries(
 )
 console.log(`Building the app against ${env.VITE_USE_MOCKS === 'true' ? 'the in-app mock backend' : env.VITE_API_URL || 'http://localhost:8000/api/v1'}`)
 
-if (!existsSync(`${frontend}node_modules`)) execFileSync('npm', ['ci'], { cwd: frontend, stdio: 'inherit' })
-execFileSync('npx', ['vite', 'build', '--mode', 'native', '--outDir', www, '--emptyOutDir'], { cwd: frontend, stdio: 'inherit' })
+if (!existsSync(`${frontend}node_modules`)) execFileSync('npm', ['ci'], { cwd: frontend, stdio: 'inherit', shell: process.platform === 'win32' })
+execFileSync('npx', ['vite', 'build', '--mode', 'native', '--outDir', www, '--emptyOutDir'], { cwd: frontend, stdio: 'inherit', shell: process.platform === 'win32' })
 
 const wasmDir = `${frontend}node_modules/@mediapipe/tasks-vision/wasm/`
 mkdirSync(`${www}pose/wasm`, { recursive: true })

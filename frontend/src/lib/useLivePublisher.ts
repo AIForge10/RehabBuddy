@@ -6,7 +6,7 @@
 // unreachable backend can't slow the session down or break it.
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { openLivePublisher, type LivePublisher } from '../api/live'
+import { openLivePublisher, type LivePublisher, type PublishedEndReason } from '../api/live'
 import type { AngleSample, UUID } from '../types/session'
 
 const SEND_MS = 250
@@ -50,9 +50,9 @@ export function useLivePublisher({
   const started = useRef<string | null>(null)
   const ended = useRef<string | null>(null)
 
-  /** Tells the dashboard the session is over; only the first call for a session counts. */
+  /** Tells the dashboard the session is over, and why; only the first call for a session counts. */
   const end = useCallback(
-    (reason: 'finished' | 'exited') => {
+    (reason: PublishedEndReason) => {
       const startedAt = started.current
       if (!startedAt || ended.current === startedAt) return
       ended.current = startedAt
