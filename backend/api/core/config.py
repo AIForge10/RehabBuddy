@@ -30,6 +30,10 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 8  # 8 days
     
     BACKEND_CORS_ORIGINS: List[str] = [
+        # Production web app (DigitalOcean static site on the Porkbun domain). The API
+        # lives on its own ondigitalocean.app host, so these calls are cross-origin.
+        "https://bendwith.us",
+        "https://www.bendwith.us",
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
@@ -38,7 +42,7 @@ class Settings(BaseSettings):
         # The iOS and Android apps (mobile/): their web views load the app from these origins.
         "capacitor://localhost",
         "https://localhost",
-    ]  # Make sure to add frontend url once in prod
+    ]
     
     @property
     def async_database_url(self) -> str:
