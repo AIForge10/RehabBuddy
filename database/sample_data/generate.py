@@ -149,6 +149,7 @@ api = {
         "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
         "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
         "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
+        "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient; unknown session 404",
         "POST /summary": "same rule as /patients/{id}"},
     "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
     "GET /patients/{patient_id}/assignment": {"example_url": "/patients/p-maria/assignment", "response": assignment_obj("p-maria")},
@@ -161,6 +162,9 @@ api = {
                     "angle_samples": sample_samples},
         "request_notes": "assignment_id, joint and angle_samples are PROPOSED additions (not yet in the frontend's CreateSessionRequest). angle_samples feed the Tiger Data hypertable; one array per session, ~2–30 samples/sec.",
         "response": {"session_id": "s-3f6c1a2e-7b8d-4c9e-a1f2-0d3e4b5c6a7f"}},
+    "GET /sessions/{session_id}/samples": {"example_url": "/sessions/s-p-maria-1/samples",
+        "response_notes": "The whole session, oldest first, averaged into 100 ms buckets (time_bucket); first rows shown.",
+        "response": [{"time": r["time"], "angle": r["angle"]} for r in sample_samples]},
     "POST /pain-check": {
         "request": {"session_id": "s-p-james-1", "pain_score": 8, "notes": "sharp pain", "language": "en"},
         "response_flagged": {"flagged": True, "reply": "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.", "flag_reason": "“sharp pain”"},

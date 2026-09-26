@@ -30,7 +30,7 @@ app.include_router(auth_router)              # POST /auth/login, GET /auth/me (a
 # any router
 from fastapi import Depends
 from api.auth import (CurrentUser, require_patient, require_patient_access,
-                      require_therapist_self, require_session_owner)
+                      require_therapist_self, require_session_access, require_session_owner)
 
 @router.get("/patients/{patient_id}/overview")
 def overview(patient_id: str, user: CurrentUser = Depends(require_patient_access)): ...
@@ -40,6 +40,9 @@ def assignment(patient_id: str, user: CurrentUser = Depends(require_patient_acce
 
 @router.get("/therapist/{therapist_id}/dashboard")
 def dashboard(therapist_id: str, user: CurrentUser = Depends(require_therapist_self)): ...
+
+@router.get("/sessions/{session_id}/samples")    # the session's patient, or their therapist; 404 if unknown
+def samples(session_id: str, user: CurrentUser = Depends(require_session_access)): ...
 
 @router.post("/sessions")
 def create_session(body: CreateSessionRequest, user: CurrentUser = Depends(require_patient)):

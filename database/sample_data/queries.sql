@@ -42,3 +42,8 @@ GROUP BY day ORDER BY day;
 -- ★ Tiger Data: one session's angle curve, from the continuous aggregate
 SELECT bucket, max_angle, avg_angle FROM session_angle_1m
 WHERE session_id = :'sid' ORDER BY bucket;
+
+-- ★ Tiger Data: GET /sessions/{sid}/samples → the therapist's replay, every frame averaged to 10 Hz
+SELECT time_bucket('100 milliseconds', time) AS time, round(avg(angle), 1) AS angle
+FROM angle_samples WHERE session_id = :'sid'
+GROUP BY 1 ORDER BY 1;

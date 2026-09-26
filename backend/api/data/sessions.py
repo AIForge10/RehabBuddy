@@ -1,11 +1,12 @@
-"""POST /sessions: saves a finished session + every angle sample into the hypertable."""
+"""POST /sessions saves a finished session + every angle sample into the hypertable;
+GET /sessions/{id}/samples reads its trace back for the therapist's replay."""
 import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.auth import CurrentUser, require_patient
+from api.auth import CurrentUser, require_patient, require_session_access
 
 from . import queries as q
 
@@ -49,3 +50,10 @@ def create_session(body: CreateSessionRequest, user: CurrentUser = Depends(requi
                 for s in body.angle_samples:
                     cp.write_row((s.time, session_id, s.angle))
     return {"session_id": session_id, "angle_samples_saved": len(body.angle_samples)}
+
+
+@router.get("/sessions/{session_id}/samples")
+def get_session_samples(session_id: str, user: CurrentUser = Depends(require_session_access)):
+    """The session's angle trace, oldest first, downsampled in SQL to the replay's 10 Hz."""
+    with q.connect() as conn:
+        return q.session_samples(conn, session_id)

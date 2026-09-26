@@ -69,6 +69,21 @@ def latest_summary(conn, patient_id: str) -> str | None:
     return row["summary_text"] if row else None
 
 
+# ★ Tiger Data: reading the angle_samples hypertable back.
+# A session's trace at the replay's resolution. The live screen samples its trace every
+# 100 ms, and the replay (frontend/src/lib/replay.ts) spots half-second stalls and breaks
+# its line at one-second gaps, so 10 Hz keeps all of that while a 30 fps session comes
+# back with a third of the rows.
+TRACE = """SELECT session_id, time_bucket('100 milliseconds', time) AS time, round(avg(angle), 1) AS angle
+           FROM angle_samples WHERE session_id = ANY(%(ids)s) GROUP BY 1, 2"""
+
+
+def session_samples(conn, session_id: str) -> list[dict]:
+    rows = conn.execute(f"SELECT time, angle FROM ({TRACE}) trace ORDER BY time",
+                        {"ids": [session_id]}).fetchall()
+    return [{"time": r["time"].isoformat(), "angle": float(r["angle"])} for r in rows]
+
+
 def overview(conn, patient_id: str) -> dict | None:
     p = patient(conn, patient_id)
     a = assignment(conn, patient_id)
@@ -80,4 +95,5 @@ def overview(conn, patient_id: str) -> dict | None:
             "latest_summary": latest_summary(conn, patient_id)}
 
 
-__all__ = ["connect", "assignment", "patient", "sessions", "red_flags", "overview", "latest_summary"]
+__all__ = ["connect", "assignment", "patient", "sessions", "red_flags", "overview", "latest_summary",
+           "session_samples"]

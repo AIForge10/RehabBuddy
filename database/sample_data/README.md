@@ -21,6 +21,7 @@ frontend will work when `VITE_USE_MOCKS` is switched off.
 | `GET /patients/{id}/overview` | `{patient, assignment, adherence_7d, sessions[], red_flags[], latest_summary}` |
 | `GET /therapist/{id}/dashboard` | `{therapist_id, patients: Overview[], generated_at}` |
 | `POST /sessions` | `{session_id}` |
+| `GET /sessions/{id}/samples` | `[{time, angle}]`, oldest first, averaged to 10 Hz with `time_bucket` (the therapist's replay) |
 | `POST /pain-check` | `{flagged, reply, flag_reason}`: flag if pain ≥ 7 or red-flag words |
 | `POST /summary` | `{summary_text, week_start, is_fallback}` |
 | `POST /translate` | `{text}` |
