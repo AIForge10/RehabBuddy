@@ -67,7 +67,7 @@ export function SessionReplay({
   const rows = load.status === 'ready' ? load.rows : null
   const trace = useMemo(() => (rows ? toTrace(rows, session.started_at) : []), [rows, session.started_at])
   const reps = useMemo(() => findReps(trace, target), [trace, target])
-  const findings = useMemo(() => findingsFor(reps, target), [reps, target])
+  const findings = useMemo(() => findingsFor(reps, target, session.stats), [reps, target, session.stats])
   const domain = useMemo(() => domainFor(trace, target, exercise), [trace, target, exercise])
   const deepest = useMemo(() => trace.reduce<TracePoint | null>((best, p) => (!best || p.angle > best.angle ? p : best), null), [trace])
   const duration = trace.at(-1)?.t ?? 0

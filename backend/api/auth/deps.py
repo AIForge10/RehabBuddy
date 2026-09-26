@@ -73,6 +73,18 @@ def require_therapist_self(therapist_id: str, user: CurrentUser = Depends(requir
     return user
 
 
+def require_session_access(session_id: str, user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+    """For /sessions/{session_id}/...: whoever may see that session's patient (can_view_patient)."""
+    with connect() as conn:
+        row = conn.execute("SELECT can_view_patient(%s, patient_id) AS ok FROM sessions WHERE id = %s",
+                           (user.id, session_id)).fetchone()
+    if not row:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Session not found")
+    if not row["ok"]:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "You can't view this patient's data")
+    return user
+
+
 def require_session_owner(session_id: str, user: CurrentUser) -> None:
     """Call inside POST /pain-check: the session must belong to the logged-in patient."""
     with connect() as conn:
