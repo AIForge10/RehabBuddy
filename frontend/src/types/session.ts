@@ -120,7 +120,8 @@ export interface TranslateResponse {
   text: string
 }
 
-// GET /therapist/{therapist_id}/dashboard
+// GET /therapist/{therapist_id}/dashboard  → DashboardResponse
+// GET /patients/{patient_id}/overview       → PatientOverview (patient home screen)
 export interface SessionRecord {
   id: UUID
   patient_id: UUID

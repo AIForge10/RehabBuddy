@@ -1,37 +1,267 @@
 @import "tailwindcss";
 
-/* Design tokens: the only place colors live. Clinical calm: warm paper,
-   near-black ink, one deep-teal accent, status colors reserved for state. */
-@theme {
-  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+/* Design tokens: the only place colors live. The brand is bendwith.us: teal
+   #4baea7 with near-black and white, plus #83cac6, the lighter teal the mark
+   wears on black. Light/dark follow the OS.
 
-  --color-canvas: #f6f5f1;
-  --color-surface: #fdfdfc;
-  --color-ink: #151716;
-  --color-ink-2: #4f524f;
-  --color-muted: #858680;
-  --color-line: #e3e1da;
-  --color-line-strong: #c9c6bc;
+   The brand teal is light: near-black text on it clears 7:1, white text
+   doesn't reach 3:1. So filled teal (buttons, toggles) always carries
+   on-brand, and teal text or thin strokes on light surfaces use brand-ink.
 
-  --color-accent: #0e6b66;
-  --color-accent-strong: #0a524e;
-  --color-accent-soft: #e3efed;
+   Type: Figtree for everything a patient reads or taps: open shapes that
+   hold up from across the room, and true tabular figures so live numbers
+   don't jitter. Konkhmer Sleokchher is the brand face, for headlines, big
+   static numbers and the primary call to action. It has one weight and no
+   tabular figures, so never put a changing number in it.
 
-  --color-critical: #c23a3a;
-  --color-critical-soft: #fbecea;
-  --color-warn: #9a6408;
-  --color-warn-soft: #fbf1df;
-  --color-good: #1d7a3a;
+   Contrast: every text token clears 4.5:1 on canvas and surface in both
+   themes. Check before changing muted / on-hero-2. */
+
+/* The brand face is declared here instead of in index.html's Google Fonts
+   link so it can skip two glyphs: its ? and ¿ are ornamental Khmer-style
+   marks, so those fall through to Figtree. It has a single weight, declared
+   across 100-900 so the browser never fakes a bold. Latin + Latin-ext. */
+@font-face {
+  font-family: "Konkhmer Sleokchher";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/konkhmersleokchher/v3/_Xmw-GE-rjmabA_M-aPOZOsCrUv825LFE3l-7W8e6Ww.woff2) format("woff2");
+  unicode-range: U+0000-003E, U+0040-00BE, U+00C0-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Konkhmer Sleokchher";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url(https://fonts.gstatic.com/s/konkhmersleokchher/v3/_Xmw-GE-rjmabA_M-aPOZOsCrUv825LFE3d-7W8e6WzLdQ.woff2) format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  color-scheme: light dark;
+
+  --rb-canvas: #f3f7f7;
+  --rb-wash: #d8eeec; /* soft brand glow at the top of the page */
+  --rb-surface: #ffffff;
+  --rb-raised: #f5f9f9;
+  --rb-line: #e1e9e8;
+  --rb-line-strong: #c6d3d1;
+  --rb-ink: #0b1413;
+  --rb-ink-2: #44504f;
+  --rb-muted: #5d6b69;
+
+  --rb-brand: #4baea7;
+  --rb-brand-strong: #41a39c;
+  --rb-brand-soft: #e2f3f1;
+  --rb-brand-ink: #2a7570; /* teal text, icons and thin strokes on light surfaces */
+  --rb-on-brand: #0b1413;
+  --rb-brand-track: #cfe8e5;
+  --rb-brand-light: #83cac6;
+
+  /* The brand card: near-black, like the logo tile and the cover art. */
+  --rb-hero: #121c1b;
+  --rb-hero-2: #070b0b;
+  --rb-on-hero: #ffffff;
+  --rb-on-hero-2: rgb(255 255 255 / 0.72);
+
+  --rb-stage: #0b1312;
+  --rb-brand-glow: #4baea7; /* brand on the always-dark stage */
+
+  --rb-critical: #c43838;
+  --rb-critical-soft: #fcecea;
+  --rb-warn: #93600a;
+  --rb-warn-soft: #fcf1dc;
+  --rb-good: #1b7a3a;
+
+  /* Pain scale ramp: decorative only, the number and label carry meaning. */
+  --rb-pain-1: #2fa58a;
+  --rb-pain-2: #e3a93b;
+  --rb-pain-3: #d9534a;
+
+  --rb-shadow-card: 0 1px 2px rgb(13 25 23 / 0.04), 0 6px 20px -8px rgb(13 25 23 / 0.1);
+  --rb-shadow-lift: 0 2px 4px rgb(13 25 23 / 0.05), 0 16px 36px -12px rgb(13 25 23 / 0.18);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rb-canvas: #070b0b;
+    --rb-wash: #0c2321;
+    --rb-surface: #0f1616;
+    --rb-raised: #151f1e;
+    --rb-line: #1f2c2b;
+    --rb-line-strong: #2c3d3b;
+    --rb-ink: #e9f2f1;
+    --rb-ink-2: #a5b5b3;
+    --rb-muted: #7f918e;
+
+    --rb-brand: #4baea7;
+    --rb-brand-strong: #5cbab3;
+    --rb-brand-soft: #0f2927;
+    --rb-brand-ink: #83cac6;
+    --rb-on-brand: #051110;
+    --rb-brand-track: #173634;
+
+    /* Lifted off the canvas (which is already near-black) by a teal tint and its ring. */
+    --rb-hero: #142322;
+    --rb-hero-2: #0c1515;
+    --rb-on-hero: #f1f8f7;
+    --rb-on-hero-2: rgb(241 248 247 / 0.72);
+
+    --rb-stage: #050908;
+
+    --rb-critical: #f07272;
+    --rb-critical-soft: #2c1414;
+    --rb-warn: #eeb455;
+    --rb-warn-soft: #2a2010;
+    --rb-good: #52c77c;
+
+    --rb-pain-1: #3cc2a2;
+    --rb-pain-2: #eeb455;
+    --rb-pain-3: #f07272;
+
+    /* Dark surfaces separate by their ring, not by shadow. */
+    --rb-shadow-card: 0 1px 0 rgb(255 255 255 / 0.03) inset;
+    --rb-shadow-lift: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 16px 36px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+@theme inline {
+  --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Konkhmer Sleokchher", "Figtree", ui-sans-serif, system-ui, sans-serif;
+
+  --color-canvas: var(--rb-canvas);
+  --color-wash: var(--rb-wash);
+  --color-surface: var(--rb-surface);
+  --color-raised: var(--rb-raised);
+  --color-line: var(--rb-line);
+  --color-line-strong: var(--rb-line-strong);
+  --color-ink: var(--rb-ink);
+  --color-ink-2: var(--rb-ink-2);
+  --color-muted: var(--rb-muted);
+
+  --color-brand: var(--rb-brand);
+  --color-brand-strong: var(--rb-brand-strong);
+  --color-brand-soft: var(--rb-brand-soft);
+  --color-brand-ink: var(--rb-brand-ink);
+  --color-on-brand: var(--rb-on-brand);
+  --color-brand-track: var(--rb-brand-track);
+  --color-brand-light: var(--rb-brand-light);
+
+  --color-hero: var(--rb-hero);
+  --color-hero-2: var(--rb-hero-2);
+  --color-on-hero: var(--rb-on-hero);
+  --color-on-hero-2: var(--rb-on-hero-2);
+
+  --color-stage: var(--rb-stage);
+  --color-brand-glow: var(--rb-brand-glow);
+
+  --color-critical: var(--rb-critical);
+  --color-critical-soft: var(--rb-critical-soft);
+  --color-warn: var(--rb-warn);
+  --color-warn-soft: var(--rb-warn-soft);
+  --color-good: var(--rb-good);
+
+  --color-pain-1: var(--rb-pain-1);
+  --color-pain-2: var(--rb-pain-2);
+  --color-pain-3: var(--rb-pain-3);
+
+  --shadow-card: var(--rb-shadow-card);
+  --shadow-lift: var(--rb-shadow-lift);
+
+  --animate-rise: rise 420ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  --animate-pop: pop 360ms cubic-bezier(0.3, 1.4, 0.5, 1) both;
+  --animate-draw: draw 900ms cubic-bezier(0.6, 0, 0.2, 1) both;
+  --animate-grow: grow 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 250ms both;
+  --animate-knee: knee 7s cubic-bezier(0.45, 0, 0.55, 1) infinite;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.18);
+  }
+}
+@keyframes draw {
+  from {
+    stroke-dashoffset: var(--len, 100);
+  }
+}
+@keyframes grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+/* Slow seated knee bend for decorative figures: straight, bend, hold, return. */
+@keyframes knee {
+  0%,
+  14% {
+    transform: rotate(0deg);
+  }
+  46%,
+  60% {
+    transform: rotate(var(--bend, 90deg));
+  }
+  92%,
+  100% {
+    transform: rotate(0deg);
+  }
 }
 
 @layer base {
   html {
     -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
   }
   body {
     @apply bg-canvas text-ink font-sans;
+    background-image: radial-gradient(120% 420px at 50% -180px, var(--rb-wash), transparent 75%);
+    background-repeat: no-repeat;
   }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  /* Tailwind v4 dropped pointer on buttons; patients need the affordance. */
+  button:not(:disabled),
+  [role="button"],
+  [role="radio"] {
+    cursor: pointer;
+  }
+  /* brand-ink, not brand: the light teal ring would fade out on white. */
   :focus-visible {
-    @apply outline-2 outline-offset-2 outline-accent;
+    @apply outline-2 outline-offset-2 outline-brand-ink;
+  }
+  ::selection {
+    @apply bg-brand-soft text-brand-ink;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    /* One pass, so looping animations (pulse, ping, the knee loop) settle
+       instead of flickering every millisecond. */
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
   }
 }

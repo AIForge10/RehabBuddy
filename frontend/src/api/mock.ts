@@ -13,13 +13,14 @@ import type {
   Patient,
   PainCheckRequest,
   PainCheckResponse,
+  PatientOverview,
   RedFlag,
   SessionRecord,
   SummaryResponse,
   UUID,
 } from '../types/session'
 
-const STORAGE_KEY = 'rehabbuddy.mock.v3'
+const STORAGE_KEY = 'rehabbuddy.mock.v5'
 const THERAPIST_ID = 't-lee'
 const DAY_MS = 86_400_000
 
@@ -66,7 +67,7 @@ function seed(): MockDb {
 
   // days: how many past days to seed; skip: day offsets with no session.
   const plans: Record<string, { days: number; skip: number[]; from: number; to: number }> = {
-    'p-maria': { days: 10, skip: [6, 3, 2], from: 72, to: 86 },
+    'p-maria': { days: 10, skip: [6, 3], from: 72, to: 86 },
     'p-james': { days: 8, skip: [7, 6, 5, 3, 2], from: 70, to: 79 },
     'p-aisha': { days: 9, skip: [5, 2], from: 74, to: 88 },
   }
@@ -183,7 +184,7 @@ function templateSummary(db: MockDb, patientId: UUID): string {
   if (!p || s.length === 0) return 'No sessions recorded yet.'
   const first = s[0].max_angle
   const last = s[s.length - 1].max_angle
-  const week = s.filter((x) => Date.parse(x.started_at) > Date.now() - 7 * DAY_MS).length
+  const week = s.filter((x) => Date.parse(x.started_at) >= new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS).length
   const flags = db.red_flags.filter((f) => f.patient_id === patientId)
   const firstName = p.full_name.split(' ')[0]
   let text = `${firstName} completed ${week} session${week === 1 ? '' : 's'} this week against a plan of 5. Peak knee flexion improved from ${first}° to ${last}° (target 90°).`
@@ -192,6 +193,24 @@ function templateSummary(db: MockDb, patientId: UUID): string {
   if (flags.length) text += ` ⚠ Reported pain ${flags.at(-1)!.pain_score}/10 after the latest session — recommend a check-in call before progressing load.`
   else text += ' No concerning pain reports; consider progressing the target.'
   return text
+}
+
+function overview(db: MockDb, assignment: Assignment): PatientOverview {
+  // "This week" = today plus the 6 days before it, matching the patient home screen.
+  const weekAgo = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
+  const patient = db.patients.find((p) => p.id === assignment.patient_id)!
+  const sessions = db.sessions
+    .filter((s) => s.patient_id === patient.id)
+    .sort((a, b) => b.started_at.localeCompare(a.started_at))
+  const recent = sessions.filter((s) => Date.parse(s.started_at) > weekAgo).length
+  return {
+    patient,
+    assignment,
+    adherence_7d: recent / assignment.times_per_week,
+    sessions,
+    red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
+    latest_summary: templateSummary(db, patient.id),
+  }
 }
 
 export const mockBackend = {
@@ -251,26 +270,16 @@ export const mockBackend = {
     )
   },
 
+  async getPatientOverview(patientId: UUID): Promise<PatientOverview> {
+    const db = load()
+    const assignment = db.assignments.find((a) => a.patient_id === patientId)
+    if (!assignment) throw new Error(`No assignment for patient ${patientId}`)
+    return delay(overview(db, assignment))
+  },
+
   async getDashboard(therapistId: UUID): Promise<DashboardResponse> {
     const db = load()
-    const weekAgo = Date.now() - 7 * DAY_MS
-    const patients = db.assignments
-      .filter((a) => a.therapist_id === therapistId)
-      .map((assignment) => {
-        const patient = db.patients.find((p) => p.id === assignment.patient_id)!
-        const sessions = db.sessions
-          .filter((s) => s.patient_id === patient.id)
-          .sort((a, b) => b.started_at.localeCompare(a.started_at))
-        const recent = sessions.filter((s) => Date.parse(s.started_at) > weekAgo).length
-        return {
-          patient,
-          assignment,
-          adherence_7d: recent / assignment.times_per_week,
-          sessions,
-          red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
-          latest_summary: templateSummary(db, patient.id),
-        }
-      })
+    const patients = db.assignments.filter((a) => a.therapist_id === therapistId).map((a) => overview(db, a))
     return delay({ therapist_id: therapistId, patients, generated_at: new Date().toISOString() }, 100)
   },
 }

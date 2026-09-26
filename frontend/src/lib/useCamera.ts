@@ -1,38 +1,53 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-export type CameraStatus = 'starting' | 'on' | 'denied'
+export type CameraStatus = 'idle' | 'starting' | 'on' | 'denied'
 
-/** Attaches the webcam to a <video>. The same ref is what the pose hook reads frames from. */
-export function useCamera() {
-  const videoRef = useRef<HTMLVideoElement>(null)
-  const [status, setStatus] = useState<CameraStatus>(() =>
-    'mediaDevices' in navigator ? 'starting' : 'denied',
-  )
+/**
+ * Owns one webcam stream for the whole session flow. `attach` is a callback
+ * ref, so the setup preview and the live view can each mount their own
+ * <video> without restarting the camera. `videoRef` always points at the
+ * most recently attached element (what the pose hook reads frames from).
+ */
+export function useCamera(enabled: boolean) {
+  const videoRef = useRef<HTMLVideoElement | null>(null)
+  const [stream, setStream] = useState<MediaStream | null>(null)
+  const [status, setStatus] = useState<CameraStatus>('idle')
 
   useEffect(() => {
-    let stream: MediaStream | null = null
+    if (!enabled || stream) return
+    if (!('mediaDevices' in navigator)) {
+      queueMicrotask(() => setStatus('denied'))
+      return
+    }
     let cancelled = false
-    if (!('mediaDevices' in navigator)) return
+    queueMicrotask(() => !cancelled && setStatus('starting'))
     navigator.mediaDevices
       .getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false })
       .then((s) => {
-        if (cancelled) {
-          s.getTracks().forEach((tr) => tr.stop())
-          return
-        }
-        stream = s
-        if (videoRef.current) {
-          videoRef.current.srcObject = s
-          void videoRef.current.play().catch(() => {})
-        }
+        if (cancelled) return s.getTracks().forEach((tr) => tr.stop())
+        setStream(s)
         setStatus('on')
       })
-      .catch(() => setStatus('denied'))
+      .catch(() => !cancelled && setStatus('denied'))
     return () => {
       cancelled = true
-      stream?.getTracks().forEach((tr) => tr.stop())
     }
-  }, [])
+  }, [enabled, stream])
 
-  return { videoRef, status }
+  // Stop the camera when the flow unmounts.
+  useEffect(() => () => stream?.getTracks().forEach((tr) => tr.stop()), [stream])
+
+  const attach = useCallback(
+    (el: HTMLVideoElement | null) => {
+      if (!el) return
+      videoRef.current = el
+      if (stream && el.srcObject !== stream) {
+        el.srcObject = stream
+        void el.play().catch(() => {})
+      }
+    },
+    [stream],
+  )
+
+  return { attach, videoRef, status }
 }

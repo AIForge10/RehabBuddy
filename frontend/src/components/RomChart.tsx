@@ -1,18 +1,7 @@
-import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { Area, AreaChart, CartesianGrid, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { shortDate } from '../lib/format'
+import { useThemeColors } from '../lib/useThemeColors'
 import type { SessionRecord } from '../types/session'
-
-// Recharts writes colors as SVG attributes, where CSS vars aren't reliable,
-// so these mirror the tokens in index.css.
-const C = {
-  accent: '#0e6b66',
-  critical: '#c23a3a',
-  surface: '#fdfdfc',
-  grid: '#e3e1da',
-  axis: '#858680',
-  ink: '#151716',
-  ink2: '#4f524f',
-}
 
 interface Point {
   label: string
@@ -21,6 +10,7 @@ interface Point {
   pain_score: number | null
   flagged: boolean
   started_at: string
+  latest: boolean
 }
 
 interface DotProps {
@@ -30,16 +20,11 @@ interface DotProps {
   payload?: Point
 }
 
-function Dot({ cx, cy, payload, r = 4 }: DotProps & { r?: number }) {
-  if (cx == null || cy == null || !payload) return null
-  return <circle cx={cx} cy={cy} r={r} fill={payload.flagged ? C.critical : C.accent} stroke={C.surface} strokeWidth={2} />
-}
-
 function TooltipBox({ active, payload }: { active?: boolean; payload?: { payload: Point }[] }) {
   if (!active || !payload?.length) return null
   const p = payload[0].payload
   return (
-    <div className="rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-sm">
+    <div className="rounded-xl bg-surface px-3 py-2 text-xs shadow-lg ring-1 ring-line">
       <p className="font-semibold text-ink">
         {new Date(p.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
       </p>
@@ -52,60 +37,91 @@ function TooltipBox({ active, payload }: { active?: boolean; payload?: { payload
   )
 }
 
-export function RomChart({ sessions, target }: { sessions: SessionRecord[]; target: number }) {
-  const data: Point[] = [...sessions]
-    .sort((a, b) => a.started_at.localeCompare(b.started_at))
-    .map((s) => ({ ...s, label: shortDate(s.started_at) }))
+export function RomChart({
+  sessions,
+  target,
+  compact = false,
+  highlightLatest = false,
+}: {
+  sessions: SessionRecord[]
+  target: number
+  compact?: boolean
+  highlightLatest?: boolean
+}) {
+  const c = useThemeColors()
+  const sorted = [...sessions].sort((a, b) => a.started_at.localeCompare(b.started_at))
+  const data: Point[] = sorted.map((s, i) => ({ ...s, label: shortDate(s.started_at), latest: i === sorted.length - 1 }))
 
   const values = data.map((d) => d.max_angle)
   const lo = Math.floor((Math.min(target, ...values) - 10) / 10) * 10
   const hi = Math.ceil((Math.max(target, ...values) + 5) / 10) * 10
   const hasFlag = data.some((d) => d.flagged)
 
+  const dot = ({ cx, cy, payload, index }: DotProps, active: boolean) => {
+    if (cx == null || cy == null || !payload) return <g key={index} />
+    const big = active || (highlightLatest && payload.latest)
+    const fill = payload.flagged && !compact ? c.critical : c.brand
+    return (
+      <g key={index}>
+        {big && <circle cx={cx} cy={cy} r={12} fill={fill} fillOpacity={0.18} />}
+        <circle cx={cx} cy={cy} r={big ? 6 : 4} fill={fill} stroke={c.surface} strokeWidth={2} />
+      </g>
+    )
+  }
+
   return (
     <div>
-      <div className="h-64">
+      <div className={compact ? 'h-40' : 'h-64'}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 12, right: 72, bottom: 0, left: -8 }}>
-            <CartesianGrid vertical={false} stroke={C.grid} />
+          <AreaChart data={data} margin={{ top: 14, right: compact ? 8 : 72, bottom: 0, left: compact ? -24 : -8 }}>
+            <defs>
+              <linearGradient id="rom-wash" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={c.brand} stopOpacity={0.22} />
+                <stop offset="100%" stopColor={c.brand} stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid vertical={false} stroke={c.line} />
             <XAxis
               dataKey="label"
               tickLine={false}
-              axisLine={{ stroke: C.grid }}
-              tick={{ fill: C.axis, fontSize: 11 }}
+              axisLine={false}
+              tick={{ fill: c.muted, fontSize: 11 }}
               interval="preserveStartEnd"
-              minTickGap={24}
+              minTickGap={compact ? 40 : 24}
+              dy={6}
             />
             <YAxis
               domain={[lo, hi]}
               tickCount={(hi - lo) / 10 + 1}
               tickLine={false}
               axisLine={false}
-              tick={{ fill: C.axis, fontSize: 11 }}
+              tick={{ fill: c.muted, fontSize: 11 }}
               tickFormatter={(v: number) => `${v}°`}
             />
             <ReferenceLine
               y={target}
-              stroke={C.ink2}
+              stroke={c['ink-2']}
+              strokeOpacity={0.6}
               strokeWidth={1}
-              label={{ value: `Target ${target}°`, position: 'right', fill: C.ink2, fontSize: 11 }}
+              label={compact ? undefined : { value: `Target ${target}°`, position: 'right', fill: c['ink-2'], fontSize: 11, dx: 4 }}
             />
-            <Tooltip content={<TooltipBox />} cursor={{ stroke: C.grid, strokeWidth: 1 }} />
-            <Line
+            {!compact && <Tooltip content={<TooltipBox />} cursor={{ stroke: c.line, strokeWidth: 1 }} />}
+            <Area
               type="monotone"
               dataKey="max_angle"
-              stroke={C.accent}
-              strokeWidth={2}
+              stroke={c.brand}
+              strokeWidth={2.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              dot={(p: DotProps) => <Dot key={p.index} {...p} />}
-              activeDot={(p: DotProps) => <Dot key={p.index} {...p} r={6} />}
+              fill="url(#rom-wash)"
+              dot={(p: DotProps) => dot(p, false)}
+              activeDot={(p: DotProps) => dot(p, true)}
               isAnimationActive={false}
             />
-          </LineChart>
+          </AreaChart>
         </ResponsiveContainer>
       </div>
-      {hasFlag && (
+      {hasFlag && !compact && (
         <p className="mt-2 flex items-center gap-1.5 text-xs text-ink-2">
           <span className="inline-block size-2 rounded-full bg-critical" /> Session with a pain flag
         </p>
