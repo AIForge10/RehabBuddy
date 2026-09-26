@@ -5,7 +5,7 @@ import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { ExerciseFigure } from '../../components/ExerciseFigure'
-import { countCue, playCue, preloadCues, stopCoach, untilCoachQuiet, type CoachCue } from '../../lib/coach'
+import { HOLD_CUES, countCue, playCue, preloadCues, stopCoach, untilCoachQuiet, type CoachCue } from '../../lib/coach'
 import type { BodyPart, Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { warningCue, warningLabel } from '../../lib/formWarnings'
@@ -31,7 +31,29 @@ const POSE_READY = true
 // The coach's "step back so your leg is visible" is only true of these.
 const LEGS: ReadonlySet<BodyPart> = new Set(['knee', 'hip'])
 
+// The "hold" cue, at the top of a rep. The brief asks for a second's pause
+// there, so a rep that leaves the target sooner than this counts as not held.
+const HOLD_MIN_MS = 500
+// A hold cue is only worth saying as they arrive at the target. If the coach is
+// mid-line for longer than this after they get there, the moment has passed and
+// the cue is dropped rather than said on the way back down.
+const HOLD_CUE_WINDOW_MS = 700
+// With the pause going well, the coach still mentions it this often, at most.
+const HOLD_REMIND_EVERY = 5
+
 type Phase = 'countdown' | 'running' | 'saving'
+
+/**
+ * Whether rep `n` (1-based, in progress) gets a hold cue: the first rep, to
+ * teach the pause; a rep after one that skipped the pause, but never two reps
+ * running; otherwise an occasional reminder. In between, the coach says
+ * nothing at the top, so counts and encouragement get the air.
+ */
+function holdWanted(n: number, lastHoldAt: number, skippedLast: boolean): boolean {
+  if (n === 1) return true
+  const since = n - lastHoldAt
+  return skippedLast ? since >= 2 : since >= HOLD_REMIND_EVERY
+}
 
 /** The last four reps each took about as long as their average (within 15%). */
 function steadyPace(landedAt: number[]): boolean {
@@ -113,9 +135,13 @@ export function Live({
     t0: 0,
     samples: [] as AngleSample[],
     max: 0,
-    /** The current rep's deepest reading, and whether the coach has said "hold" on it. */
+    /** The current rep's deepest reading. */
     repPeak: 0,
-    held: false,
+    /** When this rep first reached the target and was last seen there (0 = not yet), for how long it paused. */
+    reachedAt: 0,
+    inZoneUntil: 0,
+    /** The hold cue for this rep is settled: said, not wanted, or too late. */
+    holdDone: false,
     warnings: [] as string[],
   })
 
@@ -284,25 +310,10 @@ export function Live({
     'done',
     'session_complete',
   ])
+  const getRandomHold = useRandomSelector<CoachCue>([...HOLD_CUES])
 
-  const angle = pose.angle
-
-  // Every frame: the rep's deepest point so far, and "hold" the first time the
-  // rep reaches the target, as the brief asks for a second's pause there. Once
-  // per rep; if the coach is mid-line, it tries again while they're still there.
-  useEffect(() => {
-    if (phase !== 'running' || angle == null) return
-    const r = rec.current
-    r.repPeak = Math.max(r.repPeak, angle)
-    if (!r.held && pose.reps < goal && angle >= target - REACHED_WITHIN) r.held = say('hold')
-  }, [angle, phase, pose.reps, goal, target, say])
-
-  // Coach reacts to each completed rep, like a therapist counting along: it
-  // says the rep's number unless something is worth saying instead. First
-  // match wins: the finish, a rushed rep, the last rep and halfway, a rep that
-  // fell short, three on target in a row, reaching the target after missing
-  // it, a controlled rep after a rushed one, and once a session, a steady pace.
-  // Corrections don't repeat rep after rep: in between, the coach counts.
+  // What the coach has said so far this session, for the per-rep and per-frame
+  // effects below: corrections don't repeat rep after rep.
   const coached = useRef({
     reps: 0,
     streak: 0,
@@ -312,7 +323,45 @@ export function Live({
     fastAt: -Infinity,
     rhythm: false,
     landedAt: [] as number[],
+    /** The rep the coach last asked for a hold on, and whether the last rep reached the target but left it early. */
+    holdAt: -Infinity,
+    skippedHold: false,
   })
+
+  const angle = pose.angle
+
+  // Every frame: the rep's deepest point so far, how long it has paused at the
+  // target, and a "hold" cue as it gets there when one is due (holdWanted):
+  // not every rep, and never late. If the coach is mid-line it tries again
+  // for a moment, then lets this rep's cue go.
+  useEffect(() => {
+    if (phase !== 'running' || angle == null) return
+    const r = rec.current
+    r.repPeak = Math.max(r.repPeak, angle)
+    if (angle < target - REACHED_WITHIN) return
+    const now = performance.now()
+    if (!r.reachedAt) r.reachedAt = now
+    r.inZoneUntil = now
+    if (r.holdDone || pose.reps >= goal) return
+    const c = coached.current
+    const n = pose.reps + 1
+    if (!holdWanted(n, c.holdAt, c.skippedHold) || now - r.reachedAt > HOLD_CUE_WINDOW_MS) {
+      r.holdDone = true
+      return
+    }
+    if (say(getRandomHold())) {
+      r.holdDone = true
+      c.holdAt = n
+    }
+    // getRandomHold is a fresh function every render but picks the same way.
+  }, [angle, phase, pose.reps, goal, target, say])
+
+  // Coach reacts to each completed rep, like a therapist counting along: it
+  // says the rep's number unless something is worth saying instead. First
+  // match wins: the finish, a rushed rep, the last rep and halfway, a rep that
+  // fell short, three on target in a row, reaching the target after missing
+  // it, a controlled rep after a rushed one, and once a session, a steady pace.
+  // Corrections don't repeat rep after rep: in between, the coach counts.
   useEffect(() => {
     const c = coached.current
     const n = pose.reps
@@ -320,8 +369,11 @@ export function Live({
     c.reps = n
     const r = rec.current
     const peak = r.repPeak
+    const heldMs = r.reachedAt ? r.inZoneUntil - r.reachedAt : 0
     r.repPeak = 0
-    r.held = false
+    r.reachedAt = 0
+    r.inZoneUntil = 0
+    r.holdDone = false
     // Read through the ref: as a dependency, a new array every render would rerun
     // this effect and cancel the finish timer below.
     const warnings = poseRef.current.rep_warnings
@@ -334,6 +386,7 @@ export function Live({
 
     const tooFast = warnings.includes('too_fast')
     const reached = peak >= target - REACHED_WITHIN
+    c.skippedHold = reached && heldMs < HOLD_MIN_MS
     const missedBefore = c.missed
     c.missed = !reached
     c.streak = reached && !tooFast ? c.streak + 1 : 0
