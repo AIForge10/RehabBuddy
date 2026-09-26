@@ -91,6 +91,18 @@ const strings = {
     checked: (n: number, total: number) => `${n} of ${total} checked`,
     setupCta: 'I’m ready, start',
     setupCtaDemo: 'Start in demo mode',
+    // Setup when the camera checks itself (lib/setupChecks.ts): what it sees wrong right now.
+    setupSubAuto: 'Three quick checks. The camera ticks them off as you get into position, or tap one to tick it yourself.',
+    setupByCamera: 'Checked by the camera',
+    setupNobody: 'Step into the frame',
+    setupCantSee: (joint: string, fix: 'back' | 'center' | 'clear') => {
+      const j = joint.toLowerCase()
+      if (fix === 'clear') return `Can’t see your ${j} clearly. Is something in the way?`
+      return `Can’t see your ${j}. ${fix === 'back' ? 'Step back a little.' : 'Move toward the middle of the frame.'}`
+    },
+    setupTurn: 'Turn side-on to the camera',
+    setupDark: 'Too dark to see you well. Turn on a light.',
+    setupBacklit: 'Too much light behind you. Close the curtains or move the camera.',
     backToDemo: 'Watch the demo again',
     exit: 'Exit',
     simulated: 'Simulated data',
@@ -364,6 +376,18 @@ const strings = {
     checked: (n: number, total: number) => `${n} de ${total} listos`,
     setupCta: 'Todo listo, empezar',
     setupCtaDemo: 'Empezar en modo demo',
+    setupSubAuto: 'Tres comprobaciones rápidas. La cámara las marca mientras te colocas, o tócalas para marcarlas tú.',
+    setupByCamera: 'Comprobado por la cámara',
+    setupNobody: 'Colócate dentro del marco',
+    setupCantSee: (joint: string, fix: 'back' | 'center' | 'clear') => {
+      // "tu tobillo", but "tus dedos"
+      const j = `${joint.endsWith('s') ? 'tus' : 'tu'} ${joint.toLowerCase()}`
+      if (fix === 'clear') return `No veo bien ${j}. ¿Hay algo delante?`
+      return `No veo ${j}. ${fix === 'back' ? 'Aléjate un poco.' : 'Muévete hacia el centro del marco.'}`
+    },
+    setupTurn: 'Ponte de lado a la cámara',
+    setupDark: 'Hay poca luz para verte bien. Enciende una luz.',
+    setupBacklit: 'Hay mucha luz detrás de ti. Cierra las cortinas o mueve la cámara.',
     backToDemo: 'Ver la demostración otra vez',
     exit: 'Salir',
     simulated: 'Datos simulados',
