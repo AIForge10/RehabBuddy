@@ -1,4 +1,5 @@
 import sys, json, uuid; sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
+from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 from api.main import app
 from api.auth.db import connect
@@ -22,10 +23,14 @@ chk("james red flag on dashboard", any(p["patient"]["id"] == "p-james" and p["re
 chk("maria -> james overview", c.get(P+"/patients/p-james/overview", headers=M).status_code, 403)
 chk("maria -> dashboard", c.get(P+"/therapist/t-lee/dashboard", headers=M).status_code, 403)
 chk("no token -> assignment", c.get(P+"/patients/p-maria/assignment").status_code, 401)
-# write a session with angle samples
-body = {"patient_id": "p-maria", "started_at": "2026-09-26T10:00:00Z", "reps_done": 10, "max_angle": 88.5,
+# write a session with angle samples. Dated now, not a fixed date: the demo seed is pinned
+# to judging day (database/sample_data/generate.py), so a hardcoded time can fall *behind*
+# the newest seeded session and break the "is it the newest?" checks below.
+START = datetime.now(timezone.utc).replace(microsecond=0)
+stamp = lambda d: d.isoformat().replace("+00:00", "Z")
+body = {"patient_id": "p-maria", "started_at": stamp(START), "reps_done": 10, "max_angle": 88.5,
         "form_warnings": ["too_fast"], "duration_sec": 60, "joint": "knee",
-        "angle_samples": [{"time": f"2026-09-26T10:00:{i:02d}Z", "angle": i * 1.5} for i in range(60)]}
+        "angle_samples": [{"time": stamp(START + timedelta(seconds=i)), "angle": i * 1.5} for i in range(60)]}
 s = c.post(P+"/sessions", json=body, headers=M); chk("create session 200", s.status_code, 200)
 chk("samples saved", s.json().get("angle_samples_saved"), 60)
 sid = s.json()["session_id"]

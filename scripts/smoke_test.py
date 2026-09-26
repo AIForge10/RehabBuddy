@@ -136,12 +136,15 @@ def main():
         check("write", "new session visible to therapist", newest == session_id)
 
     # ---------- 6. AI ----------
+    summary_patient = None
     if args.no_ai:
         check("ai", "Gemini / ElevenLabs", True, "skipped (--no-ai)", skip=True)
     else:
         s, d, ms, _ = call("POST", A + "/summary", lee, {"patient_id": "p-james"}, timeout=40)
         check("ai", "Gemini summary (live, not fallback)", s == 200 and (d or {}).get("is_fallback") is False,
               f"{s}, is_fallback={(d or {}).get('is_fallback')}, {ms} ms")
+        if s == 200:
+            summary_patient = "p-james"   # stored a row; cleanup() puts the seeded one back
         s, d, ms, _ = call("POST", A + "/translate", maria, {"text": "Bend your knee slowly.", "target_language": "es"}, timeout=40)
         txt = (d or {}).get("text", "")
         check("ai", "Gemini translate to Spanish", s == 200 and txt and txt != "Bend your knee slowly.", f"'{txt[:40]}'")
@@ -171,25 +174,35 @@ def main():
           skip=s == 404)
 
     # ---------- cleanup ----------
-    if session_id:
-        cleanup(session_id)
+    if session_id or summary_patient:
+        cleanup(session_id, summary_patient)
     return finish()
 
 
-def cleanup(session_id):
+def cleanup(session_id, summary_patient=None):
     env = pathlib.Path(__file__).resolve().parents[1] / ".env"
     m = re.search(r"^DATABASE_URL=(.+)$", env.read_text(), re.M) if env.exists() else None
     if not m:
         print(f"\n⚠️  No DATABASE_URL in .env; delete test session {session_id} manually.")
         return
+    done = []
     try:
         import psycopg
         with psycopg.connect(m.group(1).strip()) as c:
-            for sql in ("DELETE FROM angle_samples WHERE session_id = %s",
-                        "DELETE FROM pain_checkins WHERE session_id = %s",
-                        "DELETE FROM sessions WHERE id = %s"):
-                c.execute(sql, (session_id,))
-        print(f"\n🧹 Test session {session_id} and its samples/pain check deleted.")
+            if session_id:
+                for sql in ("DELETE FROM angle_samples WHERE session_id = %s",
+                            "DELETE FROM pain_checkins WHERE session_id = %s",
+                            "DELETE FROM sessions WHERE id = %s"):
+                    c.execute(sql, (session_id,))
+                done.append(f"session {session_id} and its samples/pain check")
+            if summary_patient:
+                # The summary this run generated. Keep the seeded row (sum-<patient>) so the
+                # demo dashboard reads the same before and after a smoke test.
+                n = c.execute("DELETE FROM ai_summaries WHERE patient_id = %s AND id <> %s",
+                              (summary_patient, f"sum-{summary_patient}")).rowcount
+                if n:
+                    done.append(f"{n} generated summary/summaries for {summary_patient}")
+        print("\n🧹 Deleted: " + "; ".join(done) + ".")
     except Exception as e:  # noqa: BLE001
         print(f"\n⚠️  Cleanup failed ({e}); delete session {session_id} manually.")
 

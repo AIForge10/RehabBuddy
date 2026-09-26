@@ -74,9 +74,15 @@ def adherence_7d(conn, patient_id: str, joint: str, times_per_week: int) -> floa
 
 
 def latest_summary(conn, patient_id: str) -> dict | None:
-    """The newest stored summary: {summary_text, source}, source 'gemini' or 'template'."""
+    """The newest stored summary: {summary_text, source}, source 'gemini' or 'template'.
+
+    Ordered by when it was written, not by the week it covers. week_start is the
+    Monday-ish start of a rolling 7 days (ai_routes.summary), so a summary written
+    today can cover an earlier week than one already stored -- ordering on it first
+    would leave a freshly generated note hidden behind the seeded one.
+    """
     return conn.execute("""SELECT summary_text, source FROM ai_summaries WHERE patient_id = %s
-                           ORDER BY week_start DESC, created_at DESC LIMIT 1""", (patient_id,)).fetchone()
+                           ORDER BY created_at DESC, week_start DESC LIMIT 1""", (patient_id,)).fetchone()
 
 
 # ★ Tiger Data: reading the angle_samples hypertable back.

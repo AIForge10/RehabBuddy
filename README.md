@@ -63,6 +63,14 @@ cd frontend && cp .env.example .env && npm install && npm run dev
 Tests: `cd backend && pytest`. Smoke-test a deployment: `python scripts/smoke_test.py <url>`.
 Phone apps: see [mobile/README.md](mobile/README.md).
 
+Rehearsing on the live app leaves rows behind (a session from a camera test, a plan left on
+another joint). Before a demo, put the demo data back to the seed:
+
+```bash
+python scripts/reset_demo_data.py         # report what is extra, change nothing
+python scripts/reset_demo_data.py --yes   # remove the extras, restore the plans
+```
+
 ## Team
 
 Built at ShellHacks 2026 by Daniel, Luis, Satyabrata and Shan.
