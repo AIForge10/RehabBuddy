@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Language } from '../types/session'
 import { t, type Strings } from './i18n'
 
@@ -24,6 +24,10 @@ const Ctx = createContext<LanguageCtx | null>(null)
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Language>(initial)
+  // Screen readers pick their voice, and browsers their translate offer, from <html lang>.
+  useEffect(() => {
+    document.documentElement.lang = lang
+  }, [lang])
   const setLang = (l: Language) => {
     setLangState(l)
     try {
