@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState, type RefObject } from 'react'
 import { Button, PatientScreen } from '../../components/Screen'
 import { SeatedBody } from '../../components/SeatedBody'
 import { LightGuide } from '../../components/SetupGuides'
@@ -7,11 +7,14 @@ import { jointsAt } from '../../lib/bodyGeometry'
 import type { Exercise } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 import type { CameraStatus } from '../../lib/useCamera'
+import { useSetupChecks } from '../../lib/useSetupChecks'
 import { StepHeader } from './StepHeader'
 
 // Camera setup as one piece: the preview and the three checks share a card,
 // and the next unticked check drives what the preview shows, the way the
-// demo drives the steps on the briefing screen.
+// demo drives the steps on the briefing screen. The camera ticks the checks
+// itself as the patient gets into position (lib/useSetupChecks), and says
+// what's still wrong; a tap ticks or unticks any of them by hand.
 
 /** Where the alignment ghost sits: the exercise's own framing, scaled to fit inside the frame brackets. */
 function guide({ view }: Exercise) {
@@ -43,21 +46,51 @@ export function Setup({
   onBack: () => void
 }) {
   const { s, lang } = useLanguage()
+  const copy = exercise.copy[lang]
   // Placement and framing depend on the joint; the lighting check doesn't.
-  const checks = [exercise.copy[lang].camera, exercise.copy[lang].frame, s.setup[2]]
+  const checks = [copy.camera, copy.frame, s.setup[2]]
   const total = checks.length
-  const [checked, setChecked] = useState<boolean[]>(() => checks.map(() => false))
+  const denied = camera === 'denied'
+
+  // `attach` gives this preview the session's camera stream; the checks watch the same element.
+  const [video, setVideo] = useState<HTMLVideoElement | null>(null)
+  const videoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      setVideo(el)
+      attach(el)
+    },
+    [attach],
+  )
+  const auto = useSetupChecks(camera === 'on' ? video : null, exercise.part)
+
+  // A tap overrides the camera either way: the light reading can be wrong, and
+  // not everyone can move to suit the camera. Null = not touched, the camera decides.
+  const [manual, setManual] = useState<(boolean | null)[]>(() => checks.map(() => null))
+  const checked = checks.map((_, i) => manual[i] ?? auto.passed[i])
+  const f = auto.framing
+  const hints = [
+    auto.placement === 'turn' ? s.setupTurn : null,
+    f?.status === 'nobody' ? s.setupNobody : f?.status === 'missing' ? s.setupCantSee(copy.joints[f.joint], f.fix) : null,
+    auto.light === 'dark' ? s.setupDark : auto.light === 'backlit' ? s.setupBacklit : null,
+  ]
   const count = checked.filter(Boolean).length
   const done = count === total
   const current = done ? null : checked.indexOf(false)
-  const denied = camera === 'denied'
 
   return (
     <PatientScreen wide>
-      <StepHeader step={2} title={s.setupTitle} sub={s.setupSub} />
+      <StepHeader step={2} title={s.setupTitle} sub={denied ? s.setupSub : s.setupSubAuto} />
 
       <section className="mt-7 grid overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
-        <Stage exercise={exercise} checks={checks} camera={camera} attach={attach} step={current} />
+        <Stage
+          exercise={exercise}
+          checks={checks}
+          camera={camera}
+          attach={videoRef}
+          canvasRef={auto.canvasRef}
+          step={current}
+          hint={current == null ? null : hints[current]}
+        />
 
         <div className="flex flex-col p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 px-1.5">
@@ -78,10 +111,11 @@ export function Setup({
             {checks.map((item, i) => {
               const on = checked[i]
               const isCurrent = i === current
+              const hint = on ? null : hints[i]
               return (
                 <li key={item.title} className="relative">
                   <button
-                    onClick={() => setChecked((c) => c.map((v, j) => (j === i ? !v : v)))}
+                    onClick={() => setManual((m) => m.map((v, j) => (j === i ? !on : v)))}
                     aria-pressed={on}
                     aria-current={isCurrent ? 'step' : undefined}
                     className={`relative flex w-full items-start gap-3.5 rounded-2xl px-3 py-3 text-left transition-colors duration-300 ${
@@ -102,6 +136,14 @@ export function Setup({
                     <span className="min-w-0 flex-1 pt-0.5">
                       <span className={`block font-bold transition-colors ${isCurrent ? 'text-brand-ink' : on ? 'text-ink-2' : ''}`}>{item.title}</span>
                       <span className="block text-sm leading-snug text-ink-2">{item.body}</span>
+                      {hint ? (
+                        <span className="mt-1.5 flex items-start gap-2 text-sm font-semibold leading-snug">
+                          <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warn" aria-hidden="true" />
+                          {hint}
+                        </span>
+                      ) : (
+                        on && manual[i] == null && <span className="label-mono mt-2 block text-brand-ink">{s.setupByCamera}</span>
+                      )}
                     </span>
                   </button>
                   {/* Rail joining the checks, filled as each is done */}
@@ -136,19 +178,27 @@ export function Setup({
   )
 }
 
-/** Live preview with the alignment ghost, marked up for whichever check is current (null = all done). */
+/**
+ * Live preview with the alignment ghost, marked up for whichever check is
+ * current (null = all done). `hint` is what the camera sees wrong for that
+ * check, shown in place of its tip.
+ */
 function Stage({
   exercise,
   checks,
   camera,
   attach,
+  canvasRef,
   step,
+  hint,
 }: {
   exercise: Exercise
   checks: { tip: string }[]
   camera: CameraStatus
   attach: (el: HTMLVideoElement | null) => void
+  canvasRef: RefObject<HTMLCanvasElement | null>
   step: number | null
+  hint: string | null
 }) {
   const { s, lang } = useLanguage()
   const copy = exercise.copy[lang]
@@ -245,6 +295,9 @@ function Stage({
         </g>
       </svg>
 
+      {/* The joints the camera is tracking right now, over the ghost; same size, fit and mirroring as the video */}
+      <canvas ref={canvasRef} className={`pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover ${on ? '' : 'invisible'}`} />
+
       <span
         role="status"
         className="label-mono absolute left-3 top-3 inline-flex items-center gap-2 rounded-full bg-black/50 px-3 py-1.5 text-white ring-1 ring-white/10 backdrop-blur-md sm:left-4 sm:top-4"
@@ -284,7 +337,7 @@ function Stage({
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-glow text-stage [&>svg]:size-4">
             {step == null ? <Check size={14} /> : SETUP_ICONS[step]}
           </span>
-          <span className="text-[15px] font-semibold leading-tight sm:text-lg">{step == null ? s.setupAllSet : checks[step].tip}</span>
+          <span className="text-[15px] font-semibold leading-tight sm:text-lg">{step == null ? s.setupAllSet : (hint ?? checks[step].tip)}</span>
         </p>
       )}
     </div>
