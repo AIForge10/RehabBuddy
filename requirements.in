@@ -15,8 +15,7 @@ psycopg[binary]
 psycopg-pool
 
 # Computer vision + ML (Satyabrata)
-mediapipe
-opencv-python
+mediapipe==0.10.14
 numpy
 pandas
 scikit-learn
