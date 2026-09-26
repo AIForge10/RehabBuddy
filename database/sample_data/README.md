@@ -18,7 +18,7 @@ frontend will work when `VITE_USE_MOCKS` is switched off.
 | Method + path | Returns |
 |---|---|
 | `GET /patients/{id}/assignment` | `Assignment` (with nested `exercise`) |
-| `GET /patients/{id}/overview` | `{patient, assignment, adherence_7d, sessions[], red_flags[], latest_summary}` |
+| `GET /patients/{id}/overview` | `{patient, assignment, adherence_7d, sessions[], red_flags[], latest_summary}`; each session carries `stats` (rep peaks, fade, time at end range) worked out from `angle_samples` |
 | `GET /therapist/{id}/dashboard` | `{therapist_id, patients: Overview[], generated_at}` |
 | `POST /sessions` | `{session_id}` |
 | `GET /sessions/{id}/samples` | `[{time, angle}]`, oldest first, averaged to 10 Hz with `time_bucket` (the therapist's replay) |

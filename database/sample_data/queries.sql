@@ -47,3 +47,6 @@ WHERE session_id = :'sid' ORDER BY bucket;
 SELECT time_bucket('100 milliseconds', time) AS time, round(avg(angle), 1) AS angle
 FROM angle_samples WHERE session_id = :'sid'
 GROUP BY 1 ORDER BY 1;
+
+-- ★ Tiger Data: each overview session's stats (rep peaks, fade, time at end range) are
+-- SESSION_STATS in backend/api/data/queries.py: window functions over that same 10 Hz trace.
