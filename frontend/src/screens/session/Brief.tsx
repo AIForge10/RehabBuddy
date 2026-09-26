@@ -33,24 +33,24 @@ export function Brief({
     <PatientScreen wide>
       <StepHeader step={1} title={copy.name} sub={copy.briefSub(assignment.reps, target)} />
 
-      <div className="mt-5">
+      <div className="mt-7">
         <JointPicker value={exercise.part} onChange={onPick} />
       </div>
 
-      <section className="mt-4 grid overflow-hidden rounded-[28px] bg-surface shadow-lift ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="aspect-[4/3] bg-stage sm:aspect-[16/10]">
+      <section className="mt-4 grid overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="aspect-[4/3] bg-stage sm:aspect-[16/10] lg:aspect-auto lg:min-h-[460px]">
           <ExerciseFigure exercise={exercise} angle={demo.angle} target={target} tracking={false} />
         </div>
 
         <div className="flex flex-col p-4 sm:p-5">
-          <h2 className="px-1.5 text-xs font-bold uppercase tracking-[0.14em] text-muted">{s.briefTitle}</h2>
+          <h2 className="label-mono px-1.5 pt-1 text-muted">{s.briefTitle}</h2>
           <ol className="mt-3">
             {copy.steps.map((step, i) => {
               const active = i === demo.phase
               const fill = i < demo.phase ? 1 : active ? demo.progress : 0
               return (
                 <li key={step.title} aria-current={active ? 'step' : undefined} className="relative">
-                  <div className={`flex items-start gap-3.5 rounded-[20px] px-3 py-3 transition-colors duration-300 ${active ? 'bg-brand-soft' : ''}`}>
+                  <div className={`flex items-start gap-3.5 rounded-2xl px-3 py-3 transition-colors duration-300 ${active ? 'bg-brand-soft' : ''}`}>
                     <span
                       className={`grid size-10 shrink-0 place-items-center rounded-full font-bold tabular-nums transition-colors duration-300 ${
                         active ? 'bg-brand text-on-brand' : 'bg-raised text-ink-2 ring-1 ring-line ring-inset'

@@ -8,11 +8,17 @@
    doesn't reach 3:1. So filled teal (buttons, toggles) always carries
    on-brand, and teal text or thin strokes on light surfaces use brand-ink.
 
-   Type: Figtree for everything a patient reads or taps: open shapes that
-   hold up from across the room, and true tabular figures so live numbers
-   don't jitter. Konkhmer Sleokchher is the brand face, for headlines, big
-   static numbers and the primary call to action. It has one weight and no
-   tabular figures, so never put a changing number in it.
+   Type: Figtree for everything a patient reads or taps, buttons included:
+   open shapes that hold up from across the room, and true tabular figures
+   so live numbers don't jitter. Konkhmer Sleokchher is the brand face, for
+   headlines and big static numbers. It has one weight and no tabular
+   figures, so never put a changing number in it. Geist Mono is the
+   instrument's voice: the small caps labels on readouts, scales and axes
+   (label-mono), never body copy.
+
+   Surfaces: flat and crisp, like an instrument panel. Panels are surface +
+   a 1px line ring (panel utility), radius 24 / 16 / 12 for panel / tile /
+   control. Shadows are only for things that float (menus, overlays).
 
    Contrast: every text token clears 4.5:1 on canvas and surface in both
    themes. Check before changing muted / on-hero-2. */
@@ -79,7 +85,7 @@
   --rb-pain-2: #e3a93b;
   --rb-pain-3: #d9534a;
 
-  --rb-shadow-card: 0 1px 2px rgb(13 25 23 / 0.04), 0 6px 20px -8px rgb(13 25 23 / 0.1);
+  --rb-shadow-card: 0 1px 2px rgb(13 25 23 / 0.04);
   --rb-shadow-lift: 0 2px 4px rgb(13 25 23 / 0.05), 0 16px 36px -12px rgb(13 25 23 / 0.18);
 }
 
@@ -129,6 +135,7 @@
 @theme inline {
   --font-sans: "Figtree", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-display: "Konkhmer Sleokchher", "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   --color-canvas: var(--rb-canvas);
   --color-wash: var(--rb-wash);
@@ -256,8 +263,6 @@
   }
   body {
     @apply bg-canvas text-ink font-sans;
-    background-image: radial-gradient(120% 420px at 50% -180px, var(--rb-wash), transparent 75%);
-    background-repeat: no-repeat;
   }
   h1,
   h2,
@@ -280,6 +285,17 @@
   ::selection {
     @apply bg-brand-soft text-brand-ink;
   }
+}
+
+/* The instrument label: small mono caps on readouts, scales, axes and data
+   headings. A size utility next to it overrides the 11px. */
+@utility label-mono {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 
 // Recharts writes colors as SVG attributes, where CSS variables aren't
 // reliable, so read the resolved token values and refresh on theme change.
-const KEYS = ['brand', 'brand-soft', 'surface', 'line', 'muted', 'ink', 'ink-2', 'critical'] as const
+const KEYS = ['brand', 'brand-soft', 'brand-ink', 'surface', 'line', 'line-strong', 'muted', 'ink', 'ink-2', 'critical'] as const
 export type ThemeColors = Record<(typeof KEYS)[number], string>
 
 function read(): ThemeColors {

@@ -4,18 +4,24 @@ import { EXERCISES } from '../../lib/exercises'
 import { useLanguage } from '../../lib/language'
 
 // Small, static illustrations for the four "how it works" steps. Decorative:
-// each step's title and body carry the meaning.
+// each step's title and body carry the meaning. The patient steps follow a
+// shoulder plan, so the page shows an arm here after the hero's knee.
+
+const ARM = EXERCISES.shoulder
+/** 10 arm raises to 140°, and a reading on the way up. */
+const TARGET = ARM.target
+const READING = 118
 
 export function PlanVisual() {
   const { s, lang } = useLanguage()
-  const copy = EXERCISES.knee.copy[lang]
+  const copy = ARM.copy[lang]
   return (
     <div className="w-[84%] max-w-[230px] rounded-2xl bg-surface p-3.5 shadow-card ring-1 ring-line">
-      <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-brand-ink">{s.today}</p>
+      <p className="label-mono text-[10px] text-brand-ink">{s.today}</p>
       <p className="mt-1 font-display text-lg leading-tight">{copy.name}</p>
       <div className="mt-2.5 flex flex-wrap gap-1.5 text-[11px] font-semibold text-ink-2">
         <span className="rounded-full bg-raised px-2 py-1 ring-1 ring-line">{s.chipReps(10)}</span>
-        <span className="rounded-full bg-raised px-2 py-1 ring-1 ring-line">{copy.toTarget(90)}</span>
+        <span className="rounded-full bg-raised px-2 py-1 ring-1 ring-line">{copy.toTarget(TARGET)}</span>
       </div>
       <div className="mt-3 flex gap-1">
         {[1, 1, 0].map((on, i) => (
@@ -27,10 +33,11 @@ export function PlanVisual() {
 }
 
 export function MeasureVisual() {
+  const { lang } = useLanguage()
   return (
     <div className="w-[70%] max-w-[190px] pt-3">
-      <AngleGauge angle={76} target={90}>
-        <p className="text-[26px] font-bold leading-none tabular-nums">76°</p>
+      <AngleGauge angle={READING} target={TARGET} min={ARM.min} max={ARM.max} name={ARM.copy[lang].angleLabel}>
+        <p className="text-[26px] font-bold leading-none tabular-nums">{READING}°</p>
       </AngleGauge>
     </div>
   )
@@ -39,8 +46,8 @@ export function MeasureVisual() {
 /** Both languages at once: this is the one place the other language shows on purpose. */
 export function CoachVisual() {
   const lines = [
-    { tag: 'EN', text: EXERCISES.knee.copy.en.steps[1].title },
-    { tag: 'ES', text: EXERCISES.knee.copy.es.steps[1].title },
+    { tag: 'EN', text: ARM.copy.en.steps[1].title },
+    { tag: 'ES', text: ARM.copy.es.steps[1].title },
   ]
   return (
     <div className="flex w-[84%] max-w-[230px] flex-col gap-2">
@@ -51,7 +58,7 @@ export function CoachVisual() {
             i ? 'self-end rounded-br-md bg-hero text-on-hero ring-white/10' : 'rounded-bl-md bg-surface ring-line'
           }`}
         >
-          <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${i ? 'bg-brand text-on-brand' : 'bg-brand-soft text-brand-ink'}`}>{l.tag}</span>“{l.text}”
+          <span className={`rounded-md px-1.5 py-0.5 font-mono text-[10px] font-semibold ${i ? 'bg-brand text-on-brand' : 'bg-brand-soft text-brand-ink'}`}>{l.tag}</span>“{l.text}”
         </p>
       ))}
     </div>

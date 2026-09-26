@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
-import { Button, PatientScreen } from '../components/Screen'
+import { Button, PatientScreen, TITLE } from '../components/Screen'
+import { exerciseFor } from '../lib/exercises'
 import { useAuth } from '../lib/auth'
 import { useLanguage } from '../lib/language'
 import { weekOf } from '../lib/week'
@@ -47,11 +48,11 @@ export default function Home() {
   if (!data) {
     return (
       <PatientScreen wide>
-        <div className="mt-8 sm:mt-12" aria-busy="true" aria-label={s.loading}>
+        <div className="pt-6 sm:pt-10" aria-busy="true" aria-label={s.loading}>
           <div className="h-4 w-40 animate-pulse rounded bg-line" />
           <div className="mt-3 h-11 w-80 max-w-full animate-pulse rounded-lg bg-line" />
           <div className="mt-3 h-5 w-96 max-w-full animate-pulse rounded bg-line" />
-          <div className="mt-10 h-[520px] animate-pulse rounded-[28px] bg-line sm:h-[560px] lg:h-[400px]" />
+          <div className="mt-10 h-[520px] animate-pulse rounded-3xl bg-line sm:h-[560px] lg:h-[400px]" />
           <div className={RECAP_GRID}>
             <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-5 xl:col-span-4" />
             <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-7 xl:col-span-8" />
@@ -68,12 +69,10 @@ export default function Home() {
 
   return (
     <PatientScreen wide>
-      <div className="mt-8 flex flex-wrap items-end justify-between gap-x-16 gap-y-8 sm:mt-12">
+      <div className="flex flex-wrap items-end justify-between gap-x-16 gap-y-8 pt-6 sm:pt-10">
         <div className="max-w-xl">
-          <p className="text-[15px] font-semibold text-muted first-letter:uppercase">
-            {now.toLocaleDateString(s.locale, { weekday: 'long', month: 'long', day: 'numeric' })}
-          </p>
-          <h1 className="mt-1 font-display text-[36px] leading-[1.06] sm:text-[48px]">{s.greeting((account?.full_name ?? patient.full_name).split(' ')[0], now.getHours())}</h1>
+          <p className="label-mono text-muted">{now.toLocaleDateString(s.locale, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          <h1 className={`mt-3 ${TITLE}`}>{s.greeting((account?.full_name ?? patient.full_name).split(' ')[0], now.getHours())}</h1>
           <p className="mt-3 text-lg text-ink-2 sm:text-xl">{s.weekLede(week.done, plan, week.daysLeft)}</p>
         </div>
         <WeekStrip week={week} plan={plan} />
@@ -84,7 +83,7 @@ export default function Home() {
       </div>
 
       <div className={RECAP_GRID}>
-        <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} />
+        <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} exercise={exerciseFor(assignment.exercise.joint)} />
       </div>
 
     </PatientScreen>

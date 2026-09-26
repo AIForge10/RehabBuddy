@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthError } from '../../api/auth'
-import { Button } from '../../components/Screen'
+import { ArrowRight, Button } from '../../components/Screen'
 import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
 import { useLanguage } from '../../lib/language'
@@ -78,7 +78,7 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
           error={errors.password && s[errors.password]}
         />
-        <Button type="submit" disabled={pending != null} className="mt-1 w-full font-display">
+        <Button type="submit" disabled={pending != null} className="mt-1 w-full">
           {pending === 'form' ? (
             <>
               <Spinner />
@@ -90,20 +90,20 @@ export default function Login() {
         </Button>
       </form>
 
-      <div className="my-7 flex items-center gap-4 text-sm font-semibold text-muted">
+      <div className="label-mono my-8 flex items-center gap-4 text-muted">
         <span className="h-px flex-1 bg-line" />
         {s.orDemo}
         <span className="h-px flex-1 bg-line" />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-2.5">
         {ROLES.map((role) => (
           <button
             key={role}
             type="button"
             disabled={pending != null}
             onClick={() => demo(role)}
-            className="group flex min-w-0 items-center gap-3 rounded-2xl bg-surface p-3 text-left shadow-card ring-1 ring-line transition-[box-shadow,transform] duration-200 hover:ring-2 hover:ring-brand active:scale-[0.98] disabled:opacity-60"
+            className="group flex min-w-0 items-center gap-3.5 rounded-2xl bg-surface p-3 pr-4 text-left ring-1 ring-line-strong transition-[box-shadow,transform] duration-200 hover:ring-2 hover:ring-brand-ink active:scale-[0.98] disabled:opacity-60"
           >
             <span
               className={`grid size-10 shrink-0 place-items-center rounded-full text-sm font-bold ${
@@ -112,10 +112,11 @@ export default function Login() {
             >
               {pending === role ? <Spinner /> : role === 'patient' ? 'ML' : 'DL'}
             </span>
-            <span className="min-w-0">
+            <span className="min-w-0 flex-1">
               <span className="block font-bold">{s.demoAs[role].title}</span>
-              <span className="block truncate text-[13px] text-muted">{s.demoAs[role].sub}</span>
+              <span className="block truncate text-sm text-muted">{s.demoAs[role].sub}</span>
             </span>
+            <ArrowRight size={16} className="shrink-0 text-muted transition-[color,transform] duration-200 group-hover:translate-x-0.5 group-hover:text-brand-ink" />
           </button>
         ))}
       </div>
