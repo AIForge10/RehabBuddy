@@ -9,7 +9,9 @@
 # Later changes:  doctl apps update <app-id> --spec .do/app.yaml
 # The secrets (GEMINI_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, JWT_SECRET) are set
 # in the DigitalOcean console as encrypted env vars; this file only names them.
-# The live backend is https://rehabbuddy-api-ggcb7.ondigitalocean.app.
+# The live backend is https://rehabbuddy-api-ggcb7.ondigitalocean.app -- today it runs as its
+# OWN DigitalOcean app, separate from the static site that serves bendwith.us, so the web app
+# reaches it by absolute URL and CORS applies. Keep VITE_API_URL below pointing at that host.
 name: rehabbuddy
 region: nyc
 domains:
@@ -49,7 +51,8 @@ services:
         value: OZ0L6eISlOejga3XjDFt
       - key: SIGNUP_THERAPIST_ID
         value: t-lee
-      # The web app and the API share bendwith.us, so browsers need no CORS; the phone apps do.
+      # The API is its own app on its own host, so every browser call from bendwith.us is
+      # cross-origin: these origins are what makes the web app work, not just the phone apps.
       - key: BACKEND_CORS_ORIGINS
         value: '["https://bendwith.us","https://www.bendwith.us","capacitor://localhost","https://localhost"]'
       - key: GEMINI_API_KEY
@@ -77,8 +80,12 @@ static_sites:
     envs:
       - key: VITE_USE_MOCKS
         value: "false"
+      # The API's own host, absolutely. Do NOT point this at https://bendwith.us/api/v1:
+      # the API runs as its own app (see the note at the top), and catchall_document above
+      # serves index.html for every unmatched path, so /api/* would come back as HTML and
+      # every request would fail to parse.
       - key: VITE_API_URL
-        value: https://bendwith.us/api/v1
+        value: https://rehabbuddy-api-ggcb7.ondigitalocean.app/api/v1
       - key: VITE_DEMO_PATIENT_ID
         value: p-maria
       - key: VITE_DEMO_THERAPIST_ID
