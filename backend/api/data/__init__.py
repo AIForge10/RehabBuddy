@@ -11,6 +11,7 @@ from .live import router as live_router
 from .patients import router as patients_router
 from .sessions import router as sessions_router
 from .plan_suggestion import router as plan_suggestion_router
+from .storage import router as storage_router
 
 router = APIRouter()
 router.include_router(patients_router)
@@ -18,5 +19,6 @@ router.include_router(sessions_router)
 router.include_router(ai_router)
 router.include_router(live_router)
 router.include_router(plan_suggestion_router)
+router.include_router(storage_router)
 
 __all__ = ["router"]

@@ -1,32 +1,16 @@
-# React + TypeScript + Vite
+# bendwith.us web app
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+The patient and therapist screens: React 19, Vite, Tailwind 4, MediaPipe Pose in the browser.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+cp .env.example .env   # VITE_USE_MOCKS=true runs the whole UI without a backend
+npm install
+npm run dev            # http://localhost:5173
+npm run build          # tsc + vite build into dist/
+npm run lint
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+Where things are: `src/pose` (tracking, angles, rep counting, form faults), `src/lib/coach.ts`
+(the voice coach's lines), `src/lib/i18n.ts` (English and Spanish), `src/screens` (one folder per
+screen), `src/api` (the backend client and the in-browser mock). `/pose-debug` is the accuracy
+validation harness. The mobile app in `../mobile` wraps this same build with Capacitor.

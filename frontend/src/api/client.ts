@@ -31,6 +31,7 @@ import type {
   UpdateAssignmentRequest,
   UUID,
   WeeklyRecapResponse,
+  StorageStats,
 } from '../types/session'
 import { isNativeApp, saveToken } from '../lib/native'
 import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
@@ -155,6 +156,12 @@ export function createSession(body: CreateSessionRequest): Promise<CreateSession
 export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
   if (USE_MOCKS) return mockBackend.getDashboard(therapistId)
   return request<DashboardResponse>(`/therapist/${therapistId}/dashboard`)
+}
+
+/** What Tiger Data holds and how fast it answers, for the dashboard's Data card. */
+export function getStorageStats(therapistId: UUID): Promise<StorageStats> {
+  if (USE_MOCKS) return mockBackend.getStorageStats(therapistId)
+  return request<StorageStats>(`/therapist/${therapistId}/storage`)
 }
 
 /** A session's angle trace, oldest first, for the therapist's replay. */
