@@ -195,12 +195,7 @@ export function Live({
         className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${camera === 'on' ? '' : 'hidden'}`}
       />
       {camera === 'on' && trackedSession.ready && (
-        <canvas
-          ref={trackedSession.canvasRef}
-          width={640}
-          height={480}
-          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
-        />
+        <canvas ref={trackedSession.canvasRef} className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover" />
       )}
       {camera !== 'on' && (
         <div className="absolute inset-0 flex items-center justify-center pb-40 pt-20 lg:pb-8 lg:pr-[360px]">
