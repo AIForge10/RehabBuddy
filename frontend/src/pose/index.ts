@@ -4,3 +4,6 @@ export type { PoseSession, PoseSessionResult, RepInfo, PoseSessionOptions } from
 export { default as PoseCamera } from './PoseCamera'
 export { JOINTS } from './joints'
 export type { JointName } from './joints'
+export { DEFAULT_TUNING } from './tracker'
+export type { PoseTuning, PreferredSide } from './tracker'
+export { preloadPose } from './landmarker'

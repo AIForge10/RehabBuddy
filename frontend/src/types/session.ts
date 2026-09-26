@@ -20,7 +20,7 @@ export type UUID = string
 export interface AngleSample {
   /** Milliseconds since the session started (backend converts to TIMESTAMPTZ). */
   t_ms: number
-  /** Knee flexion in degrees, already smoothed (last-5-frame average). */
+  /** Joint angle in degrees, already smoothed (see src/pose/tracker.ts). */
   angle: number
 }
 
