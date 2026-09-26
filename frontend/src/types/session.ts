@@ -17,10 +17,17 @@ export type UUID = string
 // What src/pose/ hands the ExerciseSession screen when the patient hits "Finish".
 // ---------------------------------------------------------------------------
 
+/** A point on the live on-screen trace. */
 export interface AngleSample {
-  /** Milliseconds since the session started (backend converts to TIMESTAMPTZ). */
+  /** Milliseconds since the session started. */
   t_ms: number
   /** Knee flexion in degrees, already smoothed (last-5-frame average). */
+  angle: number
+}
+
+/** One row of the angle_samples hypertable; the backend adds session_id. */
+export interface AngleSampleRow {
+  time: ISODateString
   angle: number
 }
 
@@ -31,8 +38,8 @@ export interface SessionResult {
   /** Human-readable form cues triggered, e.g. "Knee caving inward". One entry per occurrence. */
   form_warnings: string[]
   duration_sec: number
-  /** Downsampled angle trace (~10 Hz) → angle_samples hypertable. */
-  samples: AngleSample[]
+  /** Every tracked frame, from the pose engine's finish() → angle_samples hypertable. */
+  angle_samples: AngleSampleRow[]
 }
 
 /** Live values the pose hook exposes every frame while tracking. */
@@ -82,11 +89,22 @@ export interface CreateSessionRequest extends SessionResult {
   started_at: ISODateString
   /** Joint the session worked ('knee', 'hip', 'shoulder', 'elbow', 'wrist'). The
    *  patient can try a joint other than the assigned one, so the backend keeps
-   *  each joint's sessions apart; omitted means the assignment's own joint. */
-  joint?: string
+   *  each joint's sessions apart. */
+  joint: string
 }
 export interface CreateSessionResponse {
   session_id: UUID
+}
+
+// POST /auth/login
+export interface LoginRequest {
+  email: string
+  password: string
+}
+export interface LoginResponse {
+  access_token: string
+  token_type: 'bearer'
+  user: { id: UUID; full_name: string; role: Role; language: Language }
 }
 
 // POST /pain-check

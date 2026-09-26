@@ -4,7 +4,8 @@
 //   VITE_USE_MOCKS=true  → no network; uses the in-browser mock backend (src/api/mock.ts).
 //                          State lives in localStorage, so a patient tab and a
 //                          therapist tab on the same machine see the same data.
-//   otherwise            → real FastAPI backend at VITE_API_URL.
+//   otherwise            → real FastAPI backend at VITE_API_URL, signed in with a
+//                          bearer token from POST /auth/login (docs/AUTH.md).
 //
 // Plan rule: "every AI call needs a fallback response so a quota error never
 // breaks the demo". painCheck / getSummary / translate therefore never throw;
@@ -16,6 +17,8 @@ import type {
   CreateSessionResponse,
   DashboardResponse,
   Language,
+  LoginRequest,
+  LoginResponse,
   PainCheckRequest,
   PainCheckResponse,
   PatientOverview,
@@ -41,15 +44,55 @@ export class ApiError extends Error {
   }
 }
 
+// --- Auth token --------------------------------------------------------------
+// Kept in memory and in sessionStorage, so it survives a reload but not the tab.
+
+const TOKEN_KEY = 'rehabbuddy.token.v1'
+
+let token: string | null = (() => {
+  try {
+    return sessionStorage.getItem(TOKEN_KEY)
+  } catch {
+    return null
+  }
+})()
+
+let unauthorized = () => {}
+
+export const hasAuthToken = () => token != null
+
+export function setAuthToken(next: string | null) {
+  token = next
+  try {
+    if (next) sessionStorage.setItem(TOKEN_KEY, next)
+    else sessionStorage.removeItem(TOKEN_KEY)
+  } catch {
+    /* private mode: the token lives in memory only */
+  }
+}
+
+/** Runs when the backend rejects the token (expired or revoked); the token is already cleared. */
+export function onUnauthorized(fn: () => void) {
+  unauthorized = fn
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token && { Authorization: `Bearer ${token}` }),
+        ...init?.headers,
+      },
       signal: controller.signal,
     })
+    if (res.status === 401 && token) {
+      setAuthToken(null)
+      unauthorized()
+    }
     if (!res.ok) {
       const body = await res.text().catch(() => '')
       throw new ApiError(res.status, body || res.statusText)
@@ -62,6 +105,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 const post = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+/** Throws ApiError 401 on a wrong email or password. */
+export function login(body: LoginRequest): Promise<LoginResponse> {
+  return post<LoginResponse>('/auth/login', body)
+}
 
 // --- Data endpoints (throw on failure; screens show an error state) ---------
 

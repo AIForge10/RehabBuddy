@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
+import { getPatientOverview } from '../api/client'
 import { Button, PatientScreen, TITLE } from '../components/Screen'
 import { exerciseFor } from '../lib/exercises'
 import { useAuth } from '../lib/auth'
@@ -17,18 +17,19 @@ const RECAP_GRID = 'mt-12 grid gap-x-12 gap-y-12 sm:mt-16 lg:grid-cols-12'
 export default function Home() {
   const { s } = useLanguage()
   const { account } = useAuth()
+  const patientId = account!.id // RequireAuth only renders this screen signed in
   const navigate = useNavigate()
   const [data, setData] = useState<PatientOverview | null>(null)
   const [error, setError] = useState(false)
 
   const load = useCallback(() => {
-    getPatientOverview(DEMO_PATIENT_ID)
+    getPatientOverview(patientId)
       .then((d) => {
         setData(d)
         setError(false)
       })
       .catch(() => setError(true))
-  }, [])
+  }, [patientId])
 
   useEffect(load, [load])
 

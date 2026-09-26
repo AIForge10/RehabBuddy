@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { DEMO_THERAPIST_ID, USE_MOCKS, getDashboard, getSummary } from '../api/client'
+import { USE_MOCKS, getDashboard, getSummary } from '../api/client'
 import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
 import { Logo } from '../components/Logo'
@@ -31,6 +31,7 @@ function greeting() {
 
 export default function TherapistDashboard() {
   const { account } = useAuth()
+  const therapistId = account!.id // RequireAuth only renders this screen signed in
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState(false)
   const [lastOk, setLastOk] = useState<number | null>(null)
@@ -45,7 +46,7 @@ export default function TherapistDashboard() {
     const load = async () => {
       if (document.hidden && seen.current) return
       try {
-        const res = await getDashboard(DEMO_THERAPIST_ID)
+        const res = await getDashboard(therapistId)
         if (!alive) return
         const ids = res.patients.flatMap((p) => p.sessions.map((s) => ({ id: s.id, patient: p.patient.id })))
         if (seen.current) {
@@ -75,7 +76,7 @@ export default function TherapistDashboard() {
       clearInterval(clock)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [])
+  }, [therapistId])
 
   const patients = data?.patients ?? []
   const selected = patients.find((p) => p.patient.id === selectedId) ?? patients[0]
