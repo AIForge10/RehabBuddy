@@ -103,7 +103,7 @@ export function Recap({ sessions, target, reps, exercise }: { sessions: SessionR
 
       <Section
         title={s.doneProgress}
-        aside={gain > 0 ? <span className="text-brand-ink">{s.sinceStart(gain)}</span> : undefined}
+        aside={Math.round(gain) > 0 ? <span className="text-brand-ink">{s.sinceStart(gain)}</span> : undefined}
         className="flex flex-col lg:col-span-7 xl:col-span-8"
       >
         {n > 1 ? (
