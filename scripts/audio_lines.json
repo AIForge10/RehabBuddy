@@ -4,6 +4,11 @@
     "text": "Almost there, reach a little further.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/and_hold": {
+    "model": "eleven_multilingual_v2",
+    "text": "And hold.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/bend_deeper": {
     "model": "eleven_multilingual_v2",
     "text": "Try to bend a little deeper.",
@@ -184,6 +189,11 @@
     "text": "Hold it there.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/hold_a_second": {
+    "model": "eleven_multilingual_v2",
+    "text": "Hold that for a second.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/keep_it_up": {
     "model": "eleven_multilingual_v2",
     "text": "Keep it up.",
@@ -232,6 +242,11 @@
   "en/pain_stop": {
     "model": "eleven_multilingual_v2",
     "text": "Okay, let's stop there. I'm letting your therapist know.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/pause_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Pause there for a second.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/perfect_form": {
@@ -289,6 +304,11 @@
     "text": "Let’s begin. Lift your hand slowly.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/stay_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Stay right there.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/step_back": {
     "model": "eleven_multilingual_v2",
     "text": "Step back slightly so your leg is visible.",
@@ -307,6 +327,11 @@
   "es/almost_there": {
     "model": "eleven_multilingual_v2",
     "text": "Casi llegas, un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/and_hold": {
+    "model": "eleven_multilingual_v2",
+    "text": "Y mantén.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/bend_deeper": {
@@ -489,6 +514,11 @@
     "text": "Mantén la posición.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/hold_a_second": {
+    "model": "eleven_multilingual_v2",
+    "text": "Aguanta un segundo.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/keep_it_up": {
     "model": "eleven_multilingual_v2",
     "text": "Sigue así.",
@@ -537,6 +567,11 @@
   "es/pain_stop": {
     "model": "eleven_multilingual_v2",
     "text": "Está bien, paremos aquí. Le aviso a tu terapeuta.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/pause_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Haz una pausa ahí, un segundo.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/perfect_form": {
@@ -592,6 +627,11 @@
   "es/start_wrist": {
     "model": "eleven_multilingual_v2",
     "text": "Empecemos. Levanta la mano despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/stay_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Quédate justo ahí.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/step_back": {

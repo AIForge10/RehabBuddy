@@ -70,8 +70,12 @@ export type CoachCue =
   | 'final_rep'
   | 'done'
   | 'session_complete'
-  // At the target: pause there for a second
+  // At the target: pause there for a second (pool; Live picks one and rations them)
   | 'hold'
+  | 'and_hold'
+  | 'pause_there'
+  | 'stay_there'
+  | 'hold_a_second'
   // The patient said it hurts (lib/listen.ts)
   | 'pain_stop'
 
@@ -106,6 +110,10 @@ export const CUES: readonly CoachCue[] = [
   'done',
   'session_complete',
   'hold',
+  'and_hold',
+  'pause_there',
+  'stay_there',
+  'hold_a_second',
   'pain_stop',
   ...COUNT_WORDS.en.map((_, i) => `count_${i + 1}` as const),
 ]
@@ -147,7 +155,12 @@ export const CUE_TEXT: Record<Language, Record<LineCue, string>> = {
     final_rep: 'Final rep, make it count!',
     done: 'Great work. Session complete.',
     session_complete: 'All done! Fantastic effort today.',
+    // Hold at the target
     hold: 'Hold it there.',
+    and_hold: 'And hold.',
+    pause_there: 'Pause there for a second.',
+    stay_there: 'Stay right there.',
+    hold_a_second: 'Hold that for a second.',
     pain_stop: "Okay, let's stop there. I'm letting your therapist know.",
   },
   es: {
@@ -186,10 +199,18 @@ export const CUE_TEXT: Record<Language, Record<LineCue, string>> = {
     final_rep: '¡Última repetición, que cuente!',
     done: 'Buen trabajo. Sesión terminada.',
     session_complete: '¡Listo! Fantástico esfuerzo hoy.',
+    // Hold at the target
     hold: 'Mantén la posición.',
+    and_hold: 'Y mantén.',
+    pause_there: 'Haz una pausa ahí, un segundo.',
+    stay_there: 'Quédate justo ahí.',
+    hold_a_second: 'Aguanta un segundo.',
     pain_stop: 'Está bien, paremos aquí. Le aviso a tu terapeuta.',
   },
 }
+
+/** The ways the coach asks for a pause at the target. Live says one of these at most every few reps. */
+export const HOLD_CUES: readonly CoachCue[] = ['hold', 'and_hold', 'pause_there', 'stay_there', 'hold_a_second']
 
 // Cues that may cut off whatever is playing. Everything else is dropped while
 // the coach is talking, so a count or a "hold" never queues up to play late.
