@@ -1,0 +1,27 @@
+# Backend (Luis)
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+python-dotenv
+httpx
+
+# AI + voice
+google-genai
+elevenlabs
+
+# Database: Tiger Data / PostgreSQL
+psycopg[binary]
+psycopg-pool
+
+# Computer vision + ML (Satyabrata)
+mediapipe
+opencv-python
+numpy
+pandas
+scikit-learn
+matplotlib
+
+# Dev tools
+jupyter
+pytest

@@ -1,0 +1,30 @@
+# ---------- Secrets (NEVER on GitHub) ----------
+.env
+*.env
+!.env.example
+!frontend/.env.example
+
+# ---------- Python ----------
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+venv/
+.venv/
+
+# ---------- Frontend / Node ----------
+node_modules/
+dist/
+
+# ---------- ML model files (downloaded automatically) ----------
+*.task
+
+# ---------- Privacy: never store patient video ----------
+*.mp4
+*.mov
+*.webm
+
+# ---------- Mac / editors ----------
+.DS_Store
+.vscode/
+.idea/
