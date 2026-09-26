@@ -79,6 +79,11 @@ export function onUnauthorized(fn: () => void) {
   unauthorized = fn
 }
 
+// Live sessions (src/api/live.ts) hold their own long-lived connections, a
+// WebSocket and a streamed fetch, rather than going through request().
+export { API_URL }
+export const getAuthToken = () => token
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)

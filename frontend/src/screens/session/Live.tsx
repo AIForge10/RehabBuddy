@@ -9,6 +9,7 @@ import { playCue, preloadCues, stopCoach, type CoachCue } from '../../lib/coach'
 import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { useLanguage } from '../../lib/language'
+import { useLivePublisher } from '../../lib/useLivePublisher'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import type { CameraStatus } from '../../lib/useCamera'
 import type { AngleSample, Assignment, LivePoseState, SessionResult } from '../../types/session'
@@ -87,6 +88,23 @@ export function Live({
   })
   const rec = useRef({ startedAt: new Date(), t0: 0, samples: [] as AngleSample[], max: 0, repPeak: 0, warnings: [] as string[] })
 
+  // The therapist can watch from their dashboard while this runs: angles, reps and cues, never video.
+  const { connected: liveShared, end: endLive } = useLivePublisher({
+    patientId: assignment.patient_id,
+    joint: exercise.part,
+    target,
+    goal,
+    active: phase !== 'countdown',
+    read: () => ({
+      startedAt: rec.current.startedAt,
+      elapsedMs: performance.now() - rec.current.t0,
+      samples: rec.current.samples,
+      reps: poseRef.current.reps,
+      maxAngle: rec.current.max,
+      warning: poseRef.current.form_warning,
+    }),
+  })
+
   const say = useCallback((cue: CoachCue) => setCaption(playCue(cue, langRef.current, exerciseRef.current)), [])
 
   // Clips load during the countdown, so the first cue doesn't wait on the network.
@@ -151,12 +169,13 @@ export function Live({
         started_at: r.startedAt.toISOString(),
         joint: exercise.part,
       })
+      endLive('finished') // after the save, so the therapist's dashboard can already load it
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment } })
     } catch {
       setSaveError(true)
       setPhase('running')
     }
-  }, [assignment, exercise, navigate, finishPose])
+  }, [assignment, exercise, navigate, finishPose, endLive])
 
   // Coach reacts to each completed rep...
   const lastReps = useRef(0)
@@ -193,6 +212,7 @@ export function Live({
   const reached = angle != null && angle >= target - 2
   const exit = () => {
     stopCoach()
+    endLive('exited')
     navigate('/')
   }
 
@@ -236,6 +256,7 @@ export function Live({
               <span className={`size-1.5 rounded-full ${phase === 'running' ? 'animate-pulse bg-critical' : 'bg-white/40'}`} />
               {formatDuration(elapsed)}
               {simulated && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.simulated}</span>}
+              {liveShared && <span className="label-mono ml-1.5 hidden rounded-full bg-white/10 px-2 py-0.5 text-[10px] sm:inline">{s.liveShared}</span>}
             </p>
           </div>
         </div>

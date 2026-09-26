@@ -87,6 +87,8 @@ const strings = {
     backToDemo: 'Watch the demo again',
     exit: 'Exit',
     simulated: 'Simulated data',
+    /** Shown while the session streams to the therapist's dashboard. */
+    liveShared: 'Live to your therapist · angles only',
 
     kneeBend: 'Knee bend',
     target: 'Target',
@@ -311,6 +313,7 @@ const strings = {
     backToDemo: 'Ver la demostración otra vez',
     exit: 'Salir',
     simulated: 'Datos simulados',
+    liveShared: 'En vivo con tu terapeuta · solo ángulos',
 
     kneeBend: 'Flexión de rodilla',
     target: 'Meta',
