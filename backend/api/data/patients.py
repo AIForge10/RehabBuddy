@@ -23,10 +23,16 @@ def get_assignment(patient_id: str, user: CurrentUser = Depends(require_patient_
     return a
 
 
+Joint = Literal["knee", "hip", "shoulder", "elbow", "wrist"]
+
+
 @router.get("/patients/{patient_id}/overview")
-def get_overview(patient_id: str, user: CurrentUser = Depends(require_patient_access)):
+def get_overview(patient_id: str, joint: Joint | None = None,
+                 user: CurrentUser = Depends(require_patient_access)):
+    """Omit `joint` for the prescribed one. Pass one of joints_with_history to read the
+    history of another exercise the patient has done."""
     with q.connect() as conn:
-        o = q.overview(conn, patient_id)
+        o = q.overview(conn, patient_id, joint)
     if not o:
         raise HTTPException(404, f"No data for patient {patient_id}")
     return o
@@ -45,7 +51,7 @@ def get_dashboard(therapist_id: str, user: CurrentUser = Depends(require_therapi
 
 class UpdateAssignmentRequest(BaseModel):
     """Every field is sent, changed or not. Limits match the therapist's plan editor."""
-    joint: Literal["knee", "hip", "shoulder", "elbow", "wrist"]
+    joint: Joint
     target_angle: float = Field(gt=0, le=180)
     reps: int = Field(ge=1, le=30)
     times_per_week: int = Field(ge=1, le=7)

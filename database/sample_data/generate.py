@@ -173,7 +173,12 @@ def overview(p):
     ss = [{**s, "stats": session_stats(samples_by_session[s["id"]], target)}
           for s in sorted(sessions_by_patient[p["id"]], key=lambda s: s["started_at"], reverse=True)]
     week = [s for s in ss if s["started_at"] >= iso(TODAY - timedelta(days=6))]
+    joint = ex_by_id[assignments[p["id"]]["exercise_id"]]["joint"]
+    worked = sorted({s.get("joint") for s in sessions_by_patient[p["id"]] if s.get("joint")})
     return {"patient": patient_obj(p), "assignment": assignment_obj(p["id"]),
+            # The joint `sessions` and `adherence_7d` describe, and every joint this patient
+            # has a history on: the brief's picker lets them work one other than the plan's.
+            "joint": joint, "joints_with_history": worked,
             "adherence_7d": round(len(week) / 5, 2), "sessions": ss,
             "red_flags": flags_by_patient[p["id"]], "latest_summary": summaries[p["id"]],
             "latest_summary_is_ai": False}

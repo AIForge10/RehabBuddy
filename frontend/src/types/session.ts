@@ -9,6 +9,8 @@
 
 export type Language = 'en' | 'es'
 export type Role = 'patient' | 'therapist'
+/** The five exercises in the catalog; matches the backend's Literal and lib/exercises BodyPart. */
+export type Joint = 'knee' | 'hip' | 'shoulder' | 'elbow' | 'wrist'
 export type ISODateString = string
 export type UUID = string
 
@@ -254,7 +256,15 @@ export interface RedFlag {
 export interface PatientOverview {
   patient: Patient
   assignment: Assignment
-  // sessions, adherence and summary cover the assignment's joint only.
+  /** The joint `sessions` and `adherence_7d` describe: the assignment's, unless one was asked for. */
+  joint: Joint
+  /**
+   * Every joint this patient has recorded a session on, most recently worked first. The brief's
+   * joint picker lets them do an exercise other than the prescribed one, and each joint keeps its
+   * own history; this is how a screen knows those other histories exist and can offer them.
+   */
+  joints_with_history: Joint[]
+  // sessions, adherence and summary cover `joint` only.
   /** Sessions in the last 7 days / assignment.times_per_week, 0–1 (can exceed 1). */
   adherence_7d: number
   /** Most recent first. */

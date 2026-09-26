@@ -20,6 +20,11 @@ const strings = {
       return `${more} ${daysLeft === 1 ? 'today' : `in the next ${daysLeft} days`} ${left === 1 ? 'completes' : 'complete'} your week.`
     },
     daySessions: (n: number) => (n === 1 ? '1 session' : `${n} sessions`),
+    // The brief's joint picker lets a patient do an exercise other than the prescribed one.
+    // Each joint keeps its own history, so the home screen offers the ones they have done.
+    historyFor: 'History for',
+    planJoint: 'your plan',
+    offPlanNote: 'You did this outside your plan, so it does not count towards your week.',
     dayToday: 'today, not done yet',
     dayNone: 'no session',
     dayUpcoming: 'upcoming',
@@ -320,6 +325,9 @@ const strings = {
       return `${more} ${daysLeft === 1 ? 'hoy' : `en los próximos ${daysLeft} días`} ${left === 1 ? 'completa' : 'completan'} tu semana.`
     },
     daySessions: (n: number) => (n === 1 ? '1 sesión' : `${n} sesiones`),
+    historyFor: 'Historial de',
+    planJoint: 'tu plan',
+    offPlanNote: 'Lo hiciste fuera de tu plan, así que no cuenta para tu semana.',
     dayToday: 'hoy, aún pendiente',
     dayNone: 'sin sesión',
     dayUpcoming: 'por venir',

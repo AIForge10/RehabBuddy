@@ -188,18 +188,39 @@ def session_stats(conn, session_ids: list[str], target: float) -> dict[str, dict
     return {sid: _stats_cache[(sid, target)] for sid in session_ids}
 
 
-def overview(conn, patient_id: str) -> dict | None:
+def worked_joints(conn, patient_id: str) -> list[str]:
+    """Joints this patient has actually recorded a session on, most recently worked first.
+
+    The brief's joint picker lets a patient do any of the five exercises, and each joint
+    keeps its own history (degrees are not comparable across joints). Without this list
+    nothing can tell that a history other than the prescribed one exists, so a session on
+    another joint saves and is then unreachable from every screen.
+    """
+    return [r["joint"] for r in conn.execute(
+        """SELECT joint FROM sessions WHERE patient_id = %s AND joint IS NOT NULL
+           GROUP BY joint ORDER BY max(started_at) DESC""", (patient_id,)).fetchall()]
+
+
+def overview(conn, patient_id: str, joint: str | None = None) -> dict | None:
+    """The patient's plan plus one joint's history.
+
+    `joint` defaults to the prescribed one, which is what every caller wants: the plan is
+    what the dashboard is about, and a plan moved to a new joint should open on that joint's
+    empty history rather than the previous joint's. Pass it to read another joint's history
+    (see worked_joints) without disturbing that default.
+    """
     p = patient(conn, patient_id)
     a = assignment(conn, patient_id)
     if not p or not a:
         return None
-    joint = a["exercise"]["joint"]
+    joint = joint or a["exercise"]["joint"]
     ss = sessions(conn, patient_id, joint)
     stats = session_stats(conn, [s["id"] for s in ss], a["target_angle"])
     for s in ss:
         s["stats"] = stats[s["id"]]
     summary = latest_summary(conn, patient_id)
-    return {"patient": p, "assignment": a,
+    return {"patient": p, "assignment": a, "joint": joint,
+            "joints_with_history": worked_joints(conn, patient_id),
             "adherence_7d": adherence_7d(conn, patient_id, joint, a["times_per_week"]),
             "sessions": ss, "red_flags": red_flags(conn, patient_id),
             "latest_summary": summary["summary_text"] if summary else None,
@@ -207,7 +228,7 @@ def overview(conn, patient_id: str) -> dict | None:
 
 
 __all__ = ["connect", "assignment", "assignment_by_id", "patient", "sessions", "session_samples", "session_stats",
-           "red_flags", "overview", "latest_summary"]
+           "red_flags", "overview", "latest_summary", "worked_joints"]
 
 
 # ★ Tiger Data: reading the session_angle_1m continuous aggregate (database/sample_data/schema.sql).

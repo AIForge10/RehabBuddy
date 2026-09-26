@@ -7,7 +7,7 @@ import { useAuth } from '../lib/auth'
 import { useLanguage } from '../lib/language'
 import { planChanges, planOf, type PlanField } from '../lib/plan'
 import { weekOf } from '../lib/week'
-import type { Assignment, PatientOverview } from '../types/session'
+import type { Assignment, Joint, PatientOverview } from '../types/session'
 import { NextSession } from './home/NextSession'
 import { PlanNotice } from './home/PlanNotice'
 import { Recap } from './home/Recap'
@@ -19,7 +19,7 @@ const RECAP_GRID = 'mt-12 grid gap-x-12 gap-y-12 sm:mt-16 lg:grid-cols-12'
 const POLL_MS = 4000
 
 export default function Home() {
-  const { s } = useLanguage()
+  const { s, lang } = useLanguage()
   const { account } = useAuth()
   const patientId = account!.id // RequireAuth only renders this screen signed in
   const navigate = useNavigate()
@@ -27,6 +27,11 @@ export default function Home() {
   const [error, setError] = useState(false)
   const shown = useRef<Assignment | null>(null) // the plan on screen, to notice a therapist's edit
   const [updated, setUpdated] = useState<PlanField[] | null>(null)
+  // The brief's joint picker lets a patient do an exercise other than the prescribed one, and
+  // each joint keeps its own history. `data` stays the plan's, polled as before; picking another
+  // joint fetches that history alongside it, so the week and the plan card never change meaning.
+  const [otherJoint, setOtherJoint] = useState<Joint | null>(null)
+  const [fetched, setFetched] = useState<PatientOverview | null>(null)
 
   const load = useCallback(() => {
     getPatientOverview(patientId)
@@ -40,6 +45,18 @@ export default function Home() {
       // A failed refresh keeps the plan already on screen.
       .catch(() => !shown.current && setError(true))
   }, [])
+
+  useEffect(() => {
+    if (!otherJoint) return
+    let live = true
+    getPatientOverview(patientId, otherJoint)
+      .then((d) => live && setFetched(d))
+      // Fall back to the plan's history rather than leaving a dead chip selected.
+      .catch(() => live && setOtherJoint(null))
+    return () => {
+      live = false
+    }
+  }, [otherJoint, patientId])
 
   // Refresh while the tab is visible, so a plan the therapist changes shows up without a reload.
   useEffect(() => {
@@ -88,6 +105,20 @@ export default function Home() {
   const now = new Date()
   const week = weekOf(sessions, now, s.weekStartsOn)
   const plan = assignment.times_per_week
+  // The history section can show another joint the patient has worked; everything above it
+  // (the week, the plan card) stays the prescribed exercise's.
+  const planJoint = assignment.exercise.joint as Joint
+  const others = data.joints_with_history.filter((j) => j !== planJoint)
+  const other = otherJoint && fetched?.joint === otherJoint ? fetched : null
+  const history = other ?? data
+  const historyJoint = (other ? other.joint : planJoint) as Joint
+  const historyExercise = exerciseFor(historyJoint)
+  const historyTarget = other ? historyExercise.target : assignment.target_angle
+  const historyReps = assignment.reps
+  const chip = (active: boolean) =>
+    `rounded-full px-3.5 py-1.5 text-sm transition-colors ${
+      active ? 'bg-ink text-surface' : 'bg-surface text-ink-2 ring-1 ring-line hover:ring-ink/30'
+    }`
 
   return (
     <PatientScreen wide>
@@ -108,7 +139,23 @@ export default function Home() {
       {/* How it's going: the coach's words first, then the numbers behind them. */}
       <div className={RECAP_GRID}>
         <WeeklyRecap overview={data} />
-        <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} exercise={exerciseFor(assignment.exercise.joint)} />
+        <div className="lg:col-span-12">
+          {others.length > 0 && (
+            <div className="mb-5 flex flex-wrap items-center gap-2">
+              <span className="label-mono mr-1 text-muted">{s.historyFor}</span>
+              <button type="button" className={chip(!otherJoint)} onClick={() => setOtherJoint(null)}>
+                {exerciseFor(planJoint).copy[lang].name} · {s.planJoint}
+              </button>
+              {others.map((j) => (
+                <button key={j} type="button" className={chip(otherJoint === j)} onClick={() => setOtherJoint(j)}>
+                  {exerciseFor(j).copy[lang].name}
+                </button>
+              ))}
+            </div>
+          )}
+          {other && <p className="mb-5 text-sm text-ink-2">{s.offPlanNote}</p>}
+          <Recap sessions={history.sessions} target={historyTarget} reps={historyReps} exercise={historyExercise} />
+        </div>
       </div>
 
     </PatientScreen>

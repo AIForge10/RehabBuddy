@@ -138,6 +138,7 @@ def maria_overview(monkeypatch, db):
     monkeypatch.setattr(q, "sessions", lambda conn, pid, joint: [{"id": "s-maria-2", **session},
                                                                  {"id": "s-maria-1", **session}])
     monkeypatch.setattr(q, "red_flags", lambda conn, pid: [])
+    monkeypatch.setattr(q, "worked_joints", lambda conn, pid: ["knee"])
     monkeypatch.setattr(q, "adherence_7d", lambda conn, pid, joint, n: 0.4)
     monkeypatch.setattr(q, "latest_summary", lambda conn, pid: None)
     app.dependency_overrides[require_patient_access] = lambda: LEE
@@ -166,3 +167,26 @@ def test_stats_are_worked_out_once_per_session_and_target(client, db, maria_over
     sessions = client.get("/api/v1/patients/p-maria/overview").json()["sessions"]
     assert stats_queries()[-1] == {"ids": ["s-maria-2", "s-maria-1"], "target": 95.0}
     assert sessions[1]["stats"]["rep_peaks"] == [84, 86]
+
+
+def test_overview_reads_another_joint_the_patient_has_worked(client, db, maria_overview, monkeypatch):
+    """The brief's joint picker lets a patient work an exercise other than the prescribed one.
+
+    Each joint keeps its own history, so that history has to be both discoverable
+    (joints_with_history) and readable (?joint=), or the session saves and is then unreachable
+    from every screen -- which is what issue #40 reported.
+    """
+    asked = []
+    monkeypatch.setattr(q, "sessions", lambda conn, pid, joint: asked.append(joint) or [])
+    monkeypatch.setattr(q, "worked_joints", lambda conn, pid: ["hip", "knee"])
+
+    plan = client.get("/api/v1/patients/p-maria/overview").json()
+    assert plan["joint"] == "knee"  # no joint asked for: the prescribed one, as every caller expects
+    assert plan["joints_with_history"] == ["hip", "knee"]
+
+    hip = client.get("/api/v1/patients/p-maria/overview?joint=hip").json()
+    assert hip["joint"] == "hip"
+    assert hip["assignment"]["exercise"]["joint"] == "knee"  # the plan itself is unchanged
+    assert asked == ["knee", "hip"]  # the history query followed what was asked for
+
+    assert client.get("/api/v1/patients/p-maria/overview?joint=neck").status_code == 422

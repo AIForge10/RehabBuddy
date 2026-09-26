@@ -17,6 +17,7 @@ import type {
   CreateSessionRequest,
   CreateSessionResponse,
   DashboardResponse,
+  Joint,
   Language,
   LoginRequest,
   LoginResponse,
@@ -142,10 +143,15 @@ export function getAssignment(patientId: UUID): Promise<Assignment> {
   return request<Assignment>(`/patients/${patientId}/assignment`)
 }
 
-/** Patient home + session-done screens: same per-patient shape as the dashboard. */
-export function getPatientOverview(patientId: UUID): Promise<PatientOverview> {
-  if (USE_MOCKS) return mockBackend.getPatientOverview(patientId)
-  return request<PatientOverview>(`/patients/${patientId}/overview`)
+/**
+ * Patient home + session-done screens: same per-patient shape as the dashboard.
+ * `joint` omitted reads the prescribed exercise's history; pass one of the overview's
+ * joints_with_history to read another exercise the patient has done.
+ */
+export function getPatientOverview(patientId: UUID, joint?: Joint): Promise<PatientOverview> {
+  if (USE_MOCKS) return mockBackend.getPatientOverview(patientId, joint)
+  const qs = joint ? `?joint=${encodeURIComponent(joint)}` : ''
+  return request<PatientOverview>(`/patients/${patientId}/overview${qs}`)
 }
 
 export function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
