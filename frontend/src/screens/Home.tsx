@@ -11,6 +11,7 @@ import type { Assignment, PatientOverview } from '../types/session'
 import { NextSession } from './home/NextSession'
 import { PlanNotice } from './home/PlanNotice'
 import { Recap } from './home/Recap'
+import { WeeklyRecap } from './home/WeeklyRecap'
 import { WeekStrip } from './home/WeekStrip'
 
 // Read top to bottom: where the week stands, what to do now, how it's going.
@@ -74,6 +75,7 @@ export default function Home() {
           <div className="mt-3 h-5 w-96 max-w-full animate-pulse rounded bg-line" />
           <div className="mt-10 h-[520px] animate-pulse rounded-3xl bg-line sm:h-[560px] lg:h-[400px]" />
           <div className={RECAP_GRID}>
+            <div className="h-40 animate-pulse rounded-lg bg-line lg:col-span-12" />
             <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-5 xl:col-span-4" />
             <div className="h-80 animate-pulse rounded-lg bg-line lg:col-span-7 xl:col-span-8" />
           </div>
@@ -103,7 +105,9 @@ export default function Home() {
         <NextSession assignment={assignment} onStart={() => navigate('/session', { state: { assignment } })} />
       </div>
 
+      {/* How it's going: the coach's words first, then the numbers behind them. */}
       <div className={RECAP_GRID}>
+        <WeeklyRecap overview={data} />
         <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} exercise={exerciseFor(assignment.exercise.joint)} />
       </div>
 

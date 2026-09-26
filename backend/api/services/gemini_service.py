@@ -6,7 +6,9 @@ from fastapi import HTTPException, status
 from api.core.config import settings
 from api.schemas.pain_check import PainCheckReply, PainCheckRequest
 from api.schemas.summary import SessionSummaryRequest, SessionSummaryResponse
+from api.schemas.weekly_recap import RecapFacts, WeeklyRecapReply
 from api.prompts import pain_check as pain_check_prompt
+from api.prompts import weekly_recap as weekly_recap_prompt
 from api.prompts.summary import SYSTEM_INSTRUCTION, build_summary_prompt
 
 
@@ -82,6 +84,39 @@ class GeminiService:
                 )
                 if response.text:
                     return PainCheckReply.model_validate_json(response.text)
+            except Exception as e:
+                last_exc = e
+                continue
+
+        if last_exc:
+            raise last_exc
+        raise ValueError("Empty response received from Gemini API.")
+
+    async def generate_weekly_recap(self, facts: RecapFacts, language: str) -> WeeklyRecapReply:
+        """The coach's spoken recap of the patient's last 7 days. Raises on any failure; the caller falls back."""
+        cfg = GenerateContentConfig(
+            system_instruction=weekly_recap_prompt.SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            response_schema=WeeklyRecapReply,
+            temperature=0.5,
+            max_output_tokens=1024,  # counts any thinking tokens too; the recap itself is ~100
+            thinking_config=ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL.upper()),
+            automatic_function_calling=AutomaticFunctionCallingConfig(disable=True),
+        )
+        models_to_try = [self.model]
+        if self.model != "gemini-3.5-flash-lite":
+            models_to_try.append("gemini-3.5-flash-lite")
+
+        last_exc = None
+        for m in models_to_try:
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=m,
+                    contents=weekly_recap_prompt.build_weekly_recap_prompt(facts, language),
+                    config=cfg,
+                )
+                if response.text:
+                    return WeeklyRecapReply.model_validate_json(response.text)
             except Exception as e:
                 last_exc = e
                 continue

@@ -151,6 +151,18 @@ export interface SummaryResponse {
   is_fallback: boolean
 }
 
+// GET /patients/{patient_id}/weekly-recap?language=es
+// The coach's recap of the patient's own last 7 days, for their home screen.
+export interface WeeklyRecapResponse {
+  /** Two or three sentences in `language`: sessions vs the plan, the trend vs the target, a next step. */
+  text: string
+  language: Language
+  /** Where `text` streams as speech, like PainCheckResponse.audio_url. null → browser speech. */
+  audio_url: string | null
+  /** true when Gemini failed or was slow and the template was used. */
+  is_fallback: boolean
+}
+
 // POST /translate
 export interface TranslateRequest {
   text: string
