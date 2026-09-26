@@ -51,7 +51,10 @@ JOINTS = {
         "tip": "FACE the camera, arm at your side, raise it out sideways",
     },
     "wrist": {
-        "a": (13, 14), "joint": (15, 16), "b": (19, 20), "mode": "flexion",
+        # b2: the distal point is the midpoint of b and b2 (index and pinky knuckles),
+        # which stays on the hand's axis when the forearm turns. The browser goes
+        # further and measures from MediaPipe's hand model (frontend/src/pose/tracker.ts).
+        "a": (13, 14), "joint": (15, 16), "b": (19, 20), "b2": (17, 18), "mode": "flexion",
         "bent": 35, "straight": 15, "target": 60,
         "tip": "Rest forearm SIDE-ON, bend your hand up/down (low accuracy)",
     },
@@ -126,6 +129,9 @@ def pick_side(lm, cfg, current_side=None, preferred="auto"):
 def get_joint_points(lm, cfg, side, joint_name):
     j = lm[cfg["joint"][side]]
     b = lm[cfg["b"][side]]
+    if "b2" in cfg:
+        b2 = lm[cfg["b2"][side]]
+        b = DummyPoint((b.x + b2.x) / 2, (b.y + b2.y) / 2)
     hip = lm[cfg["a"][side]]
 
     # For shoulder: if hip is occluded (sitting at desk / below frame y > 0.92 or low visibility),

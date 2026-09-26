@@ -33,8 +33,10 @@ export default function ExerciseSession() {
   const [step, setStep] = useState<Step>('brief')
   const { attach, status } = useCamera(step !== 'brief')
 
-  // The pose model takes a few seconds to download; fetch it while they read the brief.
-  useEffect(preloadPose, [])
+  // The pose model takes a few seconds to download; fetch it while they read the
+  // brief. The wrist needs the hand model too, so fetch that once the joint is known.
+  const joint = part ?? assignment?.exercise.joint
+  useEffect(() => preloadPose(joint), [joint])
 
   // From setup on, the phone sits across the room: it must not dim or lock.
   const filming = step !== 'brief'

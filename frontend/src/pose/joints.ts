@@ -1,6 +1,9 @@
 // joint library. SAME values as JOINTS in ml/angle_prototype.py.
 // Adding a new joint = adding one entry here.
 // a / joint / b: MediaPipe landmark indices as [left, right]
+// b2 (optional): the distal point is the midpoint of b and b2. The wrist uses
+//   the index and pinky knuckles: turning the forearm swings each one across the
+//   hand, but their midpoint stays on the hand's axis.
 // mode 'flexion': angle = 180 - theta (straight limb = 0)   -> knee, hip, elbow, wrist
 // mode 'raw':     angle = theta (arm at side ≈ 0, raised = up) -> shoulder
 export type JointName = 'knee' | 'hip' | 'elbow' | 'shoulder' | 'wrist'
@@ -13,6 +16,7 @@ export interface JointConfig {
   a: [number, number]
   joint: [number, number]
   b: [number, number]
+  b2?: [number, number]
   mode: 'flexion' | 'raw'
   bent: number
   straight: number
@@ -48,7 +52,9 @@ export const JOINTS: Record<JointName, JointConfig> = {
     fault: 'shrugging',
   },
   wrist: {
-    label: 'Wrist (experimental)', a: [13, 14], joint: [15, 16], b: [19, 20], mode: 'flexion',
+    // Measured from MediaPipe's hand model when it sees the hand (tracker.ts);
+    // these pose points are the fallback.
+    label: 'Wrist (experimental)', a: [13, 14], joint: [15, 16], b: [19, 20], b2: [17, 18], mode: 'flexion',
     bent: 35, straight: 15, target: 60,
     tip: 'Forearm side-on on the desk, bend your hand up/down',
   },
