@@ -1,9 +1,17 @@
 """SQL used by the routes. Shapes match frontend/src/types/session.ts."""
+import math
+
 from api.auth.db import connect
 
 
 def _f(x):
     return float(x) if x is not None else None
+
+
+def _deg(x):
+    """Whole degrees, half up like the web app's Math.round: every screen shows a
+    session's peak that way, whichever client saved it (an older app saved 86.5)."""
+    return math.floor(float(x) + 0.5) if x is not None else None
 
 
 _ASSIGNMENT = """SELECT a.id, a.patient_id, a.therapist_id, a.target_angle, a.reps, a.times_per_week,
@@ -51,7 +59,7 @@ def sessions(conn, patient_id: str, joint: str) -> list[dict]:
            LEFT JOIN LATERAL (SELECT pain_score, flagged FROM pain_checkins
                               WHERE session_id = s.id ORDER BY created_at DESC LIMIT 1) pc ON true
            WHERE s.patient_id = %s AND s.joint = %s ORDER BY s.started_at DESC""", (patient_id, joint)).fetchall()
-    return [{**r, "started_at": r["started_at"].isoformat(), "max_angle": _f(r["max_angle"]),
+    return [{**r, "started_at": r["started_at"].isoformat(), "max_angle": _deg(r["max_angle"]),
              "form_warnings": list(r["form_warnings"] or [])} for r in rows]
 
 
