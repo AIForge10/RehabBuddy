@@ -94,6 +94,13 @@ const strings = {
     // Setup when the camera checks itself (lib/setupChecks.ts): what it sees wrong right now.
     setupSubAuto: 'Three quick checks. The camera ticks them off as you get into position, or tap one to tick it yourself.',
     setupByCamera: 'Checked by the camera',
+    // What leaves your device: the three data flows, said plainly on the setup screen.
+    dataFlowsTitle: 'What leaves your device',
+    dataFlows: [
+      { title: 'Video', body: 'Stays on this device. The pose model runs in your browser.' },
+      { title: 'Voice', body: 'Sent once to be transcribed for the pain check, never stored.' },
+      { title: 'To your therapist', body: 'Joint angles, reps and pain scores. Nothing else.' },
+    ],
     setupNobody: 'Step into the frame',
     setupCantSee: (joint: string, fix: 'back' | 'center' | 'clear') => {
       const j = joint.toLowerCase()
@@ -380,6 +387,12 @@ const strings = {
     setupCtaDemo: 'Empezar en modo demo',
     setupSubAuto: 'Tres comprobaciones rápidas. La cámara las marca mientras te colocas, o tócalas para marcarlas tú.',
     setupByCamera: 'Comprobado por la cámara',
+    dataFlowsTitle: 'Qué sale de tu dispositivo',
+    dataFlows: [
+      { title: 'Vídeo', body: 'Se queda en este dispositivo. El modelo de postura corre en tu navegador.' },
+      { title: 'Voz', body: 'Se envía una vez para transcribir el chequeo de dolor, nunca se guarda.' },
+      { title: 'A tu terapeuta', body: 'Ángulos, repeticiones y puntuación de dolor. Nada más.' },
+    ],
     setupNobody: 'Colócate dentro del marco',
     setupCantSee: (joint: string, fix: 'back' | 'center' | 'clear') => {
       // "tu tobillo", but "tus dedos"

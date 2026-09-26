@@ -271,6 +271,31 @@ export interface DashboardResponse {
   generated_at: ISODateString
 }
 
+// GET /therapist/{therapist_id}/storage → StorageStats (the therapist only)
+// What Tiger Data is doing with the angle frames, straight from TimescaleDB's catalog
+// views (backend/api/data/storage.py), for the clinic dashboard's Data card.
+export interface StorageStats {
+  /** Rows in the angle_samples hypertable. */
+  samples: number
+  sessions: number
+  /** The hypertable's time chunks, and how many the compression policy has compressed. */
+  chunks: number
+  compressed_chunks: number
+  /** The compressed chunks' size before and after; null until a chunk is compressed. */
+  bytes_before: number | null
+  bytes_after: number | null
+  /** Rows in the session_angle_1m continuous aggregate. */
+  rollup_minutes: number
+  /** The aggregate answers with minutes not yet materialized. */
+  rollup_realtime: boolean
+  /** A refresh policy materializes it every minute. */
+  rollup_policy: boolean
+  /** The replay's 10 Hz trace query on the therapist's newest session: how long it took, how many points. */
+  trace_session_id: UUID | null
+  trace_ms: number | null
+  trace_points: number | null
+}
+
 // POST /patients/{patient_id}/plan-suggestion → PlanSuggestion (the patient's therapist only)
 // The copilot's proposed next step for the plan. It changes nothing by itself:
 // approving sends `proposed` with PATCH /assignments/{id}, like the plan editor.

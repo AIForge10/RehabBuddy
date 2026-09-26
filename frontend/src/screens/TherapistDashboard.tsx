@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { USE_MOCKS, getDashboard, getSummary, updateAssignment } from '../api/client'
+import { USE_MOCKS, getDashboard, getStorageStats, getSummary, updateAssignment } from '../api/client'
 import { resetMockData } from '../api/mock'
 import { AccountMenu } from '../components/AccountMenu'
 import { ExerciseFigure } from '../components/ExerciseFigure'
@@ -14,7 +14,7 @@ import { warningNotes } from '../lib/formWarnings'
 import { ANGLE_STEP, REPS, WEEKLY, planChanges, planOf, targetRange, type Plan } from '../lib/plan'
 import { useLiveSessions, type LiveSession } from '../lib/useLiveSessions'
 import { useReducedMotion } from '../lib/useReducedMotion'
-import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag, SummaryResponse } from '../types/session'
+import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag, StorageStats, SummaryResponse } from '../types/session'
 import { LiveDot, LivePanel } from './therapist/LivePanel'
 import { PlanSuggestionCard } from './therapist/PlanSuggestion'
 import { SessionReplay } from './therapist/SessionReplay'
@@ -202,7 +202,10 @@ export default function TherapistDashboard() {
 
         {data && (
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
-            <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} live={live} />
+            <div className="space-y-6 lg:sticky lg:top-24">
+              <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} live={live} />
+              <DataCard therapistId={therapistId} sessionCount={patients.reduce((n, p) => n + p.sessions.length, 0)} />
+            </div>
             {selected && (
               <PatientDetail
                 key={selected.patient.id}
@@ -322,7 +325,7 @@ function PatientList({
   live: Record<string, LiveSession>
 }) {
   return (
-    <section aria-label="Patients" className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:sticky lg:top-24">
+    <section aria-label="Patients" className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line">
       <p className="label-mono px-5 pb-2 pt-5 text-muted">Patients · {patients.length}</p>
       <ul className="p-2 pt-0">
         {patients.map((p) => {
@@ -373,6 +376,64 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
         {value}
       </dd>
       {sub && <dd className="mt-2 text-[13px] text-ink-2">{sub}</dd>}
+    </div>
+  )
+}
+
+/**
+ * What Tiger Data is doing with the angle frames: every frame of every session
+ * lands in one hypertable, is rolled up per minute for the plan suggestion, and
+ * is compressed once its day is over. The numbers are TimescaleDB's own
+ * (backend/api/data/storage.py); a new session re-reads them.
+ */
+function DataCard({ therapistId, sessionCount }: { therapistId: string; sessionCount: number }) {
+  const [stats, setStats] = useState<StorageStats | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    getStorageStats(therapistId)
+      .then((s) => alive && setStats(s))
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [therapistId, sessionCount])
+
+  if (!stats) return null
+  const ratio = stats.bytes_before && stats.bytes_after ? stats.bytes_before / stats.bytes_after : null
+  const saved = ratio ? Math.round((1 - 1 / ratio) * 100) : null
+  const n = (x: number) => x.toLocaleString('en-US')
+
+  return (
+    <section aria-label="Data" className="rounded-3xl bg-surface p-5 ring-1 ring-line">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="label-mono text-muted">Data</h2>
+        <p className="label-mono text-[10px] text-muted">Tiger Data · TimescaleDB</p>
+      </div>
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4">
+        <DataRow label="Angle frames" value={n(stats.samples)} sub={`${n(stats.sessions)} sessions, one hypertable`} />
+        <DataRow label="Minute rollups" value={n(stats.rollup_minutes)} sub={stats.rollup_realtime ? 'Real-time continuous aggregate' : 'Continuous aggregate'} />
+        <DataRow
+          label="Compressed"
+          value={saved != null ? `${saved}%` : '—'}
+          sub={ratio ? `${stats.compressed_chunks} of ${stats.chunks} chunks, ${ratio.toFixed(1)}× smaller` : 'Chunks under a day old stay uncompressed'}
+        />
+        <DataRow
+          label="Replay query"
+          value={stats.trace_ms != null ? `${Math.round(stats.trace_ms)} ms` : '—'}
+          sub={stats.trace_points != null ? `${n(stats.trace_points)} points at 10 Hz` : undefined}
+        />
+      </dl>
+    </section>
+  )
+}
+
+function DataRow({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <div className="min-w-0">
+      <dt className="label-mono text-[10px] text-muted">{label}</dt>
+      <dd className="mt-1.5 text-[22px] font-bold leading-none tracking-tight tabular-nums">{value}</dd>
+      {sub && <dd className="mt-1.5 text-[12px] leading-snug text-muted">{sub}</dd>}
     </div>
   )
 }
@@ -528,6 +589,9 @@ function PatientDetail({
           <div className="flex items-baseline gap-3">
             <h3 className="text-lg font-bold">Weekly summary</h3>
             <span className="label-mono rounded-md bg-raised px-1.5 py-1 text-[10px] text-ink-2 ring-1 ring-line">Draft</span>
+            {summaryText && byGemini && (
+              <span className="label-mono rounded-md bg-brand-soft px-1.5 py-1 text-[10px] text-brand-ink ring-1 ring-brand/20">Gemini</span>
+            )}
           </div>
           <button onClick={regenerate} disabled={regenerating} className={`${buttonClass('secondary', 'md')} h-10 px-3.5 text-sm`}>
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" className={regenerating ? 'animate-spin' : ''}>
