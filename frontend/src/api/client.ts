@@ -18,6 +18,7 @@ import type {
   Language,
   PainCheckRequest,
   PainCheckResponse,
+  PatientOverview,
   SummaryResponse,
   TranslateResponse,
   UUID,
@@ -67,6 +68,12 @@ const post = <T>(path: string, body: unknown) =>
 export function getAssignment(patientId: UUID): Promise<Assignment> {
   if (USE_MOCKS) return mockBackend.getAssignment(patientId)
   return request<Assignment>(`/patients/${patientId}/assignment`)
+}
+
+/** Patient home + session-done screens: same per-patient shape as the dashboard. */
+export function getPatientOverview(patientId: UUID): Promise<PatientOverview> {
+  if (USE_MOCKS) return mockBackend.getPatientOverview(patientId)
+  return request<PatientOverview>(`/patients/${patientId}/overview`)
 }
 
 export function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {

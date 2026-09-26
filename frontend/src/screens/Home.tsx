@@ -1,79 +1,109 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { DEMO_PATIENT_ID, getAssignment } from '../api/client'
-import { PatientScreen } from '../components/Screen'
+import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
+import { Button, PatientScreen } from '../components/Screen'
 import { useLanguage } from '../lib/language'
-import type { Assignment } from '../types/session'
+import type { PatientOverview } from '../types/session'
+import { NextSession } from './home/NextSession'
+import { Recap } from './home/Recap'
 
-// Display name until there's a /patients/{id} endpoint; the assignment doesn't carry it.
-const DEMO_FIRST_NAME = 'Maria'
+const DAY_MS = 86_400_000
+// Next session gets the wider column: it's the one thing to do here.
+const GRID = 'grid gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-6'
 
 export default function Home() {
   const { s } = useLanguage()
   const navigate = useNavigate()
-  const [assignment, setAssignment] = useState<Assignment | null>(null)
+  const [data, setData] = useState<PatientOverview | null>(null)
   const [error, setError] = useState(false)
 
   const load = useCallback(() => {
-    setError(false)
-    getAssignment(DEMO_PATIENT_ID)
-      .then(setAssignment)
+    getPatientOverview(DEMO_PATIENT_ID)
+      .then((d) => {
+        setData(d)
+        setError(false)
+      })
       .catch(() => setError(true))
   }, [])
 
   useEffect(load, [load])
 
-  return (
-    <PatientScreen>
-      <h1 className="mt-6 text-3xl font-semibold tracking-tight">{s.greeting(DEMO_FIRST_NAME)}</h1>
+  if (error) {
+    return (
+      <PatientScreen wide>
+        <div className="mx-auto mt-16 max-w-md rounded-3xl bg-surface p-8 text-center shadow-card ring-1 ring-line">
+          <p className="text-ink-2">{s.loadError}</p>
+          <Button variant="secondary" size="md" className="mt-5" onClick={load}>
+            {s.retry}
+          </Button>
+        </div>
+      </PatientScreen>
+    )
+  }
 
-      <section className="mt-8 rounded-2xl border border-line bg-surface p-6">
-        <p className="text-xs font-semibold uppercase tracking-wider text-muted">{s.today}</p>
-        {error ? (
-          <div className="mt-3">
-            <p className="text-ink-2">{s.loadError}</p>
-            <button onClick={load} className="mt-4 rounded-lg border border-line-strong px-4 py-2 text-sm font-medium hover:bg-canvas">
-              {s.retry}
-            </button>
+  if (!data) {
+    return (
+      <PatientScreen wide>
+        <div className="mt-6 sm:mt-10" aria-busy="true" aria-label={s.loading}>
+          <div className="h-4 w-44 animate-pulse rounded-md bg-line" />
+          <div className="mt-2.5 h-10 w-72 max-w-full animate-pulse rounded-xl bg-line" />
+          <div className={`mt-8 ${GRID}`}>
+            <div className="h-[340px] animate-pulse rounded-[32px] bg-line sm:h-[420px] lg:h-[520px]" />
+            <div className="h-[520px] animate-pulse rounded-[32px] bg-line" />
           </div>
-        ) : !assignment ? (
-          <p className="mt-3 text-muted">{s.loading}</p>
-        ) : (
-          <>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight">{assignment.exercise.name}</h2>
-            <p className="mt-1 text-lg text-ink-2">
-              {s.target(assignment.reps, assignment.target_angle)}
-              <span className="text-muted"> · {s.frequency(assignment.times_per_week)}</span>
-            </p>
-            <p className="mt-4 max-w-prose leading-relaxed text-ink-2">{assignment.exercise.instructions}</p>
+        </div>
+      </PatientScreen>
+    )
+  }
 
-            <div className="mt-6 border-t border-line pt-5">
-              <p className="text-sm font-semibold">{s.setupTitle}</p>
-              <ol className="mt-2 space-y-1.5 text-sm text-ink-2">
-                {s.setup.map((line, i) => (
-                  <li key={i} className="flex gap-3">
-                    <span className="w-4 shrink-0 text-right tabular-nums text-muted">{i + 1}</span>
-                    {line}
-                  </li>
-                ))}
-              </ol>
-            </div>
+  const { patient, assignment, sessions } = data
+  const now = new Date()
+  const weekStart = new Date(now).setHours(0, 0, 0, 0) - 6 * DAY_MS
+  const thisWeek = sessions.filter((x) => Date.parse(x.started_at) >= weekStart).length
 
-            <button
-              onClick={() => navigate('/session', { state: { assignment } })}
-              className="mt-8 w-full rounded-xl bg-accent px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-accent-strong sm:w-auto"
-            >
-              {s.start}
-            </button>
-          </>
-        )}
-      </section>
+  return (
+    <PatientScreen wide>
+      <div className="mt-6 flex flex-wrap items-end justify-between gap-x-10 gap-y-4 sm:mt-10">
+        <div>
+          <p className="text-sm font-semibold text-muted first-letter:uppercase">
+            {now.toLocaleDateString(s.locale, { weekday: 'long', month: 'long', day: 'numeric' })}
+          </p>
+          <h1 className="mt-1 font-display text-[34px] leading-[1.08] sm:text-[44px]">{s.greeting(patient.full_name.split(' ')[0], now.getHours())}</h1>
+        </div>
+        <WeekProgress done={thisWeek} plan={assignment.times_per_week} />
+      </div>
 
-      <p className="mt-10 text-center text-sm text-muted">
-        <Link to="/therapist" className="underline decoration-line-strong underline-offset-4 hover:text-ink">
-          Therapist dashboard
+      <div className={`mt-6 sm:mt-8 ${GRID}`}>
+        <NextSession assignment={assignment} onStart={() => navigate('/session', { state: { assignment } })} />
+        <Recap sessions={sessions} target={assignment.target_angle} reps={assignment.reps} />
+      </div>
+
+      <p className="mt-10 text-center">
+        <Link
+          to="/therapist"
+          className="inline-flex h-11 items-center gap-1.5 rounded-full px-4 text-sm font-semibold text-muted transition-colors hover:bg-surface hover:text-ink hover:shadow-card"
+        >
+          {s.therapistLink}
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3 8h9m-3.5-3.5L12 8l-3.5 3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
         </Link>
       </p>
     </PatientScreen>
+  )
+}
+
+/** Sessions in the last 7 days against the weekly plan: one pip per planned session. */
+function WeekProgress({ done, plan }: { done: number; plan: number }) {
+  const { s } = useLanguage()
+  return (
+    <div className="flex items-center gap-3 pb-1.5">
+      <span className="flex gap-1" aria-hidden="true">
+        {Array.from({ length: plan }, (_, i) => (
+          <span key={i} className={`h-2 w-5 rounded-full ${i < done ? 'bg-brand' : 'bg-brand-track'}`} />
+        ))}
+      </span>
+      <p className="text-sm font-semibold text-ink-2">{s.weekLine(done, plan)}</p>
+    </div>
   )
 }
