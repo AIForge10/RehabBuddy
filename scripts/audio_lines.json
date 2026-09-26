@@ -41,7 +41,7 @@
   },
   "en/knee_in": {
     "model": "eleven_multilingual_v2",
-    "text": "Keep your knee in line with your foot.",
+    "text": "Keep your thigh still on the chair.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/knee_in_elbow": {
@@ -67,6 +67,11 @@
   "en/last_rep": {
     "model": "eleven_multilingual_v2",
     "text": "One more.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/slow_down": {
+    "model": "eleven_multilingual_v2",
+    "text": "Slow down. Take your time.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/start": {
@@ -136,7 +141,7 @@
   },
   "es/knee_in": {
     "model": "eleven_multilingual_v2",
-    "text": "Mantén la rodilla alineada con el pie.",
+    "text": "Mantén el muslo quieto sobre la silla.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/knee_in_elbow": {
@@ -162,6 +167,11 @@
   "es/last_rep": {
     "model": "eleven_multilingual_v2",
     "text": "Una más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/slow_down": {
+    "model": "eleven_multilingual_v2",
+    "text": "Más despacio. Tómate tu tiempo.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/start": {
