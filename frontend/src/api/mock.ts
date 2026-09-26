@@ -281,7 +281,8 @@ const RED_FLAG_WORDS = ['sharp', 'swelling', 'swollen', 'pop', 'numb', 'agudo', 
 export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
   const notes = body.notes.toLowerCase()
   const word = RED_FLAG_WORDS.find((w) => notes.includes(w))
-  const flagged = body.pain_score >= 7 || Boolean(word)
+  // A session stopped for pain is flagged whatever the score, as in the backend's rule.
+  const flagged = body.pain_score >= 7 || Boolean(word) || Boolean(body.stopped_for_pain)
   const es = body.language === 'es'
   if (flagged) {
     return {
@@ -289,7 +290,9 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
       reply: es
         ? 'Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy.'
         : "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.",
-      flag_reason: body.notes ? `“${body.notes}”` : word ? `Mentioned “${word}”` : 'Pain score at or above 7',
+      flag_reason: body.stopped_for_pain
+        ? `Stopped the session mid-way for pain${body.notes ? `: “${body.notes}”` : ''}`
+        : body.notes ? `“${body.notes}”` : word ? `Mentioned “${word}”` : 'Pain score at or above 7',
       audio_url: null,
     }
   }

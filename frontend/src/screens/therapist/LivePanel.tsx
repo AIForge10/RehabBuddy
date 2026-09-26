@@ -19,6 +19,7 @@ const DELAY_MS = 400
 const ENDED_TITLE: Record<LiveEndReason, string> = {
   finished: 'Session finished',
   exited: 'Left the session',
+  pain: 'Stopped: reported pain',
   lost: 'Connection lost',
 }
 
@@ -37,13 +38,18 @@ export function LivePanel({ live, name }: { live: LiveSession; name: string }) {
   const endedNote = {
     finished: `${live.reps}/${live.goal} reps · saved to Sessions below`,
     exited: `${first} stopped after ${live.reps}/${live.goal} reps`,
+    pain: `${first} said it hurt after ${live.reps}/${live.goal} reps · saved to Sessions below`,
     lost: `Stopped hearing from ${first}’s device`,
   }
 
   return (
-    <div className={`overflow-hidden rounded-3xl bg-surface ring-1 transition-shadow ${live.ended ? 'ring-line' : 'shadow-lift ring-brand/50'}`}>
+    <div
+      className={`overflow-hidden rounded-3xl bg-surface ring-1 transition-shadow ${
+        live.ended === 'pain' ? 'ring-critical/60' : live.ended ? 'ring-line' : 'shadow-lift ring-brand/50'
+      }`}
+    >
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-6 pb-4 pt-6 sm:px-7">
-        <h3 aria-live="polite" className="flex items-center gap-2.5 text-lg font-bold">
+        <h3 aria-live="polite" className={`flex items-center gap-2.5 text-lg font-bold ${live.ended === 'pain' ? 'text-critical' : ''}`}>
           <LiveDot ended={live.ended != null} />
           {live.ended ? ENDED_TITLE[live.ended] : 'Live now'}
         </h3>

@@ -13,11 +13,28 @@
 // their text comes from the exercise and the clip is {cue}_{part}.mp3, e.g.
 // start_shoulder.mp3. knee_in kept its first name but is each exercise's form
 // cue (`cues.form`): lib/formWarnings.ts decides which warning plays which cue.
+// Rep counts are cues too, count_1 ("One.") to count_20 ("Twenty.").
 
 import type { Exercise } from './exercises'
 import type { Language } from '../types/session'
 
+// The coach counts reps out loud up to here; past it, a rep gets encouragement instead.
+const COUNT_WORDS: Record<Language, readonly string[]> = {
+  en: ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen', 'Twenty'],
+  es: ['Uno', 'Dos', 'Tres', 'Cuatro', 'Cinco', 'Seis', 'Siete', 'Ocho', 'Nueve', 'Diez', 'Once', 'Doce', 'Trece', 'Catorce', 'Quince', 'Dieciséis', 'Diecisiete', 'Dieciocho', 'Diecinueve', 'Veinte'],
+}
+
+type CountCue = `count_${number}`
+
+const isCount = (cue: CoachCue): cue is CountCue => cue.startsWith('count_')
+
+/** The cue that says rep `n` out loud, or null past what the coach counts to. */
+export function countCue(n: number): CoachCue | null {
+  return Number.isInteger(n) && n >= 1 && n <= COUNT_WORDS.en.length ? `count_${n}` : null
+}
+
 export type CoachCue =
+  | CountCue
   | 'start'
   // Encouragement pool
   | 'good_rep'
@@ -53,6 +70,12 @@ export type CoachCue =
   | 'final_rep'
   | 'done'
   | 'session_complete'
+  // At the target: pause there for a second
+  | 'hold'
+  // The patient said it hurts (lib/listen.ts)
+  | 'pain_stop'
+
+type LineCue = Exclude<CoachCue, CountCue>
 
 export const CUES: readonly CoachCue[] = [
   'start',
@@ -82,9 +105,12 @@ export const CUES: readonly CoachCue[] = [
   'final_rep',
   'done',
   'session_complete',
+  'hold',
+  'pain_stop',
+  ...COUNT_WORDS.en.map((_, i) => `count_${i + 1}` as const),
 ]
 
-export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
+export const CUE_TEXT: Record<Language, Record<LineCue, string>> = {
   en: {
     start: "Let's begin. Bend your knee slowly.",
     // Encouragement
@@ -113,14 +139,16 @@ export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
     // Streaks
     streak: 'Three great reps in a row!',
     great_rhythm: "You're in a great rhythm.",
-    // Form
-    knee_in: 'Keep your knee in line with your foot.',
+    // Form (the knee's `cues.form` in lib/exercises.ts, which its clip says)
+    knee_in: 'Keep your thigh still on the chair.',
     // Milestones
     halfway: 'Halfway there. Keep going.',
     last_rep: 'One more.',
     final_rep: 'Final rep, make it count!',
     done: 'Great work. Session complete.',
     session_complete: 'All done! Fantastic effort today.',
+    hold: 'Hold it there.',
+    pain_stop: "Okay, let's stop there. I'm letting your therapist know.",
   },
   es: {
     start: 'Empecemos. Dobla la rodilla despacio.',
@@ -151,18 +179,30 @@ export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
     streak: '¡Tres repeticiones seguidas excelentes!',
     great_rhythm: 'Llevas un ritmo excelente.',
     // Form
-    knee_in: 'Mantén la rodilla alineada con el pie.',
+    knee_in: 'Mantén el muslo quieto sobre la silla.',
     // Milestones
     halfway: 'Vas por la mitad. Sigue así.',
     last_rep: 'Una más.',
     final_rep: '¡Última repetición, que cuente!',
     done: 'Buen trabajo. Sesión terminada.',
     session_complete: '¡Listo! Fantástico esfuerzo hoy.',
+    hold: 'Mantén la posición.',
+    pain_stop: 'Está bien, paremos aquí. Le aviso a tu terapeuta.',
   },
 }
 
-// Cues that may cut off whatever is playing.
-const PRIORITY: CoachCue[] = ['knee_in', 'slow_down', 'reposition', 'done', 'session_complete']
+// Cues that may cut off whatever is playing. Everything else is dropped while
+// the coach is talking, so a count or a "hold" never queues up to play late.
+const PRIORITY: CoachCue[] = [
+  'knee_in',
+  'slow_down',
+  'control_the_return',
+  'reposition',
+  'step_back',
+  'done',
+  'session_complete',
+  'pain_stop',
+]
 
 // Audio that hasn't started by now (slow network or backend) is spoken instead.
 const START_TIMEOUT_MS = 4000
@@ -175,6 +215,7 @@ const NAMED: Partial<Record<CoachCue, keyof Exercise['copy']['en']['cues']>> = {
 
 /** A cue's clip name and caption. frontend/scripts/cue-lines.mjs reads this to list the clips to generate. */
 export function cueLine(cue: CoachCue, lang: Language, exercise?: Exercise): { clip: string; text: string } {
+  if (isCount(cue)) return { clip: cue, text: `${COUNT_WORDS[lang][Number(cue.slice(6)) - 1]}.` }
   const named = exercise && exercise.part !== 'knee' ? NAMED[cue] : undefined
   return named ? { clip: `${cue}_${exercise!.part}`, text: exercise!.copy[lang].cues[named] } : { clip: cue, text: CUE_TEXT[lang][cue] }
 }
@@ -183,8 +224,24 @@ let player: HTMLAudioElement | null = null
 const audio = () => (player ??= new Audio())
 let unlocked = false
 let busy = false
+let busySince = 0
+let quietSince = 0
+let lastLine = ''
 // Bumped whenever a new line takes over, so callbacks from the old one do nothing.
 let turn = 0
+
+// Chrome sometimes never fires a speech utterance's end event. No cue runs this
+// long, so past it the coach stops waiting rather than stay silent for the rest
+// of the session.
+const STUCK_MS = 10_000
+
+const isBusy = () => busy && performance.now() - busySince < STUCK_MS
+
+function setBusy(on: boolean) {
+  if (on) busySince = performance.now()
+  else if (busy) quietSince = performance.now()
+  busy = on
+}
 
 // Cue clips by path: an object URL once fetched, null if the file is missing.
 const clips = new Map<string, Promise<string | null>>()
@@ -202,14 +259,16 @@ function loadClip(path: string): Promise<string | null> {
 
 function speak(text: string, lang: Language) {
   if (!('speechSynthesis' in window)) {
-    busy = false
+    setBusy(false)
     return
   }
+  const me = turn
   const u = new SpeechSynthesisUtterance(text)
   u.lang = lang === 'es' ? 'es-ES' : 'en-US'
   u.rate = 1
+  // A cancelled line ends too, after the next one has started: only the current line frees the coach.
   u.onend = u.onerror = () => {
-    busy = false
+    if (me === turn) setBusy(false)
   }
   window.speechSynthesis.speak(u)
 }
@@ -220,7 +279,7 @@ function play(src: string, text: string, lang: Language) {
   let started = false
   let fellBack = false
   const finished = () => {
-    if (me === turn) busy = false
+    if (me === turn) setBusy(false)
   }
   const fallBack = () => {
     if (started || fellBack || me !== turn) return
@@ -242,7 +301,7 @@ function stop() {
   turn++
   player?.pause()
   if ('speechSynthesis' in window) window.speechSynthesis.cancel()
-  busy = false
+  setBusy(false)
 }
 
 /**
@@ -260,20 +319,28 @@ export function unlockAudio() {
   if ('speechSynthesis' in window) window.speechSynthesis.speak(new SpeechSynthesisUtterance(''))
 }
 
-/** Fetch every cue clip for this session up front, so none waits on the network mid-rep. */
-export function preloadCues(lang: Language, exercise: Exercise) {
-  for (const cue of CUES) loadClip(`/audio/${lang}/${cueLine(cue, lang, exercise).clip}.mp3`)
+/** Fetch every cue clip for this session up front (counts up to `reps`), so none waits on the network mid-rep. */
+export function preloadCues(lang: Language, exercise: Exercise, reps = Infinity) {
+  for (const cue of CUES) {
+    if (isCount(cue) && Number(cue.slice(6)) > reps) continue
+    loadClip(`/audio/${lang}/${cueLine(cue, lang, exercise).clip}.mp3`)
+  }
 }
 
-/** Speak a cue. Returns the line spoken so the UI can show it as a caption. */
-export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): string {
+/**
+ * Speak a cue. Returns the line so the UI can show it as a caption, or null
+ * when the coach is busy with another line and this one isn't worth cutting
+ * it off for: it's dropped, not queued, since a late cue would be wrong.
+ */
+export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): string | null {
   const { clip, text } = cueLine(cue, lang, exercise)
   if (busy) {
-    if (!PRIORITY.includes(cue)) return text
+    if (isBusy() && !PRIORITY.includes(cue)) return null
     stop()
   }
-  busy = true
   const me = ++turn
+  setBusy(true)
+  lastLine = text
   loadClip(`/audio/${lang}/${clip}.mp3`).then((url) => {
     if (me !== turn) return
     if (url) play(url, text, lang)
@@ -285,11 +352,26 @@ export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): str
 /** Free-form line (e.g. the AI pain-check reply), streamed from `audioUrl` when the backend voiced it. */
 export function sayText(text: string, lang: Language, audioUrl?: string | null) {
   stop()
-  busy = true
+  setBusy(true)
+  lastLine = text
   if (audioUrl) play(audioUrl, text, lang)
   else speak(text, lang)
 }
 
 export function stopCoach() {
   stop()
+}
+
+/** Resolves once the coach has finished what it's saying, or after `maxMs` at most. */
+export function untilCoachQuiet(maxMs = 5000): Promise<void> {
+  const until = performance.now() + maxMs
+  return new Promise((resolve) => {
+    const check = () => (!isBusy() || performance.now() > until ? resolve() : void setTimeout(check, 100))
+    check()
+  })
+}
+
+/** The coach's latest line, and how long it has been quiet since (0 while it's still talking). */
+export function coachLastLine(): { text: string; quietFor: number } {
+  return { text: lastLine, quietFor: isBusy() ? 0 : performance.now() - quietSince }
 }

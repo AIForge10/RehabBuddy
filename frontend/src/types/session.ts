@@ -137,6 +137,8 @@ export interface PainCheckRequest {
   pain_score: number // 1–10
   notes: string
   language: Language
+  /** The patient stopped the session mid-way because it hurt: flagged for the therapist whatever the score. */
+  stopped_for_pain?: boolean
 }
 export interface PainCheckResponse {
   flagged: boolean
@@ -148,6 +150,27 @@ export interface PainCheckResponse {
    * Where `reply` streams as speech (GET, audio/mpeg). The backend sends a path
    * from the API origin; client.ts makes it absolute. null → browser speech.
    */
+  audio_url: string | null
+}
+
+// POST /pain-check/transcribe?session_id=…&language=es  (body: the recording, as MediaRecorder made it)
+// The patient's spoken answer, for them to check before they send it with POST /pain-check.
+// The audio isn't stored anywhere.
+/** The pain-check chips, in the same order as s.painChips. */
+export type PainSymptom = 'sharp' | 'swelling' | 'stiffness' | 'clicking' | 'felt_good'
+export interface PainTranscriptResponse {
+  /** What they said, as speech-to-text heard it; empty when they said nothing. */
+  transcript: string
+  /** 1–10; null when no score was heard, so the patient taps one. */
+  pain_score: number | null
+  symptoms: PainSymptom[]
+  /** What they said about how it feels, besides the number, in their language. */
+  notes: string
+}
+
+// POST /pain-check/speak {text, language} → {audio_url}
+// One of the pain check's own lines (its question) in the coach's voice, like PainCheckResponse.audio_url.
+export interface CoachLineResponse {
   audio_url: string | null
 }
 

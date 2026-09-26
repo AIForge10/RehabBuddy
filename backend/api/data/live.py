@@ -1,7 +1,8 @@
 """Live sessions: the therapist watches a patient's angles while they exercise. No video, only angles.
 
 WS  /live/{patient_id}/publish   the patient's session screen: first message {"token": ...}, then an
-                                 `update` every ~250 ms and an `end` when they finish or leave
+                                 `update` every ~250 ms and an `end` when they finish, leave, or stop
+                                 because it hurts
 GET /live/watch?patient_id=...   therapists (Server-Sent Events): sessions under way, then each event
 
 A browser can't put an Authorization header on a WebSocket, so the token is the socket's first
@@ -64,7 +65,8 @@ class LiveUpdate(BaseModel):
 class LiveEnd(BaseModel):
     type: Literal["end"]
     started_at: str = Field(min_length=1, max_length=40)
-    reason: Literal["finished", "exited"]
+    # "pain": the patient said it hurts and the session stopped there (saved, like "finished").
+    reason: Literal["finished", "exited", "pain"]
 
 
 _message = TypeAdapter(Annotated[LiveUpdate | LiveEnd, Field(discriminator="type")])
