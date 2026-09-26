@@ -22,51 +22,70 @@ class GeminiService:
 
     async def generate_session_summary(self, data: SessionSummaryRequest) -> SessionSummaryResponse:
         prompt = build_summary_prompt(data.model_dump_json(indent=2))
-        try:
-            response = await self.client.aio.models.generate_content(
-                model=self.model,
-                contents=prompt,
-                config=GenerateContentConfig(
-                    system_instruction=SYSTEM_INSTRUCTION,
-                    response_mime_type="application/json",
-                    response_schema=SessionSummaryResponse,
-                    temperature=0.25,
-                    automatic_function_calling=AutomaticFunctionCallingConfig(disable=True)
-                ),
-            )
+        cfg = GenerateContentConfig(
+            system_instruction=SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            response_schema=SessionSummaryResponse,
+            temperature=0.25,
+            automatic_function_calling=AutomaticFunctionCallingConfig(disable=True)
+        )
+        models_to_try = [self.model]
+        if self.model != "gemini-3.5-flash-lite":
+            models_to_try.append("gemini-3.5-flash-lite")
 
-            if not response.text:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail="Empty response received from Gemini API.",
+        last_exc = None
+        for m in models_to_try:
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=m,
+                    contents=prompt,
+                    config=cfg,
                 )
+                if response.text:
+                    return SessionSummaryResponse.model_validate_json(response.text)
+            except Exception as e:
+                last_exc = e
+                continue
 
-            return SessionSummaryResponse.model_validate_json(response.text)
-
-        except HTTPException:
-            raise
-        except Exception as e:
+        if last_exc:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Gemini generation failed: {str(e)}",
+                detail=f"Gemini generation failed: {str(last_exc)}",
             )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail="Empty response received from Gemini API.",
+        )
 
     async def generate_pain_reply(self, data: PainCheckRequest, rule_reason: Optional[str]) -> PainCheckReply:
         """The coach's spoken reply to a pain check-in. Raises on any failure; the caller falls back."""
-        response = await self.client.aio.models.generate_content(
-            model=self.model,
-            contents=pain_check_prompt.build_pain_check_prompt(data.pain_score, data.notes, data.language, rule_reason),
-            config=GenerateContentConfig(
-                system_instruction=pain_check_prompt.SYSTEM_INSTRUCTION,
-                response_mime_type="application/json",
-                response_schema=PainCheckReply,
-                temperature=0.4,
-                max_output_tokens=1024,  # counts any thinking tokens too; the reply itself is ~60
-                # The patient is waiting to hear this, so keep thinking to a minimum.
-                thinking_config=ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL.upper()),
-                automatic_function_calling=AutomaticFunctionCallingConfig(disable=True),
-            ),
+        cfg = GenerateContentConfig(
+            system_instruction=pain_check_prompt.SYSTEM_INSTRUCTION,
+            response_mime_type="application/json",
+            response_schema=PainCheckReply,
+            temperature=0.4,
+            max_output_tokens=1024,
+            thinking_config=ThinkingConfig(thinking_level=settings.GEMINI_THINKING_LEVEL.upper()),
+            automatic_function_calling=AutomaticFunctionCallingConfig(disable=True),
         )
-        if not response.text:
-            raise ValueError("Empty response received from Gemini API.")
-        return PainCheckReply.model_validate_json(response.text)
+        models_to_try = [self.model]
+        if self.model != "gemini-3.5-flash-lite":
+            models_to_try.append("gemini-3.5-flash-lite")
+
+        last_exc = None
+        for m in models_to_try:
+            try:
+                response = await self.client.aio.models.generate_content(
+                    model=m,
+                    contents=pain_check_prompt.build_pain_check_prompt(data.pain_score, data.notes, data.language, rule_reason),
+                    config=cfg,
+                )
+                if response.text:
+                    return PainCheckReply.model_validate_json(response.text)
+            except Exception as e:
+                last_exc = e
+                continue
+
+        if last_exc:
+            raise last_exc
+        raise ValueError("Empty response received from Gemini API.")
