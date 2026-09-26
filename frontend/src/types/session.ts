@@ -35,7 +35,8 @@ export interface SessionResult {
   reps_done: number
   /** Deepest flexion reached in the session, degrees. */
   max_angle: number
-  /** Human-readable form cues triggered, e.g. "Knee caving inward". One entry per occurrence. */
+  /** Form warning codes, e.g. "too_fast" (lib/formWarnings.ts has them all). One entry per occurrence.
+   *  Sessions saved before the codes may hold free text. */
   form_warnings: string[]
   duration_sec: number
   /** Every tracked frame, from the pose engine's finish() → angle_samples hypertable. */
@@ -47,7 +48,9 @@ export interface LivePoseState {
   /** Current smoothed flexion in degrees, or null when the leg isn't visible. */
   angle: number | null
   reps: number
-  /** Latest form cue, null when form is fine. */
+  /** Warning codes on the latest completed rep ("not_deep_enough", "too_fast"); replaced when the next rep lands. */
+  rep_warnings: string[]
+  /** Form fault code the camera sees right now (e.g. "leaning_back"), null when form is fine. */
   form_warning: string | null
   /** Pose detection confidence 0–1. */
   confidence: number

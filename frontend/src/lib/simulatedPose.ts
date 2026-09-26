@@ -1,13 +1,15 @@
 // Stand-in for src/pose/usePose until the real tracker is wired in, and the
 // "camera fails on stage" fallback afterwards. Produces the same LivePoseState
 // shape the real hook will: a smooth rep cycle for the exercise whose depth
-// creeps up toward the target, with the occasional form cue.
+// creeps up toward the target, with the occasional form fault. Warnings are the
+// same codes the real tracker emits (see lib/formWarnings.ts).
 
 import { useEffect, useRef, useState } from 'react'
 import type { Exercise } from './exercises'
 import type { LivePoseState } from '../types/session'
 
 const REP_MS = 3200
+const NONE: string[] = []
 
 /**
  * Rep thresholds as fractions of the way from the start angle to the target:
@@ -19,8 +21,8 @@ export const STRAIGHT = 1 / 6
 
 export function useSimulatedPose(running: boolean, exercise: Exercise, targetAngle: number): LivePoseState {
   const { rest, formWarning } = exercise
-  const [state, setState] = useState<LivePoseState>({ angle: rest, reps: 0, form_warning: null, confidence: 0.95 })
-  const ref = useRef({ reps: 0, bent: false, repIndex: -1, peak: 0, warnUntil: 0, warning: null as string | null })
+  const [state, setState] = useState<LivePoseState>({ angle: rest, reps: 0, rep_warnings: NONE, form_warning: null, confidence: 0.95 })
+  const ref = useRef({ reps: 0, bent: false, repIndex: -1, peak: 0, high: 0, repWarnings: NONE, warnUntil: 0 })
 
   useEffect(() => {
     if (!running) return
@@ -35,21 +37,24 @@ export function useSimulatedPose(running: boolean, exercise: Exercise, targetAng
         r.repIndex = repIndex
         // Early reps fall short by a fifth of the range; later ones come within a degree.
         r.peak = Math.min(targetAngle - 1, targetAngle - span * (0.2 - Math.min(repIndex, 8) * 0.027 + (Math.random() - 0.5) * 0.067))
-        if (Math.random() < 0.18) {
-          r.warning = formWarning
-          r.warnUntil = now + 1400
-        }
+        if (Math.random() < 0.18) r.warnUntil = now + 1400
       }
       const phase = (elapsed % REP_MS) / REP_MS
       const angle = Math.max(0, rest + ((r.peak - rest) * (1 - Math.cos(2 * Math.PI * phase))) / 2 + span * 0.03 + (Math.random() - 0.5) * 1.2)
 
-      if (!r.bent && angle > rest + span * BENT) r.bent = true
+      if (!r.bent && angle > rest + span * BENT) {
+        r.bent = true
+        r.high = angle
+      }
+      if (r.bent) r.high = Math.max(r.high, angle)
       if (r.bent && angle < rest + span * STRAIGHT) {
         r.bent = false
         r.reps += 1
+        // The rep counter's rule: a rep that peaks more than 10° short of the target.
+        r.repWarnings = r.high < targetAngle - 10 ? ['not_deep_enough'] : NONE
       }
-      const warning = now < r.warnUntil && phase > 0.2 && phase < 0.7 ? r.warning : null
-      setState({ angle, reps: r.reps, form_warning: warning, confidence: 0.95 })
+      const warning = now < r.warnUntil && phase > 0.2 && phase < 0.7 ? formWarning : null
+      setState({ angle, reps: r.reps, rep_warnings: r.repWarnings, form_warning: warning, confidence: 0.95 })
       raf = requestAnimationFrame(tick)
     }
     raf = requestAnimationFrame(tick)

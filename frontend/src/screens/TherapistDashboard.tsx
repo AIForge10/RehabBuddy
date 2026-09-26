@@ -10,6 +10,7 @@ import { TITLE, buttonClass } from '../components/Screen'
 import { useAuth } from '../lib/auth'
 import { EXERCISES, exerciseFor, type BodyPart } from '../lib/exercises'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
+import { warningNotes } from '../lib/formWarnings'
 import { planChanges, planOf, type Plan } from '../lib/plan'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag } from '../types/session'
@@ -584,7 +585,7 @@ function PatientDetail({
                       <EndRange stats={s.stats} />
                     </td>
                     <td className="px-3 py-3.5 text-right text-ink-2">{formatDuration(s.duration_sec)}</td>
-                    <td className="px-3 py-3.5 text-ink-2">{s.form_warnings.length ? [...new Set(s.form_warnings)].join(', ') : '—'}</td>
+                    <td className="px-3 py-3.5 text-ink-2">{warningNotes(s.form_warnings, 'en').join(', ') || '—'}</td>
                     <td className="px-6 py-3.5 text-right sm:pr-7">
                       {s.flagged ? (
                         <span className="rounded-md bg-critical-soft px-2 py-0.5 font-bold text-critical ring-1 ring-critical/20">{s.pain_score}</span>

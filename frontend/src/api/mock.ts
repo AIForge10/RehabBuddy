@@ -24,6 +24,7 @@ import type {
   UUID,
 } from '../types/session'
 import { assignmentFor, exerciseFor } from '../lib/exercises'
+import { warningCounts } from '../lib/formWarnings'
 import { sessionStats } from '../lib/replay'
 
 const STORAGE_KEY = 'rehabbuddy.mock.v6'
@@ -95,7 +96,9 @@ function seed(): MockDb {
       const progress = (plan.days - d) / (plan.days - 1)
       const started = startOfToday - d * DAY_MS + (17 + Math.floor(rand() * 3)) * 3_600_000
       const max_angle = Math.round(plan.from + (plan.to - plan.from) * progress + (rand() - 0.5) * 3)
-      const warnings = rand() < 0.35 ? ['Knee caving inward'] : []
+      // Codes, as real sessions store them: below 80° every rep fell short of the 90° target.
+      const fast = rand() < 0.2
+      const warnings = [...(max_angle < 80 ? ['not_deep_enough'] : []), ...(fast ? ['too_fast'] : [])]
       const pain = 2 + Math.floor(rand() * 3)
       const reps_done = rand() < 0.2 ? 8 : 10
       sessions.push({
@@ -325,7 +328,8 @@ function templateSummary(db: MockDb, patientId: UUID): string {
   const firstName = p.full_name.split(' ')[0]
   let text = `${firstName} completed ${week} session${week === 1 ? '' : 's'} this week against a plan of ${plan.times_per_week}. ${ex.copy.en.best} improved from ${first}° to ${last}° (target ${plan.target_angle}°).`
   const warn = s.filter((x) => x.form_warnings.length > 0).length
-  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly ${ex.formWarning.toLowerCase()}.`
+  const common = warningCounts(s.flatMap((x) => x.form_warnings), 'en')[0]
+  if (warn) text += ` Form cues were triggered in ${warn} session${warn > 1 ? 's' : ''}, mostly ${common.label.toLowerCase()}.`
   if (flags.length) text += ` ⚠ Reported pain ${flags.at(-1)!.pain_score}/10 after the latest session — recommend a check-in call before progressing load.`
   else text += ' No concerning pain reports; consider progressing the target.'
   return text

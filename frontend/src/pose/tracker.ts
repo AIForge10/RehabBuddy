@@ -5,6 +5,7 @@
 import type { Landmark, NormalizedLandmark, PoseLandmarkerResult } from '@mediapipe/tasks-vision'
 import { angleAt, angleAt3d, reading, toPixels, type Point } from './angle'
 import { Median3, OneEuroFilter } from './filters'
+import { FormCheck, type FormReading } from './form'
 import { JOINTS, type JointName } from './joints'
 import type { PoseDelegate, PoseModel } from './landmarker'
 
@@ -33,6 +34,20 @@ export interface PoseTuning {
   switchFrames: number
   /** Follow the physical limb when MediaPipe trades the left/right labels between frames. */
   followSwaps: boolean
+  /** Form checks (form.ts). Off = never flag a form fault. */
+  formCheck: boolean
+  /** A form fault counts once it has held this long, and clears once it has been gone this long. */
+  formHoldMs: number
+  /** Knee: the thigh turns this far from where it lay at rest. */
+  thighMoveDeg: number
+  /** Hip: the trunk leans back this far past vertical. */
+  leanBackDeg: number
+  /** Elbow: the upper arm swings this far off vertical. */
+  elbowDriftDeg: number
+  /** Shoulder: the shoulder closes this share (%) of the ear-to-shoulder gap it had at rest. */
+  shrugPct: number
+  /** Shoulder: shrugging is only judged below this arm angle; higher, the shoulder rises on its own. */
+  shrugMaxArm: number
 }
 
 export const DEFAULT_TUNING: PoseTuning = {
@@ -51,6 +66,15 @@ export const DEFAULT_TUNING: PoseTuning = {
   holdMs: 400,
   switchFrames: 10,
   followSwaps: true,
+  // Form thresholds are set well past normal movement, so a fault is only called
+  // when it's plain to see. Not yet tuned on real sessions: do that on /pose-debug.
+  formCheck: true,
+  formHoldMs: 500,
+  thighMoveDeg: 20,
+  leanBackDeg: 25,
+  elbowDriftDeg: 30,
+  shrugPct: 35,
+  shrugMaxArm: 100,
 }
 
 // Auto side-picking score = visibility + nearness to the camera + recent movement.
@@ -112,6 +136,8 @@ export interface TrackFrame {
   sides: [SideInfo, SideInfo] | null
   landmarks: NormalizedLandmark[] | null
   worldLandmarks: Landmark[] | null
+  /** The joint's form check this frame; null when it has none or checks are off. */
+  form: FormReading | null
 }
 
 const NAMES = ['left', 'right'] as const
@@ -131,6 +157,7 @@ export class JointTracker {
   private last: { angle: number; points: NormalizedLandmark[]; side: Side; anchor: SideInfo['anchor']; confidence: number } | null = null
   private lastPx: { j: Point; b: Point } | null = null
   private history: [{ t: number; a: number }[], { t: number; a: number }[]] = [[], []]
+  private form = new FormCheck()
 
   constructor(joint: JointName, preferred: PreferredSide = 'auto', tuning: Partial<PoseTuning> = {}) {
     this.joint = joint
@@ -161,6 +188,7 @@ export class JointTracker {
     this.last = null
     this.lastPx = null
     this.history = [[], []]
+    this.form.reset()
   }
 
   private resetFilters() {
@@ -186,9 +214,14 @@ export class JointTracker {
 
     const info = sides[pick.side]
     const raw = this.tuning.angleSource === '3d' && info.angle3d != null ? info.angle3d : info.angle2d
+    const otherLimb = this.last != null && this.last.side !== pick.side && !pick.swapped
     // Back after a real gap, or onto the other limb: start the filters fresh instead of gliding from a stale value.
-    if (t - this.lastSeen > this.tuning.holdMs || (this.last && this.last.side !== pick.side && !pick.swapped)) this.resetFilters()
+    if (t - this.lastSeen > this.tuning.holdMs || otherLimb) this.resetFilters()
+    // The form check's rest references belong to the limb they were learned on.
+    if (otherLimb) this.form.reset()
     const angle = this.euro.filter(this.tuning.median ? this.median.push(raw) : raw, t)
+    const seen = (i: number) => vis(lm[i]) >= this.tuning.minVisibility && inFrame(lm[i])
+    const form = this.form.update(JOINTS[this.joint], this.tuning, t, { lm, side: pick.side, angle, w: width, h: height, seen })
 
     const [a, j, b] = info.points
     const confidence = Math.min(info.anchor === 'vertical' ? 1 : vis(a), vis(j), vis(b))
@@ -213,6 +246,7 @@ export class JointTracker {
       sides,
       landmarks: lm,
       worldLandmarks: world,
+      form,
     }
   }
 
@@ -228,6 +262,7 @@ export class JointTracker {
     if (!held) {
       this.last = null
       this.resetFilters()
+      this.form.reset()
     }
     const l = held ? this.last : null
     return {
@@ -247,6 +282,7 @@ export class JointTracker {
       sides,
       landmarks: lm,
       worldLandmarks: world,
+      form: this.form.update(JOINTS[this.joint], this.tuning, t, null),
     }
   }
 
