@@ -16,30 +16,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { coachLastLine } from './coach'
 import { t } from './i18n'
-import { isNativeApp } from './native'
+import { speechRecognizer } from './native'
+import type { Recognizer, RecognizerClass } from './recognizer'
 import type { Language } from '../types/session'
 
-// Just what's used here: TypeScript's DOM library has the recognizer's events but not the recognizer.
-interface Recognizer {
-  lang: string
-  continuous: boolean
-  interimResults: boolean
-  onstart: (() => void) | null
-  onresult: ((e: SpeechRecognitionEvent) => void) | null
-  onerror: ((e: SpeechRecognitionErrorEvent) => void) | null
-  onend: (() => void) | null
-  start(): void
-  abort(): void
-}
-
-type RecognizerClass = new () => Recognizer
-
 function recognition(): RecognizerClass | undefined {
-  // The iOS and Android apps don't ask for the microphone yet (no usage description or
-  // RECORD_AUDIO in mobile/), and iOS ends an app that opens it without one.
-  if (isNativeApp) return undefined
+  // The iOS app brings its own recognizer (its web view has none); a browser uses its built-in one.
   const w = globalThis as { SpeechRecognition?: RecognizerClass; webkitSpeechRecognition?: RecognizerClass }
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition
+  return speechRecognizer() ?? w.SpeechRecognition ?? w.webkitSpeechRecognition
 }
 
 /** The recognizer finishes transcribing the coach a moment after it stops talking. */

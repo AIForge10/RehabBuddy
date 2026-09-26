@@ -40,6 +40,9 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <!-- Pose tracking. The web view asks for it when a session opens the camera (BridgeWebChromeClient). -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- Spoken pain-check answers and "it hurts" to stop (frontend lib/useRecorder.ts, lib/listen.ts). -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- Front camera preferred, but a tablet with only a back camera can still install the app. -->
     <uses-feature android:name="android.hardware.camera.any" android:required="false" />
 </manifest>

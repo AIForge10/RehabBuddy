@@ -16,6 +16,7 @@
 // Rep counts are cues too, count_1 ("One.") to count_20 ("Twenty.").
 
 import type { Exercise } from './exercises'
+import { isNativeApp } from './native'
 import type { Language } from '../types/session'
 
 // The coach counts reps out loud up to here; past it, a rep gets encouragement instead.
@@ -277,12 +278,20 @@ const clips = new Map<string, Promise<string | null>>()
 function loadClip(path: string): Promise<string | null> {
   let clip = clips.get(path)
   if (!clip) {
+    // In the app, the cue clips are files inside it: the player reads them itself, and a missing
+    // one fails in play() and is spoken. fetch() can't check them there: Capacitor's asset
+    // handler answers a media file with a bare response (no status, no Content-Type).
+    if (isNativeApp && path.startsWith('/')) return Promise.resolve(path)
     clip = fetch(path)
+      // A missing file on the website comes back as the app's HTML page (text/html), not a 404.
       .then(async (r) => (r.ok && r.headers.get('content-type')?.startsWith('audio/') ? URL.createObjectURL(await r.blob()) : null))
       .catch(() => null)
       .then((url) => {
         // A line the backend couldn't voice (or a missing cue file) isn't remembered, so saying it again tries again.
-        if (url == null) clips.delete(path)
+        if (url == null) {
+          clips.delete(path)
+          console.warn('[coach] no audio for', path)
+        }
         return url
       })
     clips.set(path, clip)
@@ -314,20 +323,21 @@ function play(src: string, text: string, lang: Language) {
   const finished = () => {
     if (me === turn) setBusy(false)
   }
-  const fallBack = () => {
+  const fallBack = (why: unknown) => {
     if (started || fellBack || me !== turn) return
     fellBack = true
     a.pause()
+    console.warn('[coach] audio did not start, using browser speech:', text, why)
     speak(text, lang)
   }
   a.onplaying = () => {
     started = true
   }
   a.onended = finished
-  a.onerror = () => (started ? finished() : fallBack())
+  a.onerror = () => (started ? finished() : fallBack(a.error?.message ?? 'error'))
   a.src = src
   a.play().catch(fallBack)
-  setTimeout(fallBack, START_TIMEOUT_MS)
+  setTimeout(() => fallBack('timeout'), START_TIMEOUT_MS)
 }
 
 function stop() {

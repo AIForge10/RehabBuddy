@@ -5,6 +5,8 @@
 // themselves. The two files must export the same names and types:
 // mobile/src/contract.ts fails the mobile typecheck if they drift apart.
 
+import type { RecognizerClass } from './recognizer'
+
 /** True inside the iOS/Android app. */
 export const isNativeApp: boolean = false
 
@@ -30,3 +32,11 @@ export async function keepAwake(_on: boolean): Promise<void> {}
 
 /** Light status-bar text, for full-bleed dark screens such as the live session. */
 export async function darkStatusBar(_on: boolean): Promise<void> {}
+
+/**
+ * The app's own speech recognizer for "it hurts" (lib/listen.ts), where the web
+ * view has none. undefined: use the browser's SpeechRecognition, if it has one.
+ */
+export function speechRecognizer(): RecognizerClass | undefined {
+  return undefined
+}

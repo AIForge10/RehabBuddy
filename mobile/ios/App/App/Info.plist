@@ -32,6 +32,10 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>bendwith.us watches your exercises to count reps and measure how far you bend. Video stays on this phone and is never recorded or uploaded.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>bendwith.us turns what you say during a session into text so it can stop when you say it hurts. This happens on your phone when your language allows it.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>bendwith.us listens so you can answer the pain check out loud, or say “it hurts” to stop a session. Audio is only used to understand what you said and is never stored.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

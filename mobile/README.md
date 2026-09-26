@@ -24,6 +24,8 @@ What the app does differently from the website:
 | Sign-in token | Kept for the tab | iOS Keychain / Android Keystore, survives restarts |
 | Screen during a session | May dim and lock | Kept awake from camera setup to the end |
 | Voice coach, iPhone on silent | Up to the browser | Always plays, mixed over any music |
+| Spoken pain answer | Browser asks for the mic | App asks once |
+| "It hurts" to stop | Chrome's speech recognition (audio to Google) | iOS: Apple's recognizer, on the phone where the language allows (`ios/App/App/StopListenerPlugin.swift`). Android: not yet |
 | Status bar | n/a | Light text on the dark live screen |
 | Copy | "Runs in your browser, any webcam" | "Runs on your phone" |
 

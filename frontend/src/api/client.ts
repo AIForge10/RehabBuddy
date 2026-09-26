@@ -34,7 +34,7 @@ import type {
   WeeklyRecapResponse,
   StorageStats,
 } from '../types/session'
-import { isNativeApp, saveToken } from '../lib/native'
+import { saveToken } from '../lib/native'
 import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
 import type { PlanSuggestion } from '../types/session'
 import { suggestPlan } from '../lib/plan'
@@ -198,9 +198,9 @@ export async function painCheck(body: PainCheckRequest): Promise<PainCheckRespon
 
 /**
  * Whether the pain check can take a spoken answer. Mock mode has no speech-to-text, so the mic is hidden there.
- * So is the iOS and Android app's: mobile/ doesn't ask for the microphone yet, and iOS ends an app that opens it without asking.
+ * The iOS and Android apps ask for the microphone (NSMicrophoneUsageDescription, RECORD_AUDIO in mobile/), so they take one too.
  */
-export const VOICE_ANSWERS = !USE_MOCKS && !isNativeApp
+export const VOICE_ANSWERS = !USE_MOCKS
 
 /**
  * The patient's spoken pain answer (a MediaRecorder clip, sent as the raw body
