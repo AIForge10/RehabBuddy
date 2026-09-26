@@ -4,7 +4,8 @@
 // tune the pipeline live. Record a clip (or load a video) to replay the same
 // movement under different settings, then "Copy tuning" into tracker.ts.
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
-import { JOINTS, type JointName } from '../joints'
+import { JOINTS, type FormFault, type JointName } from '../joints'
+import { OFF_RATIO } from '../form'
 import { RepCounter } from '../repCounter'
 import { DEFAULT_TUNING, type PoseTuning, type PreferredSide, type SideInfo } from '../tracker'
 import { usePose, type PoseFrame } from '../usePose'
@@ -56,6 +57,17 @@ interface Snapshot {
   reps: number
   bent: boolean
   lastRep: string | null
+  faults: number
+}
+
+type FormLimit = 'thighMoveDeg' | 'leanBackDeg' | 'elbowDriftDeg' | 'shrugPct'
+
+// Each joint's form check (form.ts): the tuning key for its threshold, and what that number is.
+const FORM_CHECKS: Record<FormFault, { key: FormLimit; label: string; max: number; hint: string }> = {
+  thigh_moving: { key: 'thighMoveDeg', label: 'Thigh turn', max: 60, hint: 'How far the thigh may turn from where it lay while the leg was straight.' },
+  leaning_back: { key: 'leanBackDeg', label: 'Trunk lean back', max: 60, hint: 'How far the trunk may lean back past vertical. Leaning forward reads negative.' },
+  elbow_drifting: { key: 'elbowDriftDeg', label: 'Upper arm off vertical', max: 60, hint: 'How far the upper arm may swing away from hanging straight down.' },
+  shrugging: { key: 'shrugPct', label: 'Ear-to-shoulder gap closed', max: 80, hint: 'How far the shoulder may rise toward the ear, as a share of the gap it had with the arm down.' },
 }
 
 const JOINT_OPTIONS = (Object.keys(JOINTS) as JointName[]).map((j) => ({ value: j, label: JOINTS[j].label.replace(' (experimental)', '') }))
@@ -209,6 +221,8 @@ export default function PoseDebug() {
   })
   const [snap, setSnap] = useState<Snapshot | null>(null)
   const lastRep = useRef<string | null>(null)
+  // Form faults this run, counted the way the live session counts them: once per appearance.
+  const faults = useRef({ count: 0, on: false })
 
   const resetRun = useCallback(() => {
     const c = JOINTS[joint]
@@ -217,6 +231,7 @@ export default function PoseDebug() {
     reps.current = []
     log.current = []
     lastRep.current = null
+    faults.current = { count: 0, on: false }
   }, [joint])
   useEffect(resetRun, [resetRun, side, source, file])
 
@@ -239,6 +254,10 @@ export default function PoseDebug() {
       }
     }
 
+    const faulty = f.form?.active ?? false
+    if (faulty && !faults.current.on) faults.current.count += 1
+    faults.current.on = faulty
+
     const h = history.current
     h.push({ t, angle: f.angle, raw: f.rawAngle, world: f.angle3d, legacy: f.legacyAngle })
     while (h.length && t - h[0].t > CHART_WINDOW_MS) h.shift()
@@ -254,6 +273,7 @@ export default function PoseDebug() {
       angle3d: round(f.angle3d),
       legacy: round(f.legacyAngle),
       reason: f.reason,
+      form: f.form ? { fault: f.form.fault, value: round(f.form.value), active: f.form.active } : null,
       landmarks: f.landmarks?.map((p) => [round(p.x, 4), round(p.y, 4), round(p.z, 4), round(p.visibility, 3)]) ?? null,
     })
     while (l.length && t - (l[0] as { t: number }).t > EXPORT_WINDOW_MS) l.shift()
@@ -287,6 +307,7 @@ export default function PoseDebug() {
         reps: counter.current.count,
         bent: counter.current.isBent,
         lastRep: lastRep.current,
+        faults: faults.current.count,
       })
     }
   }
@@ -327,6 +348,8 @@ export default function PoseDebug() {
   const f = snap?.frame
   const tuned = JSON.stringify(tuning) !== JSON.stringify(DEFAULT_TUNING)
   const aspect = f ? `${f.videoWidth} / ${f.videoHeight}` : '16 / 9'
+  const check = cfg.fault ? FORM_CHECKS[cfg.fault] : null
+  const form = f?.form ?? null
   const status = sourceError ?? pose.error ?? (!pose.ready ? `Loading the ${tuning.model} model…` : source === 'file' && !file ? 'Load a video to start' : null)
 
   return (
@@ -366,6 +389,7 @@ export default function PoseDebug() {
               {f?.held && <StageChip tone="warn">Holding last angle</StageChip>}
               {f?.swapped && <StageChip tone="warn">L/R swap followed</StageChip>}
               {f?.anchor === 'vertical' && <StageChip>Hip out of view: measuring from vertical</StageChip>}
+              {form?.active && <StageChip tone="warn">Form fault: {form.fault.replace('_', ' ')}</StageChip>}
             </div>
 
             {source === 'camera' && recordingSince != null && (
@@ -607,6 +631,59 @@ export default function PoseDebug() {
             />
             <Slider label="Frames to switch side" value={tuning.switchFrames} min={1} max={30} step={1} onChange={(v) => tune('switchFrames', v)} />
             <Toggle label="Follow left/right label swaps" checked={tuning.followSwaps} onChange={(v) => tune('followSwaps', v)} />
+          </Panel>
+
+          <Panel title="Form check" action={form?.active ? <span className="label-mono text-[10px] text-critical">Fault</span> : null}>
+            {check ? (
+              <>
+                <Toggle label="Check form" checked={tuning.formCheck} onChange={(v) => tune('formCheck', v)} />
+                <div className="rounded-xl bg-raised p-3 ring-1 ring-line">
+                  <p className="flex items-baseline justify-between gap-2">
+                    <span className={`text-2xl font-bold tabular-nums tracking-tight ${form?.active ? 'text-critical' : ''}`}>
+                      {form?.value == null ? '—' : `${form.value.toFixed(0)}${form.unit}`}
+                    </span>
+                    <span className="text-xs text-muted">
+                      {snap?.faults ?? 0} {snap?.faults === 1 ? 'fault' : 'faults'} this run
+                    </span>
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted">{tuning.formCheck ? (form?.note ?? 'Waiting for a frame') : 'Off'}</p>
+                </div>
+                <Slider
+                  label={check.label}
+                  value={tuning[check.key]}
+                  min={5}
+                  max={check.max}
+                  step={1}
+                  onChange={(v) => tune(check.key, v)}
+                  format={(v) => `${v}${cfg.fault === 'shrugging' ? '%' : '°'}`}
+                  hint={check.hint}
+                />
+                {cfg.fault === 'shrugging' && (
+                  <Slider
+                    label="Judge shrugs below"
+                    value={tuning.shrugMaxArm}
+                    min={cfg.straight}
+                    max={180}
+                    step={5}
+                    onChange={(v) => tune('shrugMaxArm', v)}
+                    format={(v) => `${v}°`}
+                    hint="Arm angle. Higher up, the shoulder rises by itself as the arm goes overhead."
+                  />
+                )}
+                <Slider
+                  label="Hold before it counts"
+                  value={tuning.formHoldMs}
+                  min={100}
+                  max={2000}
+                  step={50}
+                  onChange={(v) => tune('formHoldMs', v)}
+                  format={(v) => `${v} ms`}
+                  hint={`And gone this long (under ${Math.round(tuning[check.key] * OFF_RATIO)}${cfg.fault === 'shrugging' ? '%' : '°'}) before it can count again. Only judged mid-rep.`}
+                />
+              </>
+            ) : (
+              <p className="text-xs text-muted">No form check for the {cfg.label.replace(' (experimental)', '').toLowerCase()}: its angle is still experimental.</p>
+            )}
           </Panel>
 
           <Panel title="Smoothing">

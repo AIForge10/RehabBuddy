@@ -58,6 +58,12 @@ const strings = {
     planUpdated: 'Your therapist updated your plan',
     timesPerWeek: (n: number) => (n === 1 ? 'Once a week' : `${n} times a week`),
     dismiss: 'Dismiss',
+    // The coach's weekly recap on the home screen. The recap itself comes from the backend.
+    weeklyRecap: 'Coach’s recap',
+    weeklyRecapSub: 'Last 7 days',
+    weeklyListen: 'Listen',
+    weeklyWriting: 'Your coach is writing your recap…',
+    weeklyEmpty: 'After your first session, I’ll sum up your week here, and read it to you if you like.',
 
     stepOf: (n: number, total: number) => `Step ${n} of ${total}`,
     briefTitle: 'How to do it',
@@ -87,6 +93,8 @@ const strings = {
     backToDemo: 'Watch the demo again',
     exit: 'Exit',
     simulated: 'Simulated data',
+    /** Shown while the session streams to the therapist's dashboard. */
+    liveShared: 'Live to your therapist · angles only',
 
     kneeBend: 'Knee bend',
     target: 'Target',
@@ -132,6 +140,15 @@ const strings = {
     doneTime: 'Time',
     doneForm: 'Form notes',
     doneFormClean: 'Clean',
+    // Form warnings by the code saved with the session (see lib/formWarnings.ts).
+    formWarnings: {
+      not_deep_enough: 'Short of target',
+      too_fast: 'Too fast',
+      thigh_moving: 'Thigh moving',
+      leaning_back: 'Leaning back',
+      elbow_drifting: 'Elbow drifting',
+      shrugging: 'Shoulder shrugging',
+    },
     doneProgress: 'Your progress',
     doneProgressSub: 'Deepest bend, each session',
     doneSent: 'Results sent to your therapist.',
@@ -282,6 +299,11 @@ const strings = {
     planUpdated: 'Tu terapeuta actualizó tu plan',
     timesPerWeek: (n: number) => (n === 1 ? 'Una vez por semana' : `${n} veces por semana`),
     dismiss: 'Cerrar',
+    weeklyRecap: 'Resumen del entrenador',
+    weeklyRecapSub: 'Últimos 7 días',
+    weeklyListen: 'Escuchar',
+    weeklyWriting: 'Tu entrenador está escribiendo tu resumen…',
+    weeklyEmpty: 'Después de tu primera sesión, aquí te resumiré tu semana y te la leeré si quieres.',
 
     stepOf: (n: number, total: number) => `Paso ${n} de ${total}`,
     briefTitle: 'Cómo hacerlo',
@@ -311,6 +333,7 @@ const strings = {
     backToDemo: 'Ver la demostración otra vez',
     exit: 'Salir',
     simulated: 'Datos simulados',
+    liveShared: 'En vivo con tu terapeuta · solo ángulos',
 
     kneeBend: 'Flexión de rodilla',
     target: 'Meta',
@@ -356,6 +379,14 @@ const strings = {
     doneTime: 'Tiempo',
     doneForm: 'Postura',
     doneFormClean: 'Correcta',
+    formWarnings: {
+      not_deep_enough: 'Sin llegar a la meta',
+      too_fast: 'Demasiado rápido',
+      thigh_moving: 'Muslo en movimiento',
+      leaning_back: 'Inclinado hacia atrás',
+      elbow_drifting: 'Codo separado del cuerpo',
+      shrugging: 'Hombro encogido',
+    },
     doneProgress: 'Tu progreso',
     doneProgressSub: 'Flexión máxima por sesión',
     doneSent: 'Resultados enviados a tu terapeuta.',

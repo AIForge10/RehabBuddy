@@ -35,7 +35,8 @@ export interface SessionResult {
   reps_done: number
   /** Deepest flexion reached in the session, degrees. */
   max_angle: number
-  /** Human-readable form cues triggered, e.g. "Knee caving inward". One entry per occurrence. */
+  /** Form warning codes, e.g. "too_fast" (lib/formWarnings.ts has them all). One entry per occurrence.
+   *  Sessions saved before the codes may hold free text. */
   form_warnings: string[]
   duration_sec: number
   /** Every tracked frame, from the pose engine's finish() → angle_samples hypertable. */
@@ -47,7 +48,9 @@ export interface LivePoseState {
   /** Current smoothed flexion in degrees, or null when the leg isn't visible. */
   angle: number | null
   reps: number
-  /** Latest form cue, null when form is fine. */
+  /** Warning codes on the latest completed rep ("not_deep_enough", "too_fast"); replaced when the next rep lands. */
+  rep_warnings: string[]
+  /** Form fault code the camera sees right now (e.g. "leaning_back"), null when form is fine. */
   form_warning: string | null
   /** Pose detection confidence 0–1. */
   confidence: number
@@ -156,6 +159,18 @@ export interface SummaryResponse {
   summary_text: string
   week_start: ISODateString
   /** true when the text comes from the template, not Gemini (Gemini failed, or mock mode). */
+  is_fallback: boolean
+}
+
+// GET /patients/{patient_id}/weekly-recap?language=es
+// The coach's recap of the patient's own last 7 days, for their home screen.
+export interface WeeklyRecapResponse {
+  /** Two or three sentences in `language`: sessions vs the plan, the trend vs the target, a next step. */
+  text: string
+  language: Language
+  /** Where `text` streams as speech, like PainCheckResponse.audio_url. null → browser speech. */
+  audio_url: string | null
+  /** true when Gemini failed or was slow and the template was used. */
   is_fallback: boolean
 }
 

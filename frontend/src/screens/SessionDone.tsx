@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { getPatientOverview } from '../api/client'
 import { DegreeScale } from '../components/DegreeScale'
+import { FormNotes } from '../components/FormNotes'
 import { PainDot, Row, Rows, Section } from '../components/Ledger'
 import { RomChart } from '../components/RomChart'
 import { Button, PatientScreen, TITLE } from '../components/Screen'
@@ -36,7 +37,6 @@ export default function SessionDone() {
   const history = overview?.assignment.exercise.joint === assignment.exercise.joint ? overview : null
   const previous = history?.sessions.find((x) => x.id !== sessionId)
   const delta = previous ? result.max_angle - previous.max_angle : null
-  const uniqueWarnings = [...new Set(result.form_warnings)]
   const firstName = overview?.patient.full_name.split(' ')[0]
 
   return (
@@ -100,14 +100,7 @@ export default function SessionDone() {
             </Row>
             <Row label={s.doneTime}>{formatDuration(result.duration_sec)}</Row>
             <Row label={s.doneForm}>
-              {uniqueWarnings.length ? (
-                <span className="text-warn" title={uniqueWarnings.join('\n')}>
-                  {uniqueWarnings[0]}
-                  {uniqueWarnings.length > 1 && <span className="text-muted"> +{uniqueWarnings.length - 1}</span>}
-                </span>
-              ) : (
-                <span className="text-good">{s.doneFormClean}</span>
-              )}
+              <FormNotes warnings={result.form_warnings} />
             </Row>
             {pain && (
               <Row label={s.pain}>

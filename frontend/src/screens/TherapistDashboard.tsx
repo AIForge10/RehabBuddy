@@ -10,9 +10,12 @@ import { TITLE, buttonClass } from '../components/Screen'
 import { useAuth } from '../lib/auth'
 import { EXERCISES, exerciseFor, type BodyPart } from '../lib/exercises'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
+import { warningNotes } from '../lib/formWarnings'
 import { planChanges, planOf, type Plan } from '../lib/plan'
+import { useLiveSessions, type LiveSession } from '../lib/useLiveSessions'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag, SummaryResponse } from '../types/session'
+import { LiveDot, LivePanel } from './therapist/LivePanel'
 import { SessionReplay } from './therapist/SessionReplay'
 import { EndRange, RepPeaks } from './therapist/SessionStats'
 
@@ -60,6 +63,7 @@ export default function TherapistDashboard() {
   const [fresh, setFresh] = useState<Record<string, number>>({}) // session id → highlight-until
   const seen = useRef<Set<string> | null>(null)
   const reload = useRef(() => {})
+  const pollNow = useRef(() => {})
 
   // Poll for the live-update effect; pause while the tab is hidden.
   useEffect(() => {
@@ -92,6 +96,7 @@ export default function TherapistDashboard() {
     }
     load()
     reload.current = () => void load(true)
+    pollNow.current = () => void load()
     const id = setInterval(() => load(), POLL_MS)
     const onVisible = () => !document.hidden && load()
     document.addEventListener('visibilitychange', onVisible)
@@ -105,6 +110,10 @@ export default function TherapistDashboard() {
   }, [therapistId])
 
   const patients = data?.patients ?? []
+  // Who's exercising right now. A session that begins brings its patient up;
+  // one that ends polls at once, so the saved session shows up (and replays)
+  // without waiting for the next poll.
+  const live = useLiveSessions(patients.map((p) => p.patient.id), { onStart: (id) => setSelectedId(id), onEnd: () => pollNow.current() })
   const selected = patients.find((p) => p.patient.id === selectedId) ?? patients[0]
   const alerts = patients
     .flatMap((p) => recentFlags(p, now).map((f) => ({ ...f, name: p.patient.full_name })))
@@ -192,11 +201,12 @@ export default function TherapistDashboard() {
 
         {data && (
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
-            <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} />
+            <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} live={live} />
             {selected && (
               <PatientDetail
                 key={selected.patient.id}
                 p={selected}
+                live={live[selected.patient.id]}
                 fresh={fresh}
                 now={now}
                 picked={picked}
@@ -301,12 +311,14 @@ function PatientList({
   onSelect,
   now,
   fresh,
+  live,
 }: {
   patients: PatientOverview[]
   selectedId?: string
   onSelect: (id: string) => void
   now: number
   fresh: Record<string, number>
+  live: Record<string, LiveSession>
 }) {
   return (
     <section aria-label="Patients" className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line lg:sticky lg:top-24">
@@ -318,6 +330,7 @@ function PatientList({
           const flagged = recentFlags(p, now).length > 0
           const active = p.patient.id === selectedId
           const isNew = last && (fresh[last.id] ?? 0) > now
+          const session = live[p.patient.id]
           return (
             <li key={p.patient.id}>
               <button
@@ -330,9 +343,16 @@ function PatientList({
                 <Avatar name={p.patient.full_name} flagged={flagged} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-bold">{p.patient.full_name}</span>
-                  <span className={`block truncate text-sm ${isNew ? 'font-bold text-brand-ink' : 'text-ink-2'}`}>
-                    {isNew ? 'New session just now' : last ? `Last session ${timeAgo(last.started_at, now)}` : 'No sessions yet'}
-                  </span>
+                  {session && !session.ended ? (
+                    <span className="flex items-center gap-2 truncate text-sm font-bold text-brand-ink">
+                      <LiveDot />
+                      Live now · {session.reps}/{session.goal} reps
+                    </span>
+                  ) : (
+                    <span className={`block truncate text-sm ${isNew ? 'font-bold text-brand-ink' : 'text-ink-2'}`}>
+                      {isNew ? 'New session just now' : last ? `Last session ${timeAgo(last.started_at, now)}` : 'No sessions yet'}
+                    </span>
+                  )}
                 </span>
                 <AdherenceRing done={done} plan={p.assignment.times_per_week} />
               </button>
@@ -358,6 +378,7 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub?:
 
 function PatientDetail({
   p,
+  live,
   fresh,
   now,
   picked,
@@ -365,6 +386,7 @@ function PatientDetail({
   onPlanSaved,
 }: {
   p: PatientOverview
+  live?: LiveSession
   fresh: Record<string, number>
   now: number
   picked: Pick | null
@@ -466,6 +488,8 @@ function PatientDetail({
           }}
         />
       )}
+
+      {live && <LivePanel live={live} name={patient.full_name} />}
 
       <dl className="grid grid-cols-2 overflow-hidden rounded-3xl bg-surface ring-1 ring-line sm:grid-cols-4 [&>div]:border-line max-sm:[&>div:nth-child(-n+2)]:border-b sm:[&>div:not(:first-child)]:border-l max-sm:[&>div:nth-child(2n)]:border-l">
         <Stat
@@ -595,7 +619,7 @@ function PatientDetail({
                       <EndRange stats={s.stats} />
                     </td>
                     <td className="px-3 py-3.5 text-right text-ink-2">{formatDuration(s.duration_sec)}</td>
-                    <td className="px-3 py-3.5 text-ink-2">{s.form_warnings.length ? [...new Set(s.form_warnings)].join(', ') : '—'}</td>
+                    <td className="px-3 py-3.5 text-ink-2">{warningNotes(s.form_warnings, 'en').join(', ') || '—'}</td>
                     <td className="px-6 py-3.5 text-right sm:pr-7">
                       {s.flagged ? (
                         <span className="rounded-md bg-critical-soft px-2 py-0.5 font-bold text-critical ring-1 ring-critical/20">{s.pain_score}</span>

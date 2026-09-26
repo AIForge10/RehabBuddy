@@ -11,21 +11,23 @@
 // Cue ids below are the file-name contract with Shan. Three cues name the
 // movement (start, bend_deeper, knee_in), so for exercises other than the knee
 // their text comes from the exercise and the clip is {cue}_{part}.mp3, e.g.
-// start_shoulder.mp3.
+// start_shoulder.mp3. knee_in kept its first name but is each exercise's form
+// cue (`cues.form`): lib/formWarnings.ts decides which warning plays which cue.
 
 import type { Exercise } from './exercises'
 import type { Language } from '../types/session'
 
-export type CoachCue = 'start' | 'good_rep' | 'bend_deeper' | 'knee_in' | 'halfway' | 'last_rep' | 'done'
+export type CoachCue = 'start' | 'good_rep' | 'bend_deeper' | 'knee_in' | 'slow_down' | 'halfway' | 'last_rep' | 'done'
 
-export const CUES: readonly CoachCue[] = ['start', 'good_rep', 'bend_deeper', 'knee_in', 'halfway', 'last_rep', 'done']
+export const CUES: readonly CoachCue[] = ['start', 'good_rep', 'bend_deeper', 'knee_in', 'slow_down', 'halfway', 'last_rep', 'done']
 
 export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
   en: {
     start: "Let's begin. Bend your knee slowly.",
     good_rep: 'Good rep.',
     bend_deeper: 'Try to bend a little deeper.',
-    knee_in: 'Keep your knee in line with your foot.',
+    knee_in: 'Keep your thigh still on the chair.',
+    slow_down: 'Slow down. Take your time.',
     halfway: 'Halfway there. Keep going.',
     last_rep: 'One more.',
     done: 'Great work. Session complete.',
@@ -34,15 +36,17 @@ export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
     start: 'Empecemos. Dobla la rodilla despacio.',
     good_rep: 'Buena repetición.',
     bend_deeper: 'Intenta doblar un poco más.',
-    knee_in: 'Mantén la rodilla alineada con el pie.',
+    knee_in: 'Mantén el muslo quieto sobre la silla.',
+    slow_down: 'Más despacio. Tómate tu tiempo.',
     halfway: 'Vas por la mitad. Sigue así.',
     last_rep: 'Una más.',
     done: 'Buen trabajo. Sesión terminada.',
   },
 }
 
-// Cues that may cut off whatever is playing.
-const PRIORITY: CoachCue[] = ['knee_in', 'done']
+// Cues that may cut off whatever is playing. A too-fast rep lands while the
+// last rep's cue may still be playing, which is exactly when it needs hearing.
+const PRIORITY: CoachCue[] = ['knee_in', 'slow_down', 'done']
 
 // Audio that hasn't started by now (slow network or backend) is spoken instead.
 const START_TIMEOUT_MS = 4000

@@ -28,8 +28,9 @@ import type {
   TranslateResponse,
   UpdateAssignmentRequest,
   UUID,
+  WeeklyRecapResponse,
 } from '../types/session'
-import { mockBackend, fallbackPainCheck, fallbackSummary } from './mock'
+import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
 
 /** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
@@ -79,6 +80,11 @@ export function setAuthToken(next: string | null) {
 export function onUnauthorized(fn: () => void) {
   unauthorized = fn
 }
+
+// Live sessions (src/api/live.ts) hold their own long-lived connections, a
+// WebSocket and a streamed fetch, rather than going through request().
+export { API_URL }
+export const getAuthToken = () => token
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const controller = new AbortController()
@@ -176,6 +182,19 @@ export async function getSummary(patientId: UUID): Promise<SummaryResponse> {
   } catch (err) {
     console.warn('[api] /summary failed, using fallback', err)
     return fallbackSummary()
+  }
+}
+
+/** The coach's recap of the patient's last 7 days. Takes the overview already on screen, for the template fallback. */
+export async function getWeeklyRecap(overview: PatientOverview, language: Language): Promise<WeeklyRecapResponse> {
+  if (USE_MOCKS) return mockBackend.getWeeklyRecap(overview.patient.id, language)
+  try {
+    const res = await request<WeeklyRecapResponse>(`/patients/${overview.patient.id}/weekly-recap?language=${language}`)
+    // audio_url is a path from the API's origin, as in painCheck.
+    return res.audio_url ? { ...res, audio_url: new URL(res.audio_url, API_URL).href } : res
+  } catch (err) {
+    console.warn('[api] /weekly-recap failed, using fallback', err)
+    return fallbackWeeklyRecap(overview, language)
   }
 }
 
