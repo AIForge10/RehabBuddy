@@ -207,6 +207,13 @@ const PRIORITY: CoachCue[] = [
 // Audio that hasn't started by now (slow network or backend) is spoken instead.
 const START_TIMEOUT_MS = 4000
 
+// A backend-voiced line is downloaded whole before it plays, like a cue clip.
+// The backend holds the download until synthesis has produced audio (up to
+// 10 s), so a line gets this long to arrive before the browser reads it.
+const LINE_TIMEOUT_MS = 12_000
+
+const wait = (ms: number) => new Promise<null>((resolve) => setTimeout(() => resolve(null), ms))
+
 // 10 ms of silence, played inside a tap to unlock the player (see unlockAudio).
 const SILENCE =
   'data:audio/wav;base64,UklGRnQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YVAAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgA=='
@@ -252,6 +259,11 @@ function loadClip(path: string): Promise<string | null> {
     clip = fetch(path)
       .then(async (r) => (r.ok && r.headers.get('content-type')?.startsWith('audio/') ? URL.createObjectURL(await r.blob()) : null))
       .catch(() => null)
+      .then((url) => {
+        // A line the backend couldn't voice (or a missing cue file) isn't remembered, so saying it again tries again.
+        if (url == null) clips.delete(path)
+        return url
+      })
     clips.set(path, clip)
   }
   return clip
@@ -349,13 +361,33 @@ export function playCue(cue: CoachCue, lang: Language, exercise?: Exercise): str
   return text
 }
 
-/** Free-form line (e.g. the AI pain-check reply), streamed from `audioUrl` when the backend voiced it. */
+/**
+ * Free-form line (e.g. the AI pain-check reply), from `audioUrl` when the backend
+ * voiced it. The audio is downloaded whole and then played from memory, the way
+ * a cue clip is. Handing the backend's stream straight to <audio> starts sooner
+ * in Chrome, but Safari and the iPhone app wait for the whole stream before
+ * they play at all, so a longer reply ran past START_TIMEOUT_MS and the browser
+ * voice read it instead of the coach's.
+ */
 export function sayText(text: string, lang: Language, audioUrl?: string | null) {
   stop()
+  const me = turn
   setBusy(true)
   lastLine = text
-  if (audioUrl) play(audioUrl, text, lang)
-  else speak(text, lang)
+  if (!audioUrl) {
+    speak(text, lang)
+    return
+  }
+  Promise.race([loadClip(audioUrl), wait(LINE_TIMEOUT_MS)]).then((url) => {
+    if (me !== turn) return
+    if (url) play(url, text, lang)
+    else speak(text, lang)
+  })
+}
+
+/** Starts downloading a backend-voiced line ahead of sayText, so it plays the moment it's due. Resolves to null if it couldn't be fetched. */
+export function preloadLine(audioUrl: string): Promise<string | null> {
+  return loadClip(audioUrl)
 }
 
 export function stopCoach() {

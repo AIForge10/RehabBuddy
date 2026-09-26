@@ -1,0 +1,85 @@
+# DigitalOcean App Platform spec for bendwith.us (RehabBuddy).
+#
+# Two components from this one repo:
+#   api   the FastAPI backend in backend/, a single instance because the live-session
+#         pub/sub (backend/api/services/live_hub.py) is in memory
+#   web   the React app in frontend/, built by Vite and served as a static site
+#
+# First deploy:   doctl apps create --spec .do/app.yaml
+# Later changes:  doctl apps update <app-id> --spec .do/app.yaml
+# The secrets (GEMINI_API_KEY, ELEVENLABS_API_KEY, DATABASE_URL, JWT_SECRET) are set
+# in the DigitalOcean console as encrypted env vars; this file only names them.
+# The live backend is https://rehabbuddy-api-ggcb7.ondigitalocean.app.
+name: rehabbuddy
+region: nyc
+domains:
+  - domain: bendwith.us
+    type: PRIMARY
+    zone: bendwith.us
+  - domain: www.bendwith.us
+    type: ALIAS
+
+services:
+  - name: api
+    github:
+      repo: AIForge10/RehabBuddy
+      branch: main
+      deploy_on_push: true
+    source_dir: backend
+    environment_slug: python
+    run_command: uvicorn api.main:app --host 0.0.0.0 --port 8080 --workers 1
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: basic-xxs
+    routes:
+      - path: /api
+        preserve_path_prefix: true
+    health_check:
+      http_path: /
+    envs:
+      - key: GEMINI_MODEL
+        value: gemini-3.6-flash
+      - key: GEMINI_THINKING_LEVEL
+        value: minimal
+      - key: ELEVENLABS_MODEL
+        value: eleven_flash_v2_5
+      - key: ELEVENLABS_VOICE_ID_EN
+        value: OZ0L6eISlOejga3XjDFt
+      - key: ELEVENLABS_VOICE_ID_ES
+        value: OZ0L6eISlOejga3XjDFt
+      - key: SIGNUP_THERAPIST_ID
+        value: t-lee
+      # The web app and the API share bendwith.us, so browsers need no CORS; the phone apps do.
+      - key: BACKEND_CORS_ORIGINS
+        value: '["https://bendwith.us","https://www.bendwith.us","capacitor://localhost","https://localhost"]'
+      - key: GEMINI_API_KEY
+        type: SECRET
+      - key: ELEVENLABS_API_KEY
+        type: SECRET
+      - key: DATABASE_URL
+        type: SECRET
+      - key: JWT_SECRET
+        type: SECRET
+
+static_sites:
+  - name: web
+    github:
+      repo: AIForge10/RehabBuddy
+      branch: main
+      deploy_on_push: true
+    source_dir: frontend
+    build_command: npm ci && npm run build
+    output_dir: dist
+    # Vite's router needs every path to fall back to index.html.
+    catchall_document: index.html
+    routes:
+      - path: /
+    envs:
+      - key: VITE_USE_MOCKS
+        value: "false"
+      - key: VITE_API_URL
+        value: https://bendwith.us/api/v1
+      - key: VITE_DEMO_PATIENT_ID
+        value: p-maria
+      - key: VITE_DEMO_THERAPIST_ID
+        value: t-lee

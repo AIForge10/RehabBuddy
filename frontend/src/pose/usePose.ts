@@ -2,7 +2,15 @@
 // This hook owns the frame loop (and the camera, unless you pass externalVideo);
 // the landmarks → angle pipeline lives in tracker.ts.
 import { useEffect, useRef, useState } from 'react'
-import { detect, loadLandmarker, setThresholds, type LoadedLandmarker } from './landmarker'
+import {
+  detect,
+  detectHand,
+  loadHandLandmarker,
+  loadLandmarker,
+  setThresholds,
+  type LoadedHandLandmarker,
+  type LoadedLandmarker,
+} from './landmarker'
 import { DEFAULT_TUNING, JointTracker, type PoseTuning, type PreferredSide, type TrackFrame } from './tracker'
 import type { JointName } from './joints'
 
@@ -30,9 +38,12 @@ export function usePose(opts: UsePoseOptions) {
   const tuning: PoseTuning = { ...DEFAULT_TUNING, ...opts.tuning }
   const { model, delegate, minDetection, minPresence, minTracking } = tuning
   const tuningKey = JSON.stringify(tuning)
+  // The hand model only helps the wrist, so only the wrist pays for it.
+  const wantHand = joint === 'wrist' && tuning.handModel
 
   const internalVideoRef = useRef<HTMLVideoElement>(null)
   const [loaded, setLoaded] = useState<{ key: string; value: LoadedLandmarker } | null>(null)
+  const [hand, setHand] = useState<{ key: string; value: LoadedHandLandmarker } | 'failed' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [tracker] = useState(() => new JointTracker(joint, preferredSide, tuning))
 
@@ -62,6 +73,20 @@ export function usePose(opts: UsePoseOptions) {
   useEffect(() => {
     if (active) setThresholds(active, { minDetection, minPresence, minTracking })
   }, [active, minDetection, minPresence, minTracking])
+
+  // The hand model is a bonus: if it fails to load, the wrist falls back to the pose model's hand points.
+  const activeHand = wantHand && hand && hand !== 'failed' && hand.key === delegate ? hand.value : null
+  useEffect(() => {
+    if (!wantHand) return
+    let cancelled = false
+    loadHandLandmarker(delegate).then(
+      (value) => !cancelled && setHand({ key: delegate, value }),
+      () => !cancelled && setHand('failed'),
+    )
+    return () => {
+      cancelled = true
+    }
+  }, [wantHand, delegate])
 
   // Own camera, only when the caller doesn't bring a video.
   useEffect(() => {
@@ -98,8 +123,10 @@ export function usePose(opts: UsePoseOptions) {
       lastTime = video.currentTime
       const t0 = performance.now()
       let res
+      let hands = null
       try {
         res = detect(active.landmarker, video)
+        if (activeHand) hands = detectHand(activeHand.landmarker, video)
       } catch (e) {
         if (!failing) setError(message(e))
         failing = true
@@ -108,12 +135,12 @@ export function usePose(opts: UsePoseOptions) {
       if (failing) setError(null)
       failing = false
       const inferenceMs = performance.now() - t0
-      const f = tracker.process(res, video.videoWidth, video.videoHeight, t0)
+      const f = tracker.process(res, video.videoWidth, video.videoHeight, t0, hands)
       onFrameRef.current?.({ ...f, inferenceMs, videoWidth: video.videoWidth, videoHeight: video.videoHeight })
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [active, externalVideo, tracker])
+  }, [active, activeHand, externalVideo, tracker])
 
   return {
     videoRef: internalVideoRef,
@@ -121,6 +148,8 @@ export function usePose(opts: UsePoseOptions) {
     error,
     /** What actually loaded (GPU can fall back to CPU). */
     delegate: active?.delegate ?? null,
+    /** The hand model (wrist only): 'off' when not asked for, 'unavailable' when it failed to load. */
+    hand: (!wantHand ? 'off' : activeHand ? 'ready' : hand === 'failed' ? 'unavailable' : 'loading') as 'off' | 'loading' | 'ready' | 'unavailable',
     reset: () => tracker.reset(),
   }
 }

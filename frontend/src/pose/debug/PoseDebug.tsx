@@ -214,7 +214,7 @@ export default function PoseDebug() {
   // ---- Per-frame pipeline output ----
   const overlayRef = useRef<HTMLCanvasElement>(null)
   const chartRef = useRef<HTMLCanvasElement>(null)
-  const counter = useRef(new RepCounter({ bentThreshold: cfg.bent, straightThreshold: cfg.straight, targetAngle: cfg.target }))
+  const counter = useRef(new RepCounter({ bentThreshold: cfg.bent, straightThreshold: cfg.straight, restAngle: cfg.rest ?? 0, targetAngle: cfg.target }))
   const history = useRef<ChartPoint[]>([])
   const reps = useRef<{ t: number; count: number }[]>([])
   const log = useRef<object[]>([])
@@ -232,7 +232,7 @@ export default function PoseDebug() {
 
   const resetRun = useCallback(() => {
     const c = JOINTS[joint]
-    counter.current = new RepCounter({ bentThreshold: c.bent, straightThreshold: c.straight, targetAngle: c.target })
+    counter.current = new RepCounter({ bentThreshold: c.bent, straightThreshold: c.straight, restAngle: c.rest ?? 0, targetAngle: c.target })
     history.current = []
     reps.current = []
     log.current = []
@@ -379,6 +379,7 @@ export default function PoseDebug() {
             {tuning.model} · {pose.delegate ?? tuning.delegate}
             {pose.delegate && pose.delegate !== tuning.delegate && ' (fallback)'}
           </Chip>
+          {pose.hand !== 'off' && <Chip>hand model {pose.hand === 'ready' ? (f?.source === 'hand' ? 'in use' : 'ready') : pose.hand}</Chip>}
           <Chip>{snap ? `${snap.fps.toFixed(0)} fps` : '— fps'}</Chip>
           <Chip>{snap ? `${snap.inferenceMs.toFixed(0)} ms / frame` : '— ms'}</Chip>
           <Chip>{f ? `${f.videoWidth}×${f.videoHeight}` : '—'}</Chip>
@@ -635,6 +636,14 @@ export default function PoseDebug() {
               format={(v) => v.toFixed(2)}
               hint="Below this, MediaPipe re-detects the person instead of tracking the last frame."
             />
+            {joint === 'wrist' && (
+              <Toggle
+                label="Hand model for the wrist"
+                checked={tuning.handModel}
+                onChange={(v) => tune('handModel', v)}
+                hint="MediaPipe's 21-point hand model, measured wrist → middle knuckle. Off: the pose model's own hand points (index and pinky knuckles, averaged)."
+              />
+            )}
           </Panel>
 
           <Panel title="Measurement">
@@ -715,6 +724,31 @@ export default function PoseDebug() {
           </Panel>
 
           <Panel title="Smoothing">
+            <Toggle
+              label="Smooth landmarks"
+              checked={tuning.smoothLandmarks}
+              onChange={(v) => tune('smoothLandmarks', v)}
+              hint="One Euro filter on every point before anything is measured or drawn."
+            />
+            <Slider
+              label="Landmark min cutoff"
+              value={tuning.lmMinCutoff}
+              min={0.1}
+              max={6}
+              step={0.1}
+              onChange={(v) => tune('lmMinCutoff', v)}
+              format={(v) => `${v.toFixed(1)} Hz`}
+            />
+            <Slider
+              label="Landmark beta"
+              value={tuning.lmBeta}
+              min={0}
+              max={150}
+              step={5}
+              onChange={(v) => tune('lmBeta', v)}
+              format={(v) => v.toFixed(0)}
+              hint="Per frame-diagonal/s of movement. Higher = less lag while moving, more jitter."
+            />
             <Toggle label="Median of 3 (drops one-frame spikes)" checked={tuning.median} onChange={(v) => tune('median', v)} />
             <Slider
               label="Min cutoff"

@@ -1,6 +1,6 @@
 // Canvas drawing for the pose debugger: the camera overlay and the angle chart.
 // Both sit on the always-dark stage, so colors are fixed rather than themed.
-import { PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision'
+import { HandLandmarker, PoseLandmarker, type NormalizedLandmark } from '@mediapipe/tasks-vision'
 import type { JointConfig } from '../joints'
 import type { PoseFrame } from '../usePose'
 
@@ -81,6 +81,24 @@ export function drawOverlay(canvas: HTMLCanvasElement | null, f: PoseFrame, o: O
         ctx.stroke()
       }
       if (o.indices) label(ctx, String(i), x + dir * 8 * k, y - 8 * k, 12 * k, o.mirror, '#fff')
+    })
+  }
+
+  // The hand model's 21 points, in the side's color, where it saw a hand at a pose wrist.
+  if (f.hands && o.skeleton) {
+    f.hands.forEach((pts, s) => {
+      if (!pts) return
+      ctx.strokeStyle = COLORS[s === 0 ? 'left' : 'right']
+      ctx.fillStyle = ctx.strokeStyle
+      ctx.globalAlpha = 0.9
+      ctx.lineWidth = 2 * k
+      for (const { start, end } of HandLandmarker.HAND_CONNECTIONS) segment(ctx, px(pts[start]), px(pts[end]))
+      for (const p of pts) {
+        const { x, y } = px(p)
+        ctx.beginPath()
+        ctx.arc(x, y, 2.5 * k, 0, Math.PI * 2)
+        ctx.fill()
+      }
     })
   }
 

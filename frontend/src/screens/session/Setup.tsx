@@ -164,6 +164,19 @@ export function Setup({
             })}
           </ol>
 
+          {/* The three data flows, said plainly: video stays here, voice is transcribed once, only numbers go to the therapist. */}
+          <div className="mt-5 rounded-2xl bg-raised px-4 py-3.5 ring-1 ring-line">
+            <h3 className="label-mono text-muted">{s.dataFlowsTitle}</h3>
+            <dl className="mt-2.5 space-y-2">
+              {s.dataFlows.map((row) => (
+                <div key={row.title} className="grid grid-cols-[96px_minmax(0,1fr)] gap-x-3 text-[13px] leading-snug">
+                  <dt className="font-bold text-ink-2">{row.title}</dt>
+                  <dd className="text-ink-2">{row.body}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+
           <div className="mt-auto space-y-2 pt-4">
             <Button onClick={onStart} disabled={camera === 'starting'} className="w-full">
               {denied ? s.setupCtaDemo : s.setupCta}

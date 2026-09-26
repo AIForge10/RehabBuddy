@@ -10,9 +10,13 @@ import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-stora
 
 export const isNativeApp: boolean = true
 
-// scripts/build-web.mjs copies these into the app. Only the model the sessions
-// use is bundled; the others (pose-debug only) still download.
-export const bundledPose = { wasm: '/pose/wasm', models: { full: '/pose/pose_landmarker_full.task' } }
+// scripts/build-web.mjs copies these into the app. Only the models the sessions
+// use are bundled (the pose model, and the hand model for the wrist); the other
+// pose models (pose-debug only) still download.
+export const bundledPose = {
+  wasm: '/pose/wasm',
+  models: { full: '/pose/pose_landmarker_full.task', hand: '/pose/hand_landmarker.task' },
+}
 
 const TOKEN_KEY = 'token'
 

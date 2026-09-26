@@ -24,6 +24,7 @@ import type {
   UpdateAssignmentRequest,
   UUID,
   WeeklyRecapResponse,
+  StorageStats,
 } from '../types/session'
 import { assignmentFor, exerciseFor } from '../lib/exercises'
 import { warningCounts } from '../lib/formWarnings'
@@ -542,6 +543,35 @@ export const mockBackend = {
     const db = load()
     const patients = db.assignments.filter((a) => a.therapist_id === therapistId).map((a) => overview(db, a))
     return delay({ therapist_id: therapistId, patients, generated_at: new Date().toISOString() }, 100)
+  },
+
+  // Stands in for TimescaleDB's catalog: the demo traces, counted, with the
+  // compression a real 30 fps trace gets (about 7 to 1, ordered by time).
+  async getStorageStats(therapistId: UUID): Promise<StorageStats> {
+    const db = load()
+    const traces = readTraces()
+    const samples = Object.values(traces).reduce((n, t) => n + t.length, 0)
+    const minutes = db.sessions.reduce((n, s) => n + Math.max(1, Math.ceil(s.duration_sec / 60)), 0)
+    const mine = db.assignments.filter((a) => a.therapist_id === therapistId).map((a) => a.patient_id)
+    const latest = db.sessions.filter((s) => mine.includes(s.patient_id)).sort((a, b) => b.started_at.localeCompare(a.started_at))[0]
+    const before = samples * 126 // bytes a row takes uncompressed
+    return delay(
+      {
+        samples,
+        sessions: db.sessions.length,
+        chunks: 3,
+        compressed_chunks: 2,
+        bytes_before: before,
+        bytes_after: Math.round(before / 7.1),
+        rollup_minutes: minutes,
+        rollup_realtime: true,
+        rollup_policy: true,
+        trace_session_id: latest?.id ?? null,
+        trace_ms: latest ? 12 + Math.round(Math.random() * 6) : null,
+        trace_points: latest ? (traces[latest.id]?.length ?? 0) : null,
+      },
+      150,
+    )
   },
 
   async updateAssignment(assignmentId: UUID, body: UpdateAssignmentRequest): Promise<Assignment> {

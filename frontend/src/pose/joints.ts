@@ -1,6 +1,9 @@
 // joint library. SAME values as JOINTS in ml/angle_prototype.py.
 // Adding a new joint = adding one entry here.
 // a / joint / b: MediaPipe landmark indices as [left, right]
+// b2 (optional): the distal point is the midpoint of b and b2. The wrist uses
+//   the index and pinky knuckles: turning the forearm swings each one across the
+//   hand, but their midpoint stays on the hand's axis.
 // mode 'flexion': angle = 180 - theta (straight limb = 0)   -> knee, hip, elbow, wrist
 // mode 'raw':     angle = theta (arm at side ≈ 0, raised = up) -> shoulder
 export type JointName = 'knee' | 'hip' | 'elbow' | 'shoulder' | 'wrist'
@@ -13,9 +16,16 @@ export interface JointConfig {
   a: [number, number]
   joint: [number, number]
   b: [number, number]
+  b2?: [number, number]
   mode: 'flexion' | 'raw'
   bent: number
   straight: number
+  /**
+   * Reading at the start position, for a joint that doesn't start straight (the
+   * seated hip). The rep counter then shifts `bent` and `straight` by however far
+   * the rest it sees is from this; see repCounter.ts.
+   */
+  rest?: number
   target: number
   tip: string
   /** The one form fault checked for this joint, if any. Browser only (not in the Python prototype). */
@@ -31,8 +41,10 @@ export const JOINTS: Record<JointName, JointConfig> = {
   },
   hip: {
     label: 'Hip', a: [11, 12], joint: [23, 24], b: [25, 26], mode: 'flexion',
-    bent: 40, straight: 15, target: 90,
-    tip: 'Stand side-on, lift your knee towards your chest',
+    // Seated knee lifts: sitting already reads ~86° (lib/exercises.ts HIP_SEATED),
+    // so the band sits above that, and follows the rest reading (repCounter.ts).
+    rest: 86, bent: 100, straight: 93, target: 115,
+    tip: 'Sit side-on, feet flat, lift your knee towards your chest',
     fault: 'leaning_back',
   },
   elbow: {
@@ -48,7 +60,9 @@ export const JOINTS: Record<JointName, JointConfig> = {
     fault: 'shrugging',
   },
   wrist: {
-    label: 'Wrist (experimental)', a: [13, 14], joint: [15, 16], b: [19, 20], mode: 'flexion',
+    // Measured from MediaPipe's hand model when it sees the hand (tracker.ts);
+    // these pose points are the fallback.
+    label: 'Wrist (experimental)', a: [13, 14], joint: [15, 16], b: [19, 20], b2: [17, 18], mode: 'flexion',
     bent: 35, straight: 15, target: 60,
     tip: 'Forearm side-on on the desk, bend your hand up/down',
   },
