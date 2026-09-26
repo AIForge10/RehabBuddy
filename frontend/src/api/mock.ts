@@ -345,6 +345,7 @@ function overview(db: MockDb, assignment: Assignment): PatientOverview {
     sessions,
     red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
     latest_summary: templateSummary(db, patient.id),
+    latest_summary_is_ai: false,
   }
 }
 
@@ -408,11 +409,12 @@ export const mockBackend = {
   },
 
   async getSummary(patientId: UUID): Promise<SummaryResponse> {
+    // The mock has no Gemini: its summary is always the template.
     return delay(
       {
         summary_text: templateSummary(load(), patientId),
         week_start: new Date(Date.now() - 7 * DAY_MS).toISOString(),
-        is_fallback: false,
+        is_fallback: true,
       },
       400,
     )

@@ -28,7 +28,7 @@ WHERE s.patient_id = :'pid' AND pc.flagged
 ORDER BY pc.created_at DESC;
 
 -- latest_summary
-SELECT summary_text FROM ai_summaries WHERE patient_id = :'pid' ORDER BY week_start DESC LIMIT 1;
+SELECT summary_text, source FROM ai_summaries WHERE patient_id = :'pid' ORDER BY week_start DESC, created_at DESC LIMIT 1;
 
 -- GET /therapist/{tid}/dashboard → run the overview queries for each of these patients
 SELECT patient_id FROM therapist_patients WHERE therapist_id = :'tid';

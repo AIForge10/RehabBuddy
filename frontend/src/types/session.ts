@@ -88,7 +88,8 @@ export interface Patient {
   id: UUID
   full_name: string
   language: Language
-  injury: string
+  /** null for a patient who signed up themselves, until their therapist records it. */
+  injury: string | null
   start_date: ISODateString
 }
 
@@ -115,6 +116,16 @@ export interface LoginResponse {
   access_token: string
   token_type: 'bearer'
   user: { id: UUID; full_name: string; role: Role; language: Language }
+}
+
+// POST /auth/signup → LoginResponse (201). 409 when the email already has an account.
+// A new patient starts on seated knee bends in the demo therapist's caseload.
+export interface SignupRequest {
+  full_name: string
+  email: string
+  password: string
+  role: Role
+  language: Language
 }
 
 // POST /pain-check
@@ -144,7 +155,7 @@ export interface SummaryRequest {
 export interface SummaryResponse {
   summary_text: string
   week_start: ISODateString
-  /** true when Gemini failed and the backend returned the template fallback. */
+  /** true when the text comes from the template, not Gemini (Gemini failed, or mock mode). */
   is_fallback: boolean
 }
 
@@ -194,6 +205,8 @@ export interface PatientOverview {
   sessions: SessionRecord[]
   red_flags: RedFlag[]
   latest_summary: string | null
+  /** true only when Gemini drafted latest_summary; false for the template. */
+  latest_summary_is_ai: boolean
 }
 
 export interface DashboardResponse {

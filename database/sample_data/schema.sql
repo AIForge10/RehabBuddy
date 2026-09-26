@@ -75,8 +75,14 @@ CREATE TABLE IF NOT EXISTS ai_summaries (
   id           TEXT PRIMARY KEY,
   patient_id   TEXT REFERENCES profiles(id),
   week_start   DATE,
-  summary_text TEXT
+  summary_text TEXT,
+  source       TEXT NOT NULL DEFAULT 'template' CHECK (source IN ('gemini', 'template')),  -- who wrote it
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+-- Databases made before source and created_at existed get them here (safe to re-run).
+ALTER TABLE ai_summaries ADD COLUMN IF NOT EXISTS source TEXT NOT NULL DEFAULT 'template'
+  CHECK (source IN ('gemini', 'template'));
+ALTER TABLE ai_summaries ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 -- ★ Continuous aggregate: per-session peak + average angle per minute
 CREATE MATERIALIZED VIEW IF NOT EXISTS session_angle_1m

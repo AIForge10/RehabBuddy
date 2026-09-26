@@ -12,6 +12,12 @@ and the backend enforces it on every request.
 | james@bendwith.us | patient | only James |
 | aisha@bendwith.us | patient | only Aisha |
 
+## Sign-up
+`POST /auth/signup {full_name, email, password, role, language}` creates the account and returns the same
+shape as login (201; 409 if the email is taken). A new patient joins `SIGNUP_THERAPIST_ID`'s caseload
+(`.env`, default `t-lee`, empty = none) on a starter plan: seated knee bends, 10 × 90°, 5×/week.
+A new therapist starts with an empty caseload.
+
 ## Setup
 1. `.env` (root) needs `DATABASE_URL=...` and a long random `JWT_SECRET`:
    `python -c "import secrets; print('JWT_SECRET=' + secrets.token_urlsafe(48))" >> .env`
@@ -25,7 +31,7 @@ Package: `backend/api/auth/` (self-contained, imports as `from api.auth import .
 ```python
 # backend/api/main.py
 from api.auth import router as auth_router
-app.include_router(auth_router)              # POST /auth/login, GET /auth/me (add the same prefix as other routes)
+app.include_router(auth_router)              # POST /auth/login, POST /auth/signup, GET /auth/me (add the same prefix as other routes)
 
 # any router
 from fastapi import Depends
@@ -61,8 +67,8 @@ def pain_check(body: PainCheckRequest, user: CurrentUser = Depends(require_patie
 Test: `cd backend && pytest tests/test_auth_access.py` (needs DATABASE_URL + demo data loaded).
 
 ## Frontend (React)
-1. Login screen → `POST /auth/login {email, password}` → store `access_token` + `user`
-   (in memory + `sessionStorage`).
+1. Login screen → `POST /auth/login {email, password}` (sign-up screen → `POST /auth/signup`) → store
+   `access_token` + `user` (in memory + `sessionStorage`).
 2. `client.ts` `request()`: add `Authorization: Bearer <token>` to every call.
 3. Use `user.id` instead of `DEMO_PATIENT_ID` / `DEMO_THERAPIST_ID`.
 4. Route by `user.role`: patient → `/` (own home), therapist → `/dashboard`.

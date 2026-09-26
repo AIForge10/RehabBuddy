@@ -1,11 +1,13 @@
-"""POST /sessions: saves a finished session + every angle sample into the hypertable."""
+"""POST /sessions: saves a finished session + every angle sample into the hypertable.
+GET /sessions/{id}/samples: reads that trace back for the therapist's replay."""
 import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
-from api.auth import CurrentUser, require_patient
+from api.auth import CurrentUser, get_current_user, require_patient
+from api.auth.deps import can_view_patient
 
 from . import queries as q
 
@@ -49,3 +51,14 @@ def create_session(body: CreateSessionRequest, user: CurrentUser = Depends(requi
                 for s in body.angle_samples:
                     cp.write_row((s.time, session_id, s.angle))
     return {"session_id": session_id, "angle_samples_saved": len(body.angle_samples)}
+
+
+@router.get("/sessions/{session_id}/samples")
+def get_samples(session_id: str, user: CurrentUser = Depends(get_current_user)):
+    with q.connect() as conn:
+        s = conn.execute("SELECT patient_id, started_at FROM sessions WHERE id = %s", (session_id,)).fetchone()
+        if not s:
+            raise HTTPException(404, "Session not found")
+        if not can_view_patient(user.id, s["patient_id"]):
+            raise HTTPException(403, "You can't view this patient's data")
+        return q.session_samples(conn, session_id, s["started_at"])

@@ -18,6 +18,30 @@
       "401": "wrong email or password"
     }
   },
+  "POST /auth/signup": {
+    "request": {
+      "full_name": "Ana Ruiz",
+      "email": "ana@example.com",
+      "password": "at-least-8",
+      "role": "patient",
+      "language": "es"
+    },
+    "response": {
+      "access_token": "<JWT>",
+      "token_type": "bearer",
+      "user": {
+        "id": "p-3f6c1a2e7b8d",
+        "full_name": "Ana Ruiz",
+        "role": "patient",
+        "language": "es"
+      }
+    },
+    "notes": "201. A patient starts on seated knee bends (10 x 90°, 5x/week) in SIGNUP_THERAPIST_ID's caseload (default t-lee).",
+    "errors": {
+      "409": "email already has an account",
+      "422": "missing name, bad email, or password under 8 characters"
+    }
+  },
   "GET /auth/me": {
     "headers": {
       "Authorization": "Bearer <JWT>"
@@ -30,11 +54,13 @@
     }
   },
   "_access_rules": {
-    "all endpoints except /auth/login and /health": "require header Authorization: Bearer <JWT>, else 401",
+    "all endpoints except /auth/login, /auth/signup and /health": "require header Authorization: Bearer <JWT>, else 401",
     "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
     "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
     "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
-    "POST /summary": "same rule as /patients/{id}"
+    "POST /summary": "same rule as /patients/{id}",
+    "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient",
+    "PATCH /assignments/{id}": "therapist only, for their assigned patients; else 403"
   },
   "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
   "GET /patients/{patient_id}/assignment": {
@@ -83,6 +109,7 @@
         {
           "id": "s-p-maria-1",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-25T18:22:00Z",
           "reps_done": 10,
           "max_angle": 86.5,
@@ -94,6 +121,7 @@
         {
           "id": "s-p-maria-2",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-24T18:28:00Z",
           "reps_done": 10,
           "max_angle": 83.1,
@@ -105,6 +133,7 @@
         {
           "id": "s-p-maria-4",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-22T18:56:00Z",
           "reps_done": 10,
           "max_angle": 80.3,
@@ -116,6 +145,7 @@
         {
           "id": "s-p-maria-5",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-21T19:31:00Z",
           "reps_done": 10,
           "max_angle": 78.7,
@@ -130,6 +160,7 @@
         {
           "id": "s-p-maria-7",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-19T19:31:00Z",
           "reps_done": 10,
           "max_angle": 76.1,
@@ -141,6 +172,7 @@
         {
           "id": "s-p-maria-8",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-18T18:42:00Z",
           "reps_done": 10,
           "max_angle": 74.0,
@@ -152,6 +184,7 @@
         {
           "id": "s-p-maria-9",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-17T17:46:00Z",
           "reps_done": 8,
           "max_angle": 72.6,
@@ -165,6 +198,7 @@
         {
           "id": "s-p-maria-10",
           "patient_id": "p-maria",
+          "joint": "knee",
           "started_at": "2026-09-16T19:07:00Z",
           "reps_done": 10,
           "max_angle": 70.6,
@@ -177,7 +211,8 @@
         }
       ],
       "red_flags": [],
-      "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+      "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.",
+      "latest_summary_is_ai": false
     }
   },
   "GET /therapist/{therapist_id}/dashboard": {
@@ -212,6 +247,7 @@
             {
               "id": "s-p-maria-1",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-25T18:22:00Z",
               "reps_done": 10,
               "max_angle": 86.5,
@@ -223,6 +259,7 @@
             {
               "id": "s-p-maria-2",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-24T18:28:00Z",
               "reps_done": 10,
               "max_angle": 83.1,
@@ -234,6 +271,7 @@
             {
               "id": "s-p-maria-4",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-22T18:56:00Z",
               "reps_done": 10,
               "max_angle": 80.3,
@@ -245,6 +283,7 @@
             {
               "id": "s-p-maria-5",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-21T19:31:00Z",
               "reps_done": 10,
               "max_angle": 78.7,
@@ -259,6 +298,7 @@
             {
               "id": "s-p-maria-7",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-19T19:31:00Z",
               "reps_done": 10,
               "max_angle": 76.1,
@@ -270,6 +310,7 @@
             {
               "id": "s-p-maria-8",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-18T18:42:00Z",
               "reps_done": 10,
               "max_angle": 74.0,
@@ -281,6 +322,7 @@
             {
               "id": "s-p-maria-9",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-17T17:46:00Z",
               "reps_done": 8,
               "max_angle": 72.6,
@@ -294,6 +336,7 @@
             {
               "id": "s-p-maria-10",
               "patient_id": "p-maria",
+              "joint": "knee",
               "started_at": "2026-09-16T19:07:00Z",
               "reps_done": 10,
               "max_angle": 70.6,
@@ -306,7 +349,8 @@
             }
           ],
           "red_flags": [],
-          "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target."
+          "latest_summary": "Maria completed 4 of 5 planned sessions this week. Peak knee flexion improved from 71° to 86° (target 90°). No concerning pain reports; consider progressing the target.",
+          "latest_summary_is_ai": false
         },
         {
           "patient": {
@@ -335,6 +379,7 @@
             {
               "id": "s-p-james-1",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-25T17:10:00Z",
               "reps_done": 10,
               "max_angle": 79.9,
@@ -348,6 +393,7 @@
             {
               "id": "s-p-james-4",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-22T19:53:00Z",
               "reps_done": 10,
               "max_angle": 75.7,
@@ -361,6 +407,7 @@
             {
               "id": "s-p-james-8",
               "patient_id": "p-james",
+              "joint": "knee",
               "started_at": "2026-09-18T18:12:00Z",
               "reps_done": 10,
               "max_angle": 69.1,
@@ -381,7 +428,8 @@
               "reason": "“Sharp, on the inside of the knee.”"
             }
           ],
-          "latest_summary": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing."
+          "latest_summary": "James completed 2 of 5 planned sessions this week, below plan. Peak knee flexion improved from 69° to 80° (target 90°). ⚠ Reported pain 8/10 after the latest session (“Sharp, on the inside of the knee.”) — recommend a check-in call before progressing.",
+          "latest_summary_is_ai": false
         },
         {
           "patient": {
@@ -410,6 +458,7 @@
             {
               "id": "s-p-aisha-1",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-25T19:00:00Z",
               "reps_done": 10,
               "max_angle": 88.0,
@@ -423,6 +472,7 @@
             {
               "id": "s-p-aisha-3",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-23T17:05:00Z",
               "reps_done": 8,
               "max_angle": 83.5,
@@ -434,6 +484,7 @@
             {
               "id": "s-p-aisha-4",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-22T19:07:00Z",
               "reps_done": 10,
               "max_angle": 82.5,
@@ -445,6 +496,7 @@
             {
               "id": "s-p-aisha-6",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-20T19:20:00Z",
               "reps_done": 10,
               "max_angle": 80.7,
@@ -456,6 +508,7 @@
             {
               "id": "s-p-aisha-7",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-19T19:14:00Z",
               "reps_done": 10,
               "max_angle": 78.9,
@@ -469,6 +522,7 @@
             {
               "id": "s-p-aisha-8",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-18T18:37:00Z",
               "reps_done": 10,
               "max_angle": 75.0,
@@ -480,6 +534,7 @@
             {
               "id": "s-p-aisha-9",
               "patient_id": "p-aisha",
+              "joint": "knee",
               "started_at": "2026-09-17T17:37:00Z",
               "reps_done": 8,
               "max_angle": 73.5,
@@ -490,7 +545,8 @@
             }
           ],
           "red_flags": [],
-          "latest_summary": "Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target."
+          "latest_summary": "Aisha completed 4 of 5 planned sessions this week. Peak knee flexion improved from 74° to 88° (target 90°). No concerning pain reports; consider progressing the target.",
+          "latest_summary_is_ai": false
         }
       ],
       "generated_at": "2026-09-26T12:00:00Z"
@@ -574,6 +630,88 @@
     "request_notes": "assignment_id, joint and angle_samples are PROPOSED additions (not yet in the frontend's CreateSessionRequest). angle_samples feed the Tiger Data hypertable; one array per session, ~2–30 samples/sec.",
     "response": {
       "session_id": "s-3f6c1a2e-7b8d-4c9e-a1f2-0d3e4b5c6a7f"
+    }
+  },
+  "GET /sessions/{session_id}/samples": {
+    "example_url": "/sessions/s-p-maria-1/samples",
+    "response": [
+      {
+        "time": "2026-09-25T18:22:00Z",
+        "angle": 5.2
+      },
+      {
+        "time": "2026-09-25T18:22:00.500000Z",
+        "angle": 3.2
+      },
+      {
+        "time": "2026-09-25T18:22:01Z",
+        "angle": 3.3
+      },
+      {
+        "time": "2026-09-25T18:22:01.500000Z",
+        "angle": 3.9
+      },
+      {
+        "time": "2026-09-25T18:22:02Z",
+        "angle": 5.5
+      },
+      {
+        "time": "2026-09-25T18:22:02.500000Z",
+        "angle": 5.7
+      },
+      {
+        "time": "2026-09-25T18:22:03Z",
+        "angle": 4.0
+      },
+      {
+        "time": "2026-09-25T18:22:03.500000Z",
+        "angle": 5.9
+      },
+      {
+        "time": "2026-09-25T18:22:04Z",
+        "angle": 3.8
+      },
+      {
+        "time": "2026-09-25T18:22:04.500000Z",
+        "angle": 4.8
+      },
+      {
+        "time": "2026-09-25T18:22:05Z",
+        "angle": 3.6
+      },
+      {
+        "time": "2026-09-25T18:22:05.500000Z",
+        "angle": 32.5
+      }
+    ],
+    "notes": "The session's angle_samples rows, oldest first, for the therapist's replay."
+  },
+  "PATCH /assignments/{assignment_id}": {
+    "example_url": "/assignments/a-p-maria",
+    "request": {
+      "joint": "shoulder",
+      "target_angle": 140,
+      "reps": 10,
+      "times_per_week": 5
+    },
+    "response": {
+      "id": "a-p-maria",
+      "patient_id": "p-maria",
+      "therapist_id": "t-lee",
+      "exercise": {
+        "id": "ex-shoulder-raise",
+        "name": "Seated arm raises",
+        "joint": "shoulder",
+        "instructions": "Sit tall, side-on to the camera, arm straight down. Raise your straight arm forward as high as is comfortable, then lower it."
+      },
+      "target_angle": 140,
+      "reps": 10,
+      "times_per_week": 5
+    },
+    "notes": "Every field is sent. joint picks that joint's exercise; overview then lists only that joint's sessions.",
+    "errors": {
+      "404": "no such assignment",
+      "422": "no exercise for that joint, or a value out of range"
     }
   },
   "POST /pain-check": {
