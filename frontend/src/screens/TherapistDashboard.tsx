@@ -11,11 +11,12 @@ import { useAuth } from '../lib/auth'
 import { EXERCISES, exerciseFor, type BodyPart } from '../lib/exercises'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
 import { warningNotes } from '../lib/formWarnings'
-import { planChanges, planOf, type Plan } from '../lib/plan'
+import { ANGLE_STEP, REPS, WEEKLY, planChanges, planOf, targetRange, type Plan } from '../lib/plan'
 import { useLiveSessions, type LiveSession } from '../lib/useLiveSessions'
 import { useReducedMotion } from '../lib/useReducedMotion'
 import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag, SummaryResponse } from '../types/session'
 import { LiveDot, LivePanel } from './therapist/LivePanel'
+import { PlanSuggestionCard } from './therapist/PlanSuggestion'
 import { SessionReplay } from './therapist/SessionReplay'
 import { EndRange, RepPeaks } from './therapist/SessionStats'
 
@@ -396,7 +397,8 @@ function PatientDetail({
   const { patient, assignment, sessions } = p
   const [summary, setSummary] = useState<SummaryResponse | null>(null)
   const [regenerating, setRegenerating] = useState(false)
-  const [editing, setEditing] = useState(false)
+  // The plan editor, when open; `initial` prefills it, e.g. with a suggested plan to adjust before sending.
+  const [editing, setEditing] = useState<{ initial?: Plan } | null>(null)
   const [sentAt, setSentAt] = useState(0)
   const replayRef = useRef<HTMLDivElement>(null)
   const reduced = useReducedMotion()
@@ -430,6 +432,13 @@ function PatientDetail({
   const summaryText = summary ? summary.summary_text : p.latest_summary
   // Credit Gemini only for text it wrote, not the template it falls back to.
   const byGemini = summary ? !summary.is_fallback : p.latest_summary_is_ai
+
+  // A new plan went out, from the editor or an approved suggestion.
+  const planSent = () => {
+    setSentAt(Date.now())
+    setSummary(null) // the drafted summary quotes the old plan
+    onPlanSaved()
+  }
 
   return (
     <section aria-label={patient.full_name} className="min-w-0 animate-rise space-y-6">
@@ -467,7 +476,7 @@ function PatientDetail({
               <span className="font-bold text-ink">{assignment.exercise.name}</span> · {assignment.reps} × {assignment.target_angle}° · {assignment.times_per_week}×/wk
             </p>
           </div>
-          <button onClick={() => setEditing(true)} className={`${buttonClass('secondary', 'md')} h-10 px-3.5 text-sm`}>
+          <button onClick={() => setEditing({})} className={`${buttonClass('secondary', 'md')} h-10 px-3.5 text-sm`}>
             <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
               <path d="M10.5 2.5l3 3L6 13H3v-3l7.5-7.5Z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
             </svg>
@@ -477,16 +486,7 @@ function PatientDetail({
       </div>
 
       {editing && (
-        <PlanEditor
-          patient={patient}
-          assignment={assignment}
-          onClose={() => setEditing(false)}
-          onSaved={() => {
-            setSentAt(Date.now())
-            setSummary(null) // the drafted summary quotes the old plan
-            onPlanSaved()
-          }}
-        />
+        <PlanEditor patient={patient} assignment={assignment} initial={editing.initial} onClose={() => setEditing(null)} onSaved={planSent} />
       )}
 
       {live && <LivePanel live={live} name={patient.full_name} />}
@@ -507,6 +507,8 @@ function PatientDetail({
           tone={latestPain?.flagged ? 'critical' : undefined}
         />
       </dl>
+
+      <PlanSuggestionCard p={p} onEdit={(plan) => setEditing({ initial: plan })} onSent={planSent} />
 
       <div className="rounded-3xl bg-surface p-5 ring-1 ring-line sm:p-7">
         <div className="flex items-baseline justify-between gap-4">
@@ -638,38 +640,36 @@ function PatientDetail({
   )
 }
 
-const ANGLE_STEP = 5
-const REPS = { min: 1, max: 30 }
-const WEEKLY = { min: 1, max: 7 }
-
 /**
  * The plan in a modal: pick the exercise, then step the target, reps and
  * sessions a week. The figure holds the pose being asked for and each changed
  * field says what it was, so the therapist sees the change before sending it.
+ * `initial` starts it from another plan than the current one, such as a suggestion.
  */
 function PlanEditor({
   patient,
   assignment,
+  initial,
   onClose,
   onSaved,
 }: {
   patient: Patient
   assignment: Assignment
+  initial?: Plan
   onClose: () => void
   onSaved: () => void
 }) {
   const dialog = useRef<HTMLDialogElement>(null)
   // The plan as it was when the editor opened; the dashboard keeps polling underneath.
   const [saved] = useState(() => planOf(assignment))
-  const [draft, setDraft] = useState(saved)
+  const [draft, setDraft] = useState(() => initial ?? saved)
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
 
   const ex = exerciseFor(draft.joint)
   const sameJoint = draft.joint === saved.joint
   const changes = planChanges(saved, draft)
-  // Below the resting angle the target would ask for no movement at all.
-  const lowest = Math.max(ex.min, ex.rest) + ANGLE_STEP
+  const { min: lowest } = targetRange(draft.joint)
 
   // Braces matter: the effect must not return what showModal returns. The open
   // check covers StrictMode running the effect twice.

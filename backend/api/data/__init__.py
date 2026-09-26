@@ -10,11 +10,13 @@ from .ai_routes import router as ai_router
 from .live import router as live_router
 from .patients import router as patients_router
 from .sessions import router as sessions_router
+from .plan_suggestion import router as plan_suggestion_router
 
 router = APIRouter()
 router.include_router(patients_router)
 router.include_router(sessions_router)
 router.include_router(ai_router)
 router.include_router(live_router)
+router.include_router(plan_suggestion_router)
 
 __all__ = ["router"]
