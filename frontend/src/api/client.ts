@@ -34,6 +34,8 @@ import type {
 } from '../types/session'
 import { isNativeApp, saveToken } from '../lib/native'
 import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
+import type { PlanSuggestion } from '../types/session'
+import { suggestPlan } from '../lib/plan'
 
 /** Includes the backend's /api/v1 prefix (backend/api/core/config.py API_V1_STR). */
 const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
@@ -245,5 +247,20 @@ export async function translate(text: string, target: Language): Promise<Transla
   } catch (err) {
     console.warn('[api] /translate failed, using original text', err)
     return { text }
+  }
+}
+
+/**
+ * The copilot's suggested next step for a patient's plan (their therapist only).
+ * It changes nothing: approving it goes through updateAssignment. Takes the
+ * overview already on screen, so the rules can suggest one if the backend fails.
+ */
+export async function getPlanSuggestion(overview: PatientOverview): Promise<PlanSuggestion> {
+  if (USE_MOCKS) return mockBackend.getPlanSuggestion(overview.patient.id)
+  try {
+    return await post<PlanSuggestion>(`/patients/${overview.patient.id}/plan-suggestion`, {})
+  } catch (err) {
+    console.warn('[api] /plan-suggestion failed, using the rules', err)
+    return suggestPlan(overview)
   }
 }

@@ -28,6 +28,8 @@ import type {
 import { assignmentFor, exerciseFor } from '../lib/exercises'
 import { warningCounts } from '../lib/formWarnings'
 import { sessionStats } from '../lib/replay'
+import type { PlanSuggestion } from '../types/session'
+import { suggestPlan } from '../lib/plan'
 
 const STORAGE_KEY = 'rehabbuddy.mock.v6'
 const TRACES_KEY = 'rehabbuddy.mock.traces.v1'
@@ -555,5 +557,13 @@ export const mockBackend = {
     db.assignments[i] = updated
     save(db)
     return delay(updated, 400)
+  },
+
+  // No Gemini in mock mode: the copilot's rules, credited as such (is_fallback).
+  async getPlanSuggestion(patientId: UUID): Promise<PlanSuggestion> {
+    const db = load()
+    const assignment = db.assignments.find((a) => a.patient_id === patientId)
+    if (!assignment) throw new Error(`No assignment for patient ${patientId}`)
+    return delay(suggestPlan(overview(db, assignment)), 700)
   },
 }

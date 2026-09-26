@@ -202,3 +202,23 @@ def overview(conn, patient_id: str) -> dict | None:
 
 __all__ = ["connect", "assignment", "assignment_by_id", "patient", "sessions", "session_samples", "session_stats",
            "red_flags", "overview", "latest_summary"]
+
+
+# ★ Tiger Data: reading the session_angle_1m continuous aggregate (database/sample_data/schema.sql).
+# Each minute's peak and average angle, which TimescaleDB keeps materialized, so the
+# therapist's plan suggestion (api/services/plan_suggestion_service.py) can tell a patient
+# who reaches their peak all session long from one who touched it once, without reading
+# a raw sample. The aggregate is real-time, so a session saved a moment ago is already in it.
+def session_minutes(conn, session_ids: list[str]) -> dict[str, list[dict]]:
+    """{session_id: [{max_angle, avg_angle, samples}], oldest minute first; [] without samples}."""
+    rows = conn.execute("""SELECT session_id, bucket, max_angle, avg_angle, samples FROM session_angle_1m
+                           WHERE session_id = ANY(%(ids)s) ORDER BY session_id, bucket""",
+                        {"ids": session_ids}).fetchall()
+    out: dict[str, list[dict]] = {sid: [] for sid in session_ids}
+    for r in rows:
+        out[r["session_id"]].append({"max_angle": float(r["max_angle"]), "avg_angle": float(r["avg_angle"]),
+                                     "samples": r["samples"]})
+    return out
+
+
+__all__ += ["session_minutes"]

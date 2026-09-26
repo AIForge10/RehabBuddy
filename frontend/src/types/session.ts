@@ -270,3 +270,26 @@ export interface DashboardResponse {
   patients: PatientOverview[]
   generated_at: ISODateString
 }
+
+// POST /patients/{patient_id}/plan-suggestion → PlanSuggestion (the patient's therapist only)
+// The copilot's proposed next step for the plan. It changes nothing by itself:
+// approving sends `proposed` with PATCH /assignments/{id}, like the plan editor.
+export type PlanAction = 'progress' | 'hold' | 'regress'
+
+export interface PlanSuggestion {
+  /** progress = harder, hold = keep the plan, regress = ease off. */
+  action: PlanAction
+  /** The plan it was worked out from; a plan changed since makes the suggestion stale. */
+  current: UpdateAssignmentRequest
+  /** The plan to send if approved. Always the same joint; equal to `current` for a hold. */
+  proposed: UpdateAssignmentRequest
+  /** One or two sentences for the therapist that cite the numbers behind the step. */
+  rationale: string
+  confidence: 'low' | 'medium' | 'high'
+  /** Short facts from the data, worked out in code, e.g. "Peak 74° → 87° over 6 sessions". */
+  evidence: string[]
+  /** Why the rules overrode Gemini's proposal, if they did. */
+  guardrails: string[]
+  /** true when the rules wrote it, not Gemini (Gemini failed or broke a rule, too little data, or mock mode). */
+  is_fallback: boolean
+}
