@@ -5,7 +5,7 @@ import { AngleGauge } from '../../components/AngleGauge'
 import { AngleTrace } from '../../components/AngleTrace'
 import { LanguageToggle } from '../../components/LanguageToggle'
 import { ExerciseFigure } from '../../components/ExerciseFigure'
-import { playCue, preloadCues, stopCoach, type CoachCue } from '../../lib/coach'
+import { playCue, preloadCues, stopCoach, type CoachCue,  } from '../../lib/coach'
 import type { Exercise } from '../../lib/exercises'
 import { formatDuration } from '../../lib/format'
 import { warningCue, warningLabel } from '../../lib/formWarnings'
@@ -13,6 +13,7 @@ import { useLanguage } from '../../lib/language'
 import { darkStatusBar } from '../../lib/native'
 import { useLivePublisher } from '../../lib/useLivePublisher'
 import { useSimulatedPose } from '../../lib/simulatedPose'
+import { useRandomSelector } from '../../lib/useRandomSelector'
 import type { CameraStatus } from '../../lib/useCamera'
 import type { AngleSample, Assignment, LivePoseState, SessionResult } from '../../types/session'
 
@@ -180,8 +181,34 @@ export function Live({
     }
   }, [assignment, exercise, navigate, finishPose, endLive])
 
+  const getRandomEncouragement = useRandomSelector<CoachCue>([
+    'good_rep',
+    'nicely_done',
+    'good_job',
+    'great_control',
+    //'smooth_movement', Doesn't sound good
+    'keep_it_up',
+    'perfect_form',
+    'looking_good',
+  ])
+  const getRandomTargetHit = useRandomSelector<CoachCue>([
+    'target_hit',
+    'great_depth',
+    'full_range',
+  ])
+  const getRandomDepthCorrection = useRandomSelector<CoachCue>([
+    'bend_deeper',
+    'push_a_bit_more',
+    'almost_there',
+  ])
+  const getRandomFinish = useRandomSelector<CoachCue>([
+    'done',
+    'session_complete',
+  ])
+
   // Coach reacts to each completed rep...
   const lastReps = useRef(0)
+  const targetStreak = useRef(0)
   useEffect(() => {
     if (pose.reps <= lastReps.current) return
     lastReps.current = pose.reps
@@ -192,17 +219,49 @@ export function Live({
     const warnings = poseRef.current.rep_warnings
     rec.current.warnings.push(...warnings)
     if (pose.reps >= goal) {
-      say('done')
+      say(getRandomFinish())
       const id = setTimeout(finish, 1500)
       return () => clearTimeout(id)
     }
-    const fix = warnings.map(warningCue).find((cue) => cue != null)
-    if (pose.reps === goal - 1) say('last_rep')
+    if (pose.reps === goal - 1) say('final_rep')
     else if (pose.reps === Math.floor(goal / 2)) say('halfway')
-    else if (fix) say(fix)
-    else if (peak < target - 10) say('bend_deeper')
-    else say('good_rep')
-  }, [pose.reps, goal, target, say, finish])
+    else if (trackedSession.lastRep?.warnings.includes('too_fast')) {
+      targetStreak.current = 0
+      say('slow_down')
+    } else if (peak >= target) {
+      targetStreak.current += 1
+      if (targetStreak.current === 3) {
+        say('streak')
+      } else {
+        say(getRandomEncouragement())
+      }
+    } else if (peak < target - 10) {
+      targetStreak.current = 0
+      say(getRandomDepthCorrection())
+    } else {
+      targetStreak.current = 0
+      say(getRandomTargetHit())
+    }
+  }, [pose.reps, goal, target, say, finish, trackedSession.lastRep])
+
+  // Camera visibility watchdog: remind patient to step back if hidden
+  const lastLostTime = useRef<number | null>(null)
+  const lastSpokeLost = useRef<number>(0)
+  useEffect(() => {
+    if (phase !== 'running' || camera !== 'on') return
+    const now = Date.now()
+    if (pose.angle == null || (pose.confidence != null && pose.confidence < 0.3)) {
+      if (!lastLostTime.current) lastLostTime.current = now
+      else if (now - lastLostTime.current > 3500) {
+        if (now - lastSpokeLost.current > 15000) {
+          lastSpokeLost.current = now
+          say('reposition')
+        }
+      }
+    } else {
+      lastLostTime.current = null
+    }
+  }, [pose.angle, pose.confidence, phase, camera, say])
 
   // ...and to each form fault as it appears. A fault that clears and comes back
   // counts again; one seen before "go" (getting into position) or after the

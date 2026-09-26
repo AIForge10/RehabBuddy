@@ -17,36 +17,152 @@
 import type { Exercise } from './exercises'
 import type { Language } from '../types/session'
 
-export type CoachCue = 'start' | 'good_rep' | 'bend_deeper' | 'knee_in' | 'slow_down' | 'halfway' | 'last_rep' | 'done'
+export type CoachCue =
+  | 'start'
+  // Encouragement pool
+  | 'good_rep'
+  | 'nicely_done'
+  | 'good_job'
+  | 'great_control'
+  | 'smooth_movement'
+  | 'keep_it_up'
+  | 'perfect_form'
+  | 'looking_good'
+  // Target hit pool
+  | 'target_hit'
+  | 'great_depth'
+  | 'full_range'
+  // Depth corrections
+  | 'bend_deeper'
+  | 'push_a_bit_more'
+  | 'almost_there'
+  // Speed / pacing
+  | 'slow_down'
+  | 'control_the_return'
+  // Camera visibility
+  | 'reposition'
+  | 'step_back'
+  // Streaks
+  | 'streak'
+  | 'great_rhythm'
+  // Form warning
+  | 'knee_in'
+  // Milestones & Finish
+  | 'halfway'
+  | 'last_rep'
+  | 'final_rep'
+  | 'done'
+  | 'session_complete'
 
-export const CUES: readonly CoachCue[] = ['start', 'good_rep', 'bend_deeper', 'knee_in', 'slow_down', 'halfway', 'last_rep', 'done']
+export const CUES: readonly CoachCue[] = [
+  'start',
+  'good_rep',
+  'nicely_done',
+  'good_job',
+  'great_control',
+  'smooth_movement',
+  'keep_it_up',
+  'perfect_form',
+  'looking_good',
+  'target_hit',
+  'great_depth',
+  'full_range',
+  'bend_deeper',
+  'push_a_bit_more',
+  'almost_there',
+  'slow_down',
+  'control_the_return',
+  'reposition',
+  'step_back',
+  'streak',
+  'great_rhythm',
+  'knee_in',
+  'halfway',
+  'last_rep',
+  'final_rep',
+  'done',
+  'session_complete',
+]
 
 export const CUE_TEXT: Record<Language, Record<CoachCue, string>> = {
   en: {
     start: "Let's begin. Bend your knee slowly.",
+    // Encouragement
     good_rep: 'Good rep.',
+    nicely_done: 'Nicely, done.',
+    good_job: 'Good job.',
+    great_control: 'Great control.',
+    smooth_movement: 'Smooth movement.',
+    keep_it_up: 'Keep it up.',
+    perfect_form: 'Perfect form.',
+    looking_good: 'Looking good.',
+    // Target reached
+    target_hit: 'Right on target!',
+    great_depth: 'Great depth on that one!',
+    full_range: 'Full range of motion, excellent!',
+    // Depth corrections
     bend_deeper: 'Try to bend a little deeper.',
-    knee_in: 'Keep your thigh still on the chair.',
-    slow_down: 'Slow down. Take your time.',
+    push_a_bit_more: 'Try to push just a bit more.',
+    almost_there: 'Almost there, reach a little further.',
+    // Speed
+    slow_down: 'Slow and steady. Control the movement.',
+    control_the_return: "Don't rush the return.",
+    // Visibility
+    reposition: "Make sure you're in full view of the camera.",
+    step_back: 'Step back slightly so your leg is visible.',
+    // Streaks
+    streak: 'Three great reps in a row!',
+    great_rhythm: "You're in a great rhythm.",
+    // Form
+    knee_in: 'Keep your knee in line with your foot.',
+    // Milestones
     halfway: 'Halfway there. Keep going.',
     last_rep: 'One more.',
+    final_rep: 'Final rep, make it count!',
     done: 'Great work. Session complete.',
+    session_complete: 'All done! Fantastic effort today.',
   },
   es: {
     start: 'Empecemos. Dobla la rodilla despacio.',
+    // Encouragement
     good_rep: 'Buena repetición.',
+    nicely_done: 'Bien hecho.',
+    good_job: 'Buen trabajo.',
+    great_control: 'Gran control.',
+    smooth_movement: 'Movimiento fluido.',
+    keep_it_up: 'Sigue así.',
+    perfect_form: 'Forma perfecta.',
+    looking_good: 'Se ve muy bien.',
+    // Target reached
+    target_hit: '¡Justo en el objetivo!',
+    great_depth: '¡Gran profundidad en esa!',
+    full_range: '¡Rango completo, excelente!',
+    // Depth corrections
     bend_deeper: 'Intenta doblar un poco más.',
-    knee_in: 'Mantén el muslo quieto sobre la silla.',
-    slow_down: 'Más despacio. Tómate tu tiempo.',
+    push_a_bit_more: 'Intenta avanzar un poco más.',
+    almost_there: 'Casi llegas, un poco más.',
+    // Speed
+    slow_down: 'Lento y constante. Controla el movimiento.',
+    control_the_return: 'No te apresures al regresar.',
+    // Visibility
+    reposition: 'Asegúrate de estar a la vista de la cámara.',
+    step_back: 'Retrocede un poco para que se vea la pierna.',
+    // Streaks
+    streak: '¡Tres repeticiones seguidas excelentes!',
+    great_rhythm: 'Llevas un ritmo excelente.',
+    // Form
+    knee_in: 'Mantén la rodilla alineada con el pie.',
+    // Milestones
     halfway: 'Vas por la mitad. Sigue así.',
     last_rep: 'Una más.',
+    final_rep: '¡Última repetición, que cuente!',
     done: 'Buen trabajo. Sesión terminada.',
+    session_complete: '¡Listo! Fantástico esfuerzo hoy.',
   },
 }
 
-// Cues that may cut off whatever is playing. A too-fast rep lands while the
-// last rep's cue may still be playing, which is exactly when it needs hearing.
-const PRIORITY: CoachCue[] = ['knee_in', 'slow_down', 'done']
+// Cues that may cut off whatever is playing.
+const PRIORITY: CoachCue[] = ['knee_in', 'slow_down', 'reposition', 'done', 'session_complete']
 
 // Audio that hasn't started by now (slow network or backend) is spoken instead.
 const START_TIMEOUT_MS = 4000
