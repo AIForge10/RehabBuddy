@@ -11,7 +11,7 @@ from api.auth import CurrentUser, require_patient
 from api.core.config import settings
 from api.main import app
 from api.routers.v1 import pain_check as pain_check_router
-from api.schemas.pain_check import PainCheckReply
+from api.schemas.pain_check import PainCheckReply, PainCheckRequest
 from api.services import pain_check_service
 from api.services.tts_service import Clip, tts_service
 
@@ -111,6 +111,31 @@ def test_safety_rule_flags_even_when_the_ai_does_not(client, saved, monkeypatch)
     assert res["flagged"] is True
     assert res["flag_reason"] == "Mentioned “sharp”"
     assert saved == [("s1", 4, True)]  # so the therapist sees the red flag
+
+
+def test_stopping_for_pain_is_flagged_even_on_a_low_score(client, saved, monkeypatch):
+    use_gemini(monkeypatch, PainCheckReply(reply="Good job.", flagged=False))
+    use_elevenlabs(monkeypatch)
+
+    body = {"session_id": "s1", "pain_score": 3, "notes": "", "language": "en", "stopped_for_pain": True}
+    res = client.post(PAIN_CHECK, json=body).json()
+    assert res["flagged"] is True
+    assert res["flag_reason"] == "Stopped the session mid-way for pain"
+    assert saved == [("s1", 3, True)]
+
+
+def test_stopping_for_pain_keeps_the_other_reason():
+    data = PainCheckRequest(session_id="s1", pain_score=4, notes="Dolor agudo", language="es", stopped_for_pain=True)
+    assert pain_check_service.red_flag(data) == "Stopped the session mid-way for pain; mentioned “agudo”"
+    # The dashboard shows a flag's notes as its reason, so the stop is saved with them.
+    assert pain_check_service.stored_notes(data) == "Stopped the session mid-way for pain. Dolor agudo"
+
+
+def test_older_clients_without_the_stop_field_still_work():
+    data = PainCheckRequest(session_id="s1", pain_score=3, notes=" Stiff ")
+    assert data.stopped_for_pain is False
+    assert pain_check_service.red_flag(data) is None
+    assert pain_check_service.stored_notes(data) == "Stiff"
 
 
 def test_gemini_down_falls_back_to_template(client, monkeypatch):

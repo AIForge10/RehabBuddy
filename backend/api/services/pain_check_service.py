@@ -31,15 +31,19 @@ FALLBACK_REPLIES = {
 }
 
 
+STOPPED_FOR_PAIN = "Stopped the session mid-way for pain"
+
+
 def red_flag(data: PainCheckRequest) -> Optional[str]:
     """Why the safety rule flags this check-in, or None. Runs without the AI, so a
-    high score or a red-flag word is always flagged."""
+    high score, a red-flag word or a session stopped for pain is always flagged."""
     word = next((w for w in RED_FLAG_WORDS if w in data.notes.lower()), None)
-    if word:
-        return f"Mentioned “{word}”"
-    if data.pain_score >= 7:
-        return f"Pain score {data.pain_score}/10"
-    return None
+    reason = f"Mentioned “{word}”" if word else f"Pain score {data.pain_score}/10" if data.pain_score >= 7 else None
+    # Stopping mid-way is the strongest sign we get, so it's flagged whatever
+    # the score: a patient who quit on a 3 still needs their therapist to look.
+    if data.stopped_for_pain:
+        return f"{STOPPED_FOR_PAIN}; {reason[0].lower()}{reason[1:]}" if reason else STOPPED_FOR_PAIN
+    return reason
 
 
 async def check_in(data: PainCheckRequest) -> PainCheckResponse:
@@ -66,9 +70,19 @@ async def check_in(data: PainCheckRequest) -> PainCheckResponse:
     )
 
 
+def stored_notes(data: PainCheckRequest) -> str:
+    """The notes as saved. The dashboard shows a red flag's notes as its reason
+    (otherwise "Pain score at or above 7"), so a session stopped for pain says so
+    there, even on a low score with nothing typed."""
+    notes = data.notes.strip()
+    if data.stopped_for_pain:
+        return f"{STOPPED_FOR_PAIN}. {notes}" if notes else f"{STOPPED_FOR_PAIN}."
+    return notes
+
+
 def save_check_in(data: PainCheckRequest, res: PainCheckResponse) -> None:
     """Stores the check-in, so the therapist's dashboard shows its pain score and any red flag."""
     with connect() as conn:
         conn.execute("""INSERT INTO pain_checkins (id, session_id, pain_score, notes, flagged)
                         VALUES (%s, %s, %s, %s, %s)""",
-                     (f"pc-{uuid.uuid4()}", data.session_id, data.pain_score, data.notes.strip(), res.flagged))
+                     (f"pc-{uuid.uuid4()}", data.session_id, data.pain_score, stored_notes(data), res.flagged))

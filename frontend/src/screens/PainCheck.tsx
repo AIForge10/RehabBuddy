@@ -1,21 +1,37 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { painCheck } from '../api/client'
+import { painCheck, VOICE_ANSWERS } from '../api/client'
 import { LogoMark } from '../components/Logo'
 import { ArrowRight, Button, PageHeader, PatientScreen } from '../components/Screen'
 import { sayText, unlockAudio } from '../lib/coach'
 import { exerciseFor } from '../lib/exercises'
 import { useLanguage } from '../lib/language'
-import type { Assignment, PainCheckResponse, SessionResult } from '../types/session'
+import { canRecord } from '../lib/useRecorder'
+import type { Assignment, PainCheckResponse, PainSymptom, PainTranscriptResponse, SessionResult } from '../types/session'
+import { say, skipPending } from './pain/say'
+import { VoiceAnswer } from './pain/VoiceAnswer'
 
 export interface SessionFlowState {
   sessionId: string
   result: SessionResult
   assignment: Assignment
+  /** The patient stopped mid-way by saying it hurts (Live). The check-in leads with it and it's always flagged. */
+  stoppedForPain?: boolean
   pain?: { score: number; response: PainCheckResponse }
 }
 
 const SCORES = Array.from({ length: 10 }, (_, i) => i + 1)
+
+// The chips a spoken answer can turn on, in the same order as s.painChips.
+const SYMPTOMS: PainSymptom[] = ['sharp', 'swelling', 'stiffness', 'clicking', 'felt_good']
+
+// A spoken answer needs speech-to-text (not in mock mode) and a browser that can record.
+const MIC = VOICE_ANSWERS && canRecord
+
+// The session's last line ("Session complete", or stopping for pain) plays on
+// as this screen opens; the question waits for it rather than cutting it off.
+const ASK_AFTER_MS = 1500
+const ASK_AFTER_STOP_MS = 3000
 
 // Same bands as s.painLevel. Color is a secondary cue; the number and the
 // Mild / Moderate / Severe label carry the meaning.
@@ -35,20 +51,51 @@ export default function PainCheck() {
   const [notes, setNotes] = useState('')
   const [sending, setSending] = useState(false)
   const [response, setResponse] = useState<PainCheckResponse | null>(null)
+  // Once the patient starts answering out loud, the coach doesn't ask (again).
+  const [talking, setTalking] = useState(false)
+  // The note as the last spoken answer wrote it, so saying it again replaces it
+  // rather than stacking up, unless the patient has edited it since.
+  const spokenNote = useRef('')
+
+  const stopped = Boolean(flow?.stoppedForPain)
+  const painTitle = flow ? exerciseFor(flow.assignment.exercise.joint).copy[lang].painTitle : ''
+  const answered = response != null
+
+  // The coach asks the question out loud, in the exercise's own words.
+  useEffect(() => {
+    if (!painTitle || answered || talking) return
+    const timer = setTimeout(() => say(s.painAsk(painTitle, MIC, stopped), lang), stopped ? ASK_AFTER_STOP_MS : ASK_AFTER_MS)
+    return () => {
+      clearTimeout(timer)
+      skipPending()
+    }
+  }, [painTitle, stopped, answered, talking, lang, s])
 
   if (!flow) return <Navigate to="/" replace />
-  const { painTitle } = exerciseFor(flow.assignment.exercise.joint).copy[lang]
 
   const toggleChip = (i: number) => setChips((c) => (c.includes(i) ? c.filter((x) => x !== i) : [...c, i]))
+
+  // A spoken answer fills in the form; the patient still checks it and taps Send.
+  function heard(res: PainTranscriptResponse) {
+    if (res.pain_score != null) setScore(res.pain_score)
+    const on = res.symptoms.map((x) => SYMPTOMS.indexOf(x)).filter((i) => i >= 0)
+    setChips((c) => [...c, ...on.filter((i) => !c.includes(i))])
+    if (res.notes) {
+      const before = spokenNote.current
+      spokenNote.current = res.notes
+      setNotes((cur) => (!cur.trim() || cur.trim() === before ? res.notes : `${cur.trim()} ${res.notes}`))
+    }
+  }
 
   async function submit() {
     if (score == null || !flow) return
     unlockAudio() // the reply plays after the request, outside this tap
     setSending(true)
     const text = [...chips.map((i) => s.painChips[i]), notes.trim()].filter(Boolean).join('. ')
-    const res = await painCheck({ session_id: flow.sessionId, pain_score: score, notes: text, language: lang })
+    const res = await painCheck({ session_id: flow.sessionId, pain_score: score, notes: text, language: lang, stopped_for_pain: stopped })
     setResponse(res)
     setSending(false)
+    skipPending()
     sayText(res.reply, lang, res.audio_url)
   }
 
@@ -57,10 +104,26 @@ export default function PainCheck() {
 
   return (
     <PatientScreen>
-      <PageHeader title={painTitle} sub={s.painSub} />
+      <PageHeader
+        kicker={
+          stopped && (
+            <span className="inline-flex items-center gap-2 rounded-full bg-critical-soft px-3 py-1.5 text-sm font-bold text-critical ring-1 ring-critical/20">
+              <span aria-hidden="true" className="size-2 rounded-full bg-critical" />
+              {s.painStopped}
+            </span>
+          )
+        }
+        title={painTitle}
+        sub={stopped ? s.painStoppedSub : MIC ? s.painSubVoice : s.painSub}
+      />
 
       <fieldset className="mt-8" disabled={locked}>
         <legend className="sr-only">{painTitle}</legend>
+        {MIC && (
+          <div className="mb-6">
+            <VoiceAnswer sessionId={flow.sessionId} disabled={locked} onStart={() => setTalking(true)} onAnswer={heard} />
+          </div>
+        )}
         <div className="rounded-3xl bg-surface p-3 ring-1 ring-line sm:p-4">
           <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-10">
             {SCORES.map((n) => {
