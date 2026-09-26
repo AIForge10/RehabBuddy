@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 from api.auth import CurrentUser, require_patient, require_session_access
 
 from . import queries as q
+from .patients import Joint
 
 router = APIRouter(tags=["sessions"])
 
@@ -26,7 +27,7 @@ class CreateSessionRequest(BaseModel):
     form_warnings: list[str] = []
     duration_sec: int = Field(ge=0)
     assignment_id: str | None = None
-    joint: str | None = None
+    joint: Joint | None = None  # a joint no screen can open would save a session nobody can see
     angle_samples: list[AngleSample] = []
 
 
@@ -38,6 +39,12 @@ def create_session(body: CreateSessionRequest, user: CurrentUser = Depends(requi
     with q.connect() as conn:
         a = q.assignment(conn, user.id)
         assignment_id = body.assignment_id or (a["id"] if a else None)
+        # Only one of this patient's own plans: another's would link the session to
+        # someone else's plan, and an unknown id would fail the foreign key (a 500).
+        if assignment_id and not (a and assignment_id == a["id"]) and not conn.execute(
+            "SELECT 1 FROM assignments WHERE id = %s AND patient_id = %s", (assignment_id, user.id)
+        ).fetchone():
+            assignment_id = a["id"] if a else None
         joint = body.joint or (a["exercise"]["joint"] if a else "knee")
         conn.execute(
             """INSERT INTO sessions (id, assignment_id, patient_id, joint, started_at, reps_done,
