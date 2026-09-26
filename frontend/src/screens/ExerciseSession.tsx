@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { DEMO_PATIENT_ID, getAssignment } from '../api/client'
+import { getAssignment } from '../api/client'
+import { useAuth } from '../lib/auth'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useCamera } from '../lib/useCamera'
 import { preloadPose } from '../pose'
@@ -19,6 +20,7 @@ type Step = 'brief' | 'setup' | 'live'
 export default function ExerciseSession() {
   const navigate = useNavigate()
   const location = useLocation()
+  const patientId = useAuth().account!.id
   const [assignment, setAssignment] = useState<Assignment | null>(
     (location.state as { assignment?: Assignment } | null)?.assignment ?? null,
   )
@@ -30,8 +32,8 @@ export default function ExerciseSession() {
   useEffect(preloadPose, [])
 
   useEffect(() => {
-    if (!assignment) getAssignment(DEMO_PATIENT_ID).then(setAssignment).catch(() => navigate('/'))
-  }, [assignment, navigate])
+    if (!assignment) getAssignment(patientId).then(setAssignment).catch(() => navigate('/'))
+  }, [assignment, patientId, navigate])
 
   useEffect(() => {
     window.scrollTo(0, 0)

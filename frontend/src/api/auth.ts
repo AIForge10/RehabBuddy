@@ -1,20 +1,23 @@
-// Accounts, sign-in and sign-up.
+// Accounts, sign-in and sign-up. The Account shape is the `profiles` row
+// (id, full_name, role, language) plus the email.
 //
-// FRONTEND-ONLY STAND-IN. The FastAPI backend has no auth endpoints yet, so
-// accounts live in this browser's localStorage. Swap the bodies of signIn /
-// signUp / demoSignIn for real calls when /auth lands; the Account shape is
-// the `profiles` row (id, full_name, role, language) plus the email.
+// Real backend: signIn posts to /auth/login and hands the bearer token to
+// client.ts, which sends it on every call (docs/AUTH.md). The demo buttons log
+// in as the seeded demo accounts. The backend has no sign-up endpoint yet, so
+// signUp only works in mock mode.
 //
-// Every account plays the demo data: a patient account sees
-// VITE_DEMO_PATIENT_ID's plan, a therapist account sees VITE_DEMO_THERAPIST_ID's
-// caseload, until the backend can create real patients.
+// Mock mode (VITE_USE_MOCKS=true): a FRONTEND-ONLY STAND-IN. Accounts live in
+// this browser's localStorage and every account plays the demo data: a patient
+// account sees VITE_DEMO_PATIENT_ID's plan, a therapist account sees
+// VITE_DEMO_THERAPIST_ID's caseload.
 //
 // The signed-in account is kept per tab (sessionStorage) and remembered for new
 // tabs (localStorage), so one machine can run the patient tab and the therapist
-// tab side by side for the demo.
+// tab side by side for the demo. The real backend's token is per tab, so a new
+// tab there logs in again.
 
 import type { Language, Role, UUID } from '../types/session'
-import { DEMO_PATIENT_ID, DEMO_THERAPIST_ID } from './client'
+import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, hasAuthToken, login, setAuthToken } from './client'
 
 export interface Account {
   id: UUID
@@ -31,11 +34,14 @@ interface StoredAccount extends Account {
 const ACCOUNTS_KEY = 'rehabbuddy.accounts.v1'
 const SESSION_KEY = 'rehabbuddy.session.v1'
 
-/** One-tap demo accounts on the log-in page; they have no password. */
+/** One-tap demo accounts on the log-in page. Emails match the seeded `profiles` rows. */
 export const DEMO_ACCOUNTS: Record<Role, Account> = {
   patient: { id: DEMO_PATIENT_ID, full_name: 'Maria Lopez', email: 'maria@bendwith.us', role: 'patient', language: 'es' },
-  therapist: { id: DEMO_THERAPIST_ID, full_name: 'Dr. Lee', email: 'dr.lee@bendwith.us', role: 'therapist', language: 'en' },
+  therapist: { id: DEMO_THERAPIST_ID, full_name: 'Dr. Lee', email: 'lee@bendwith.us', role: 'therapist', language: 'en' },
 }
+
+/** Shared by every seeded demo account (docs/AUTH.md); not a secret. */
+const DEMO_PASSWORD = 'demo1234'
 
 /** Machine-readable failure; screens map it to translated copy. */
 export class AuthError extends Error {
@@ -87,6 +93,7 @@ const publicPart = (a: StoredAccount): Account => ({ id: a.id, full_name: a.full
 const settle = () => new Promise((r) => setTimeout(r, 450))
 
 export function currentAccount(): Account | null {
+  if (!USE_MOCKS && !hasAuthToken()) return null
   return read<Account>(sessionStorage, SESSION_KEY) ?? read<Account>(localStorage, SESSION_KEY)
 }
 
@@ -95,7 +102,20 @@ function remember(account: Account | null) {
   write(localStorage, SESSION_KEY, account)
 }
 
+async function backendSignIn(email: string, password: string): Promise<Account> {
+  try {
+    const res = await login({ email: normalise(email), password })
+    setAuthToken(res.access_token)
+    const account: Account = { ...res.user, email: normalise(email) }
+    remember(account)
+    return account
+  } catch (err) {
+    throw err instanceof ApiError && err.status === 401 ? new AuthError('invalid') : err
+  }
+}
+
 export async function signIn(email: string, password: string): Promise<Account> {
+  if (!USE_MOCKS) return backendSignIn(email, password)
   await settle()
   const found = accounts().find((a) => a.email === normalise(email))
   if (!found || found.password_hash !== (await hash(email, password))) throw new AuthError('invalid')
@@ -105,6 +125,7 @@ export async function signIn(email: string, password: string): Promise<Account> 
 }
 
 export async function signUp(input: { full_name: string; email: string; password: string; role: Role; language: Language }): Promise<Account> {
+  if (!USE_MOCKS) throw new Error('The backend has no sign-up endpoint yet')
   await settle()
   const email = normalise(input.email)
   const list = accounts()
@@ -124,11 +145,13 @@ export async function signUp(input: { full_name: string; email: string; password
 }
 
 export async function demoSignIn(role: Role): Promise<Account> {
+  if (!USE_MOCKS) return backendSignIn(DEMO_ACCOUNTS[role].email, DEMO_PASSWORD)
   await settle()
   remember(DEMO_ACCOUNTS[role])
   return DEMO_ACCOUNTS[role]
 }
 
 export function signOut() {
+  setAuthToken(null)
   remember(null)
 }

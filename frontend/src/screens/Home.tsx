@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { DEMO_PATIENT_ID, getPatientOverview } from '../api/client'
+import { getPatientOverview } from '../api/client'
 import { Button, PatientScreen, TITLE } from '../components/Screen'
 import { exerciseFor } from '../lib/exercises'
 import { useAuth } from '../lib/auth'
@@ -20,6 +20,7 @@ const POLL_MS = 4000
 export default function Home() {
   const { s } = useLanguage()
   const { account } = useAuth()
+  const patientId = account!.id // RequireAuth only renders this screen signed in
   const navigate = useNavigate()
   const [data, setData] = useState<PatientOverview | null>(null)
   const [error, setError] = useState(false)
@@ -27,7 +28,7 @@ export default function Home() {
   const [updated, setUpdated] = useState<PlanField[] | null>(null)
 
   const load = useCallback(() => {
-    getPatientOverview(DEMO_PATIENT_ID)
+    getPatientOverview(patientId)
       .then((d) => {
         const changed = shown.current ? planChanges(planOf(shown.current), planOf(d.assignment)) : []
         if (changed.length) setUpdated((u) => [...new Set([...(u ?? []), ...changed])])
