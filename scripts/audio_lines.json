@@ -1,4 +1,9 @@
 {
+  "en/almost_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Almost there, reach a little further.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/bend_deeper": {
     "model": "eleven_multilingual_v2",
     "text": "Try to bend a little deeper.",
@@ -24,9 +29,29 @@
     "text": "Try to lift your hand a little higher.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/control_the_return": {
+    "model": "eleven_multilingual_v2",
+    "text": "Don't rush the return.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/done": {
     "model": "eleven_multilingual_v2",
     "text": "Great work. Session complete.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/final_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "Final rep, make it count!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/full_range": {
+    "model": "eleven_multilingual_v2",
+    "text": "Full range of motion, excellent!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/good_job": {
+    "model": "eleven_multilingual_v2",
+    "text": "Good job.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/good_rep": {
@@ -34,9 +59,29 @@
     "text": "Good rep.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/great_control": {
+    "model": "eleven_multilingual_v2",
+    "text": "Great control.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/great_depth": {
+    "model": "eleven_multilingual_v2",
+    "text": "Great depth on that one!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/great_rhythm": {
+    "model": "eleven_multilingual_v2",
+    "text": "You're in a great rhythm.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/halfway": {
     "model": "eleven_multilingual_v2",
     "text": "Halfway there. Keep going.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/keep_it_up": {
+    "model": "eleven_multilingual_v2",
+    "text": "Keep it up.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "en/knee_in": {
@@ -69,6 +114,46 @@
     "text": "One more.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "en/looking_good": {
+    "model": "eleven_multilingual_v2",
+    "text": "Looking good.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/nicely_done": {
+    "model": "eleven_multilingual_v2",
+    "text": "Nicely, done.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/perfect_form": {
+    "model": "eleven_multilingual_v2",
+    "text": "Perfect form.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/push_a_bit_more": {
+    "model": "eleven_multilingual_v2",
+    "text": "Try to push just a bit more.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/reposition": {
+    "model": "eleven_multilingual_v2",
+    "text": "Make sure you're in full view of the camera.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/session_complete": {
+    "model": "eleven_multilingual_v2",
+    "text": "All done! Fantastic effort today.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/slow_down": {
+    "model": "eleven_multilingual_v2",
+    "text": "Slow and steady. Control the movement.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/smooth_movement": {
+    "model": "eleven_multilingual_v2",
+    "text": "Smooth movement.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "en/start": {
     "model": "eleven_multilingual_v2",
     "text": "Let's begin. Bend your knee slowly.",
@@ -92,6 +177,26 @@
   "en/start_wrist": {
     "model": "eleven_multilingual_v2",
     "text": "Let’s begin. Lift your hand slowly.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/step_back": {
+    "model": "eleven_multilingual_v2",
+    "text": "Step back slightly so your leg is visible.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/streak": {
+    "model": "eleven_multilingual_v2",
+    "text": "Three great reps in a row!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "en/target_hit": {
+    "model": "eleven_multilingual_v2",
+    "text": "Right on target!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/almost_there": {
+    "model": "eleven_multilingual_v2",
+    "text": "Casi llegas, un poco más.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/bend_deeper": {
@@ -119,9 +224,29 @@
     "text": "Intenta subir la mano un poco más.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/control_the_return": {
+    "model": "eleven_multilingual_v2",
+    "text": "No te apresures al regresar.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/done": {
     "model": "eleven_multilingual_v2",
     "text": "Buen trabajo. Sesión terminada.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/final_rep": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Última repetición, que cuente!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/full_range": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Rango completo, excelente!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/good_job": {
+    "model": "eleven_multilingual_v2",
+    "text": "Buen trabajo.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/good_rep": {
@@ -129,9 +254,29 @@
     "text": "Buena repetición.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/great_control": {
+    "model": "eleven_multilingual_v2",
+    "text": "Gran control.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/great_depth": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Gran profundidad en esa!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/great_rhythm": {
+    "model": "eleven_multilingual_v2",
+    "text": "Llevas un ritmo excelente.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/halfway": {
     "model": "eleven_multilingual_v2",
     "text": "Vas por la mitad. Sigue así.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/keep_it_up": {
+    "model": "eleven_multilingual_v2",
+    "text": "Sigue así.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
   "es/knee_in": {
@@ -164,6 +309,46 @@
     "text": "Una más.",
     "voice": "OZ0L6eISlOejga3XjDFt"
   },
+  "es/looking_good": {
+    "model": "eleven_multilingual_v2",
+    "text": "Se ve muy bien.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/nicely_done": {
+    "model": "eleven_multilingual_v2",
+    "text": "Bien hecho.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/perfect_form": {
+    "model": "eleven_multilingual_v2",
+    "text": "Forma perfecta.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/push_a_bit_more": {
+    "model": "eleven_multilingual_v2",
+    "text": "Intenta avanzar un poco más.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/reposition": {
+    "model": "eleven_multilingual_v2",
+    "text": "Asegúrate de estar a la vista de la cámara.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/session_complete": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Listo! Fantástico esfuerzo hoy.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/slow_down": {
+    "model": "eleven_multilingual_v2",
+    "text": "Lento y constante. Controla el movimiento.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/smooth_movement": {
+    "model": "eleven_multilingual_v2",
+    "text": "Movimiento fluido.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
   "es/start": {
     "model": "eleven_multilingual_v2",
     "text": "Empecemos. Dobla la rodilla despacio.",
@@ -187,6 +372,21 @@
   "es/start_wrist": {
     "model": "eleven_multilingual_v2",
     "text": "Empecemos. Levanta la mano despacio.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/step_back": {
+    "model": "eleven_multilingual_v2",
+    "text": "Retrocede un poco para que se vea la pierna.",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/streak": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Tres repeticiones seguidas excelentes!",
+    "voice": "OZ0L6eISlOejga3XjDFt"
+  },
+  "es/target_hit": {
+    "model": "eleven_multilingual_v2",
+    "text": "¡Justo en el objetivo!",
     "voice": "OZ0L6eISlOejga3XjDFt"
   }
 }
