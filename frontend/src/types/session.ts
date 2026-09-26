@@ -168,6 +168,9 @@ export interface SessionRecord {
   joint?: string
 }
 
+// GET /sessions/{session_id}/samples → AngleSampleRow[]
+// The session's angle_samples rows, oldest first, for the therapist's replay.
+
 export interface RedFlag {
   session_id: UUID
   patient_id: UUID

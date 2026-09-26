@@ -4,8 +4,11 @@
 // Data mirrors the planned seed: 1 therapist, 3 patients, 7–10 days of sessions,
 // max angle rising ~72° → 88°, and one high pain score that raises a red flag.
 // Persisted in localStorage so the patient tab and dashboard tab share it.
+// Each session's angle trace is kept under its own key, so the dashboard's
+// poll doesn't re-read every trace.
 
 import type {
+  AngleSampleRow,
   Assignment,
   CreateSessionRequest,
   CreateSessionResponse,
@@ -22,9 +25,16 @@ import type {
 } from '../types/session'
 import { assignmentFor, exerciseFor } from '../lib/exercises'
 
-const STORAGE_KEY = 'rehabbuddy.mock.v5'
+const STORAGE_KEY = 'rehabbuddy.mock.v6'
+const TRACES_KEY = 'rehabbuddy.mock.traces.v1'
+/** Traces kept; the oldest drop off so localStorage stays small. */
+const KEEP_TRACES = 40
+const TRACE_STEP_MS = 100
 const THERAPIST_ID = 't-lee'
 const DAY_MS = 86_400_000
+
+/** An angle trace as [ms since the session started, angle] pairs, compact for localStorage. */
+type Trace = [number, number][]
 
 interface MockDb {
   patients: Patient[]
@@ -86,14 +96,16 @@ function seed(): MockDb {
       const max_angle = Math.round(plan.from + (plan.to - plan.from) * progress + (rand() - 0.5) * 3)
       const warnings = rand() < 0.35 ? ['Knee caving inward'] : []
       const pain = 2 + Math.floor(rand() * 3)
+      const reps_done = rand() < 0.2 ? 8 : 10
       sessions.push({
         id: `s-${p.id}-${d}`,
         patient_id: p.id,
         started_at: new Date(started).toISOString(),
-        reps_done: rand() < 0.2 ? 8 : 10,
+        reps_done,
         max_angle,
         form_warnings: warnings,
-        duration_sec: 180 + Math.floor(rand() * 120),
+        // 7–9.5 s a rep: the movement and a breather.
+        duration_sec: Math.round(reps_done * (7 + rand() * 2.5)),
         pain_score: pain,
         flagged: false,
       })
@@ -115,6 +127,109 @@ function seed(): MockDb {
   return { patients, assignments, sessions, red_flags }
 }
 
+/** A stable seed per session id, so a seeded session replays the same way on every reload. */
+function hashId(id: string) {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619)
+  return h >>> 0
+}
+
+/**
+ * A believable trace for a seeded session, which was never recorded: its reps
+ * rise to the session's peak and settle back to rest, spread over its
+ * duration, the first a little shallow and the deepest one hitting max_angle.
+ * A session that ended in a pain flag falls short in its second half, each
+ * rep stalling partway up.
+ */
+function syntheticTrace(s: SessionRecord, rest: number, floor: number): Trace {
+  const rand = rng(hashId(s.id))
+  const n = s.reps_done
+  const hurt = s.flagged
+  const best = hurt ? 1 + Math.floor(rand() * 2) : Math.floor(n * (0.45 + rand() * 0.4))
+  const reps = Array.from({ length: n }, (_, i) => {
+    const late = hurt && i >= n / 2
+    const dip =
+      i === best ? 0
+      : late ? 8 + rand() * 6
+      : i === 0 ? 5 + rand() * 5
+      : i === 1 ? 2 + rand() * 4
+      : i === n - 1 ? 1.5 + rand() * 3
+      : 0.5 + rand() * 3.5
+    return {
+      peak: s.max_angle - dip,
+      up: 1300 + rand() * 900,
+      hold: 300 + rand() * 700,
+      down: 1200 + rand() * 800,
+      stall: late ? 700 + rand() * 900 : 0,
+      /** Share of the spare time spent resting after this rep. */
+      breather: 0.6 + rand() * 1.4,
+    }
+  })
+  const lead = 1500 + rand() * 1000
+  const moving = reps.reduce((sum, r) => sum + r.up + r.hold + r.down + r.stall, 0)
+  const spare = Math.max(n * 500, s.duration_sec * 1000 - lead - moving - 1000)
+  const breaths = reps.reduce((sum, r) => sum + r.breather, 0)
+
+  // Keyframes; the samples ease between them.
+  const keys: Trace = [[0, rest], [lead, rest]]
+  let t = lead
+  for (const r of reps) {
+    if (r.stall) {
+      const at = rest + (r.peak - rest) * (0.55 + rand() * 0.15)
+      keys.push([(t += r.up * 0.6), at], [(t += r.stall), at + 1], [(t += r.up * 0.4), r.peak])
+    } else {
+      keys.push([(t += r.up), r.peak])
+    }
+    keys.push([(t += r.hold), r.peak - 0.5 - rand()], [(t += r.down), rest + rand() * 2], [(t += (spare * r.breather) / breaths), rest + rand() * 1.5])
+  }
+  keys.push([Math.max(s.duration_sec * 1000, t + 1000), rest])
+
+  const trace: Trace = []
+  const end = keys[keys.length - 1][0]
+  let k = 0
+  for (let at = 0; at <= end; at += TRACE_STEP_MS) {
+    while (k < keys.length - 2 && keys[k + 1][0] < at) k++
+    const [t0, a0] = keys[k]
+    const [t1, a1] = keys[k + 1]
+    const u = Math.min(1, Math.max(0, (at - t0) / (t1 - t0)))
+    const angle = a0 + ((a1 - a0) * (1 - Math.cos(Math.PI * u))) / 2 + (rand() - 0.5) * 0.8
+    trace.push([at, Math.round(Math.min(s.max_angle, Math.max(floor, angle)) * 10) / 10])
+  }
+  // The deepest sample is exactly the session's recorded peak.
+  const top = trace.reduce((best, p, i) => (p[1] > trace[best][1] ? i : best), 0)
+  trace[top][1] = s.max_angle
+  return trace
+}
+
+function readTraces(): Record<UUID, Trace> {
+  try {
+    return JSON.parse(localStorage.getItem(TRACES_KEY) ?? '{}') as Record<UUID, Trace>
+  } catch {
+    return {}
+  }
+}
+
+function writeTraces(added: Record<UUID, Trace>) {
+  const kept = Object.entries({ ...readTraces(), ...added }).slice(-KEEP_TRACES)
+  try {
+    localStorage.setItem(TRACES_KEY, JSON.stringify(Object.fromEntries(kept)))
+  } catch {
+    /* storage full or unavailable: the replay says there's no trace */
+  }
+}
+
+/** Every tracked frame → about 10 Hz, timed from the session's start. */
+function toTrace(rows: AngleSampleRow[], startedAt: string): Trace {
+  const t0 = Date.parse(startedAt)
+  const trace: Trace = []
+  for (const r of rows) {
+    const t = Date.parse(r.time) - t0
+    if (t < 0 || (trace.length && t - trace[trace.length - 1][0] < TRACE_STEP_MS * 0.9)) continue
+    trace.push([t, Math.round(r.angle * 10) / 10])
+  }
+  return trace
+}
+
 function load(): MockDb {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -124,6 +239,14 @@ function load(): MockDb {
   }
   const db = seed()
   save(db)
+  writeTraces(
+    Object.fromEntries(
+      db.sessions.map((s) => {
+        const ex = exerciseFor(jointOf(s))
+        return [s.id, syntheticTrace(s, ex.rest, Math.min(ex.min, ex.rest))]
+      }),
+    ),
+  )
   return db
 }
 
@@ -138,6 +261,7 @@ function save(db: MockDb) {
 export function resetMockData() {
   try {
     localStorage.removeItem(STORAGE_KEY)
+    localStorage.removeItem(TRACES_KEY)
   } catch {
     /* ignore */
   }
@@ -245,7 +369,19 @@ export const mockBackend = {
       joint: body.joint,
     })
     save(db)
+    writeTraces({ [id]: toTrace(body.angle_samples, body.started_at) })
     return delay({ session_id: id })
+  },
+
+  async getSessionSamples(sessionId: UUID): Promise<AngleSampleRow[]> {
+    const s = load().sessions.find((x) => x.id === sessionId)
+    if (!s) throw new Error(`No session ${sessionId}`)
+    const t0 = Date.parse(s.started_at)
+    const trace = readTraces()[sessionId] ?? []
+    return delay(
+      trace.map(([t, angle]) => ({ time: new Date(t0 + t).toISOString(), angle })),
+      250,
+    )
   },
 
   async painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
