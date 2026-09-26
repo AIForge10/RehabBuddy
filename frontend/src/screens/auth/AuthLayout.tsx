@@ -60,7 +60,6 @@ function BrandPanel() {
       <div className="relative isolate flex h-full min-h-[640px] flex-col overflow-hidden rounded-3xl bg-hero-2 p-10 text-on-hero ring-1 ring-white/8 xl:p-12">
         <LimbLattice mask="[mask-image:radial-gradient(ellipse_80%_70%_at_100%_0%,black_25%,transparent_75%)]" />
         <p className="label-mono flex items-center gap-2.5 text-brand-light">
-          <span className="h-px w-6 bg-current" />
           {s.heroEyebrow}
         </p>
 

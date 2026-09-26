@@ -25,7 +25,6 @@ export function NextSession({ assignment, onStart }: { assignment: Assignment; o
     >
       <div className="flex flex-col p-6 pt-2 sm:p-10 sm:pt-4 lg:pt-10">
         <p className="label-mono flex items-center gap-2.5 text-brand-light">
-          <span aria-hidden="true" className="h-px w-6 bg-current" />
           {s.today}
         </p>
         <h2 id="next-session" className="mt-4 max-w-[14ch] font-display text-[36px] leading-[1.04] sm:text-[52px]">
