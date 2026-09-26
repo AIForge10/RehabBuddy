@@ -11,7 +11,9 @@ import { useAuth } from '../lib/auth'
 import { EXERCISES, exerciseFor, type BodyPart } from '../lib/exercises'
 import { formatDuration, shortDate, timeAgo } from '../lib/format'
 import { planChanges, planOf, type Plan } from '../lib/plan'
+import { useReducedMotion } from '../lib/useReducedMotion'
 import type { Assignment, DashboardResponse, Patient, PatientOverview, RedFlag } from '../types/session'
+import { SessionReplay } from './therapist/SessionReplay'
 
 const POLL_MS = 3000
 const DAY_MS = 86_400_000
@@ -21,6 +23,17 @@ const SENT_MS = 5000
 
 const recentFlags = (p: PatientOverview, now: number): RedFlag[] =>
   p.red_flags.filter((f) => now - Date.parse(f.created_at) < FLAG_WINDOW_MS)
+
+/**
+ * The session the therapist asked to replay. `latest` is the patient's newest
+ * session at the time, so a session arriving afterwards takes the replay over.
+ * `n` counts picks: picking the same session again plays it again.
+ */
+interface Pick {
+  id: string
+  latest?: string
+  n: number
+}
 
 const initials = (name: string) =>
   name
@@ -42,6 +55,7 @@ export default function TherapistDashboard() {
   const [lastOk, setLastOk] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [picked, setPicked] = useState<Pick | null>(null)
   const [fresh, setFresh] = useState<Record<string, number>>({}) // session id → highlight-until
   const seen = useRef<Set<string> | null>(null)
   const reload = useRef(() => {})
@@ -95,6 +109,16 @@ export default function TherapistDashboard() {
     .flatMap((p) => recentFlags(p, now).map((f) => ({ ...f, name: p.patient.full_name })))
     .sort((a, b) => b.created_at.localeCompare(a.created_at))
   const needAttention = new Set(alerts.map((a) => a.patient_id)).size
+
+  const pick = (patientId: string, sessionId: string) => {
+    const latest = patients.find((p) => p.patient.id === patientId)?.sessions[0]?.id
+    setSelectedId(patientId)
+    setPicked((p) => ({ id: sessionId, latest, n: (p?.n ?? 0) + 1 }))
+  }
+  const selectPatient = (id: string) => {
+    setSelectedId(id)
+    setPicked(null)
+  }
   const weekSessions = patients.reduce((n, p) => n + Math.round(p.adherence_7d * p.assignment.times_per_week), 0)
 
   return (
@@ -139,7 +163,7 @@ export default function TherapistDashboard() {
             {alerts.map((a) => (
               <button
                 key={a.session_id}
-                onClick={() => setSelectedId(a.patient_id)}
+                onClick={() => pick(a.patient_id, a.session_id)}
                 className="flex w-full items-center gap-3 border-b border-critical/15 px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-critical/5"
               >
                 <FlagIcon />
@@ -167,8 +191,18 @@ export default function TherapistDashboard() {
 
         {data && (
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-[320px_minmax(0,1fr)] xl:gap-8">
-            <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={setSelectedId} now={now} fresh={fresh} />
-            {selected && <PatientDetail key={selected.patient.id} p={selected} fresh={fresh} now={now} onPlanSaved={() => reload.current()} />}
+            <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} />
+            {selected && (
+              <PatientDetail
+                key={selected.patient.id}
+                p={selected}
+                fresh={fresh}
+                now={now}
+                picked={picked}
+                onPick={(sessionId) => pick(selected.patient.id, sessionId)}
+                onPlanSaved={() => reload.current()}
+              />
+            )}
           </div>
         )}
 
@@ -325,11 +359,15 @@ function PatientDetail({
   p,
   fresh,
   now,
+  picked,
+  onPick,
   onPlanSaved,
 }: {
   p: PatientOverview
   fresh: Record<string, number>
   now: number
+  picked: Pick | null
+  onPick: (sessionId: string) => void
   onPlanSaved: () => void
 }) {
   const { patient, assignment, sessions } = p
@@ -337,6 +375,8 @@ function PatientDetail({
   const [regenerating, setRegenerating] = useState(false)
   const [editing, setEditing] = useState(false)
   const [sentAt, setSentAt] = useState(0)
+  const replayRef = useRef<HTMLDivElement>(null)
+  const reduced = useReducedMotion()
 
   const ex = exerciseFor(assignment.exercise.joint)
   const first = sessions.at(-1)
@@ -346,6 +386,17 @@ function PatientDetail({
   const latestPain = sessions.find((s) => s.pain_score != null)
   const rehabDay = Math.max(1, Math.round((now - Date.parse(patient.start_date)) / DAY_MS))
   const flagged = recentFlags(p, now).length > 0
+  const pickedHere = picked && picked.latest === latest?.id ? sessions.find((s) => s.id === picked.id) : undefined
+  const replayed = pickedHere ?? latest
+  const pickedId = pickedHere?.id
+
+  // A pick, from the table below or a red flag at the top, brings the replay into view.
+  useEffect(() => {
+    const el = replayRef.current
+    if (!pickedId || !el) return
+    const top = el.getBoundingClientRect().top
+    if (top < 72 || top > innerHeight * 0.5) el.scrollIntoView({ block: 'start', behavior: reduced ? 'auto' : 'smooth' })
+  }, [picked, pickedId, reduced])
 
   async function regenerate() {
     setRegenerating(true)
@@ -458,7 +509,22 @@ function PatientDetail({
       </div>
 
       <div className="overflow-hidden rounded-3xl bg-surface ring-1 ring-line">
-        <h3 className="px-6 pb-4 pt-6 text-lg font-bold sm:px-7">Sessions</h3>
+        <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-6 pb-4 pt-6 sm:px-7">
+          <h3 className="text-lg font-bold">Sessions</h3>
+          {sessions.length > 0 && <p className="text-sm text-muted">Pick a session to replay it</p>}
+        </div>
+        {replayed && (
+          <div ref={replayRef} className="scroll-mt-24 border-b border-line">
+            <SessionReplay
+              key={`${replayed.id}:${pickedHere ? picked!.n : 0}`}
+              session={replayed}
+              exercise={exerciseFor(replayed.joint ?? assignment.exercise.joint)}
+              target={assignment.target_angle}
+              goal={assignment.reps}
+              autoPlay={pickedHere != null || (fresh[replayed.id] ?? 0) > now}
+            />
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full text-sm tabular-nums">
             <thead>
@@ -474,10 +540,33 @@ function PatientDetail({
             <tbody>
               {sessions.slice(0, 10).map((s) => {
                 const isFresh = (fresh[s.id] ?? 0) > now
+                const active = s.id === replayed?.id
+                const when = new Date(s.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                 return (
-                  <tr key={s.id} className={`border-b border-line transition-colors duration-1000 last:border-0 ${isFresh ? 'bg-brand-soft' : ''}`}>
-                    <td className="whitespace-nowrap px-6 py-3.5 sm:pl-7">
-                      {new Date(s.started_at).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                  <tr
+                    key={s.id}
+                    onClick={() => onPick(s.id)}
+                    className={`cursor-pointer border-b border-line transition-colors duration-1000 last:border-0 hover:duration-150 ${
+                      isFresh ? 'bg-brand-soft' : active ? 'bg-raised' : 'hover:bg-raised'
+                    }`}
+                  >
+                    <td className={`whitespace-nowrap px-6 py-3 sm:pl-7 ${active ? 'shadow-[inset_3px_0_0_var(--color-brand)]' : ''}`}>
+                      <button
+                        type="button"
+                        aria-current={active ? 'true' : undefined}
+                        aria-label={`Replay the session from ${when}`}
+                        className="inline-flex items-center gap-2.5 rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-ink"
+                      >
+                        <span
+                          aria-hidden="true"
+                          className={`grid size-6 shrink-0 place-items-center rounded-full transition-colors ${active ? 'bg-brand text-on-brand' : 'bg-raised text-ink-2 ring-1 ring-line'}`}
+                        >
+                          <svg width="9" height="9" viewBox="0 0 12 12">
+                            <path d="M3 1.8v8.4a.6.6 0 0 0 .9.5l6.8-4.2a.6.6 0 0 0 0-1L3.9 1.3a.6.6 0 0 0-.9.5Z" fill="currentColor" />
+                          </svg>
+                        </span>
+                        <span className={active ? 'font-bold' : ''}>{when}</span>
+                      </button>
                       {isFresh && <span className="label-mono ml-2 rounded-md bg-brand px-1.5 py-0.5 text-[10px] text-on-brand">New</span>}
                     </td>
                     <td className="px-3 py-3.5 text-right">

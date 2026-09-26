@@ -12,6 +12,7 @@
 // they fall back to a local template if the backend call fails.
 
 import type {
+  AngleSampleRow,
   Assignment,
   CreateSessionRequest,
   CreateSessionResponse,
@@ -133,6 +134,12 @@ export function createSession(body: CreateSessionRequest): Promise<CreateSession
 export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
   if (USE_MOCKS) return mockBackend.getDashboard(therapistId)
   return request<DashboardResponse>(`/therapist/${therapistId}/dashboard`)
+}
+
+/** A session's angle trace, oldest first, for the therapist's replay. */
+export function getSessionSamples(sessionId: UUID): Promise<AngleSampleRow[]> {
+  if (USE_MOCKS) return mockBackend.getSessionSamples(sessionId)
+  return request<AngleSampleRow[]>(`/sessions/${sessionId}/samples`)
 }
 
 /** Therapist changes a patient's plan; resolves to the saved assignment. */
