@@ -10,7 +10,10 @@ import { RepCounter } from '../repCounter'
 import { DEFAULT_TUNING, type PoseTuning, type PreferredSide, type SideInfo } from '../tracker'
 import { usePose, type PoseFrame } from '../usePose'
 import { Button, Panel, Segmented, Slider, Toggle } from './controls'
+import { download, stamp } from './download'
 import { COLORS, drawChart, drawOverlay, type ChartPoint } from './draw'
+import { CaptureBar, ValidationResults } from './ValidationPanel'
+import { HoldWindow, loadTrials, saveTrials, type HoldReading } from './validation'
 
 const STORAGE_KEY = 'rb.poseDebug.v1'
 const CHART_WINDOW_MS = 12_000
@@ -58,6 +61,7 @@ interface Snapshot {
   bent: boolean
   lastRep: string | null
   faults: number
+  hold: HoldReading
 }
 
 type FormLimit = 'thighMoveDeg' | 'leanBackDeg' | 'elbowDriftDeg' | 'shrugPct'
@@ -223,6 +227,8 @@ export default function PoseDebug() {
   const lastRep = useRef<string | null>(null)
   // Form faults this run, counted the way the live session counts them: once per appearance.
   const faults = useRef({ count: 0, on: false })
+  // The last second of frames, for the validation capture.
+  const hold = useRef(new HoldWindow())
 
   const resetRun = useCallback(() => {
     const c = JOINTS[joint]
@@ -232,6 +238,7 @@ export default function PoseDebug() {
     log.current = []
     lastRep.current = null
     faults.current = { count: 0, on: false }
+    hold.current.clear()
   }, [joint])
   useEffect(resetRun, [resetRun, side, source, file])
 
@@ -253,6 +260,8 @@ export default function PoseDebug() {
         lastRep.current = `Rep ${ev.count}: peak ${ev.peak.toFixed(0)}°${ev.warnings.length ? ` · ${ev.warnings.join(', ')}` : ''}`
       }
     }
+
+    hold.current.push(f)
 
     const faulty = f.form?.active ?? false
     if (faulty && !faults.current.on) faults.current.count += 1
@@ -308,11 +317,17 @@ export default function PoseDebug() {
         bent: counter.current.isBent,
         lastRep: lastRep.current,
         faults: faults.current.count,
+        hold: hold.current.read(t),
       })
     }
   }
 
   const pose = usePose({ joint, preferredSide: side, externalVideo: videoEl, tuning, onFrame })
+
+  // ---- Validation trials (kept apart from the settings, see validation.ts) ----
+  const [trials, setTrials] = useState(loadTrials)
+  useEffect(() => saveTrials(trials), [trials])
+  const deleteTrial = (id: string) => setTrials((ts) => ts.filter((t) => t.id !== id))
 
   // ---- Actions ----
   const [copied, setCopied] = useState(false)
@@ -411,6 +426,17 @@ export default function PoseDebug() {
             )}
           </div>
 
+          <CaptureBar
+            hold={snap?.hold ?? null}
+            read={() => hold.current.read(performance.now())}
+            joint={joint}
+            angleSource={tuning.angleSource}
+            model={tuning.model}
+            trials={trials}
+            onAdd={(t) => setTrials((ts) => [...ts, t])}
+            onDelete={deleteTrial}
+          />
+
           {/* Readouts */}
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             <Readout label="Reps" value={snap ? String(snap.reps) : '—'} sub={snap ? (snap.bent ? 'In a rep (bent)' : 'Waiting for a bend') : cfg.tip} />
@@ -472,6 +498,8 @@ export default function PoseDebug() {
               Auto score = visibility + nearness to the camera (z) + movement over the last 2 s. Switching needs a {'>'}0.1 lead for {tuning.switchFrames} frames in a row.
             </p>
           </Panel>
+
+          <ValidationResults trials={trials} onDelete={deleteTrial} onClear={() => setTrials([])} />
         </div>
 
         {/* Controls: on desktop they scroll on their own, so the stage and chart stay in view while you tune. */}
@@ -850,17 +878,6 @@ function round(v: number | null | undefined, digits = 1) {
   if (v == null) return null
   const k = 10 ** digits
   return Math.round(v * k) / k
-}
-
-function stamp() {
-  return new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
-}
-
-function download(url: string, name: string) {
-  const a = document.createElement('a')
-  a.href = url
-  a.download = name
-  a.click()
 }
 
 // MediaRecorder's WebM has no duration, so the clip can't seek or loop cleanly
