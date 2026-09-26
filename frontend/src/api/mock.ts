@@ -24,6 +24,7 @@ import type {
   UUID,
 } from '../types/session'
 import { assignmentFor, exerciseFor } from '../lib/exercises'
+import { sessionStats } from '../lib/replay'
 
 const STORAGE_KEY = 'rehabbuddy.mock.v6'
 const TRACES_KEY = 'rehabbuddy.mock.traces.v1'
@@ -330,6 +331,25 @@ function templateSummary(db: MockDb, patientId: UUID): string {
   return text
 }
 
+/** A trace never changes, so each session's stats are worked out once per target, like the backend's cache. */
+const statsCache = new Map<string, SessionRecord['stats']>()
+
+/** Sessions with the stats the backend works out in SQL, from their traces here. */
+function withStats(sessions: SessionRecord[], target: number): SessionRecord[] {
+  let traces: Record<UUID, Trace> | undefined
+  return sessions.map((s) => {
+    const key = `${s.id}:${target}`
+    if (!statsCache.has(key)) {
+      traces ??= readTraces()
+      const trace = traces[s.id]
+      // Not cached when missing: another tab may still be writing it.
+      if (!trace?.length) return { ...s, stats: null }
+      statsCache.set(key, sessionStats(trace.map(([t, angle]) => ({ t, angle })), target))
+    }
+    return { ...s, stats: statsCache.get(key) }
+  })
+}
+
 function overview(db: MockDb, assignment: Assignment): PatientOverview {
   // "This week" = today plus the 6 days before it, matching the patient home screen.
   const weekAgo = new Date().setHours(0, 0, 0, 0) - 6 * DAY_MS
@@ -342,7 +362,7 @@ function overview(db: MockDb, assignment: Assignment): PatientOverview {
     patient,
     assignment,
     adherence_7d: recent / assignment.times_per_week,
-    sessions,
+    sessions: withStats(sessions, assignment.target_angle),
     red_flags: db.red_flags.filter((f) => f.patient_id === patient.id),
     latest_summary: templateSummary(db, patient.id),
     latest_summary_is_ai: false,

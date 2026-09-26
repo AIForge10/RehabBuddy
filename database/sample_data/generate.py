@@ -2,6 +2,7 @@
 Shapes match frontend/src/api/client.ts + mock.ts so backend == frontend."""
 import base64, csv, hashlib, json, math, random, os
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 
 random.seed(42)
 DEMO_PASSWORD = "demo1234"   # demo accounts only — change for anything real
@@ -132,8 +133,45 @@ def assignment_obj(pid):
     a = assignments[pid]
     return {"id": a["id"], "patient_id": pid, "therapist_id": "t-lee", "exercise": ex_by_id[a["exercise_id"]],
             "target_angle": a["target_angle"], "reps": a["reps"], "times_per_week": a["times_per_week"]}
+samples_by_session = {}
+for r in rows["angle_samples"]:
+    samples_by_session.setdefault(r["session_id"], []).append(r)
+
+def session_stats(samples, target):
+    """The stats the overview adds to each session, worked out like SESSION_STATS in
+    backend/api/data/queries.py. These samples are 2 Hz, so its 10 Hz buckets leave them as they are."""
+    half_up = lambda x: math.floor(x + Decimal("0.5"))  # like Postgres round(), unlike Python's
+    pts = [(datetime.fromisoformat(r["time"]), Decimal(str(r["angle"]))) for r in samples]
+    ordered = sorted(a for _, a in pts)
+    rest, peak = ordered[int(len(ordered) * 0.1)], ordered[-1]
+    top = max(rest + 15, min(Decimal(target), peak))
+    bent, straight = rest + (top - rest) / 2, rest + (top - rest) / 6
+    peaks, rep = [], None
+    for _, a in pts:
+        if rep is not None:
+            rep = max(rep, a)
+            if a < straight:
+                peaks.append(half_up(rep))
+                rep = None
+        elif a > bent:
+            rep = a
+    fade = half_up(Decimal(sum(peaks[:3]) - sum(peaks[-3:])) / 3) if len(peaks) >= 6 else None
+    total = longest = hold = Decimal(0)
+    for i, (t, a) in enumerate(pts):
+        if a < peak - 5 or (i and (t - pts[i - 1][0]).total_seconds() > 1):
+            hold = Decimal(0)
+        if a >= peak - 5:
+            step = Decimal(str((pts[i + 1][0] - t).total_seconds())) if i + 1 < len(pts) else Decimal(0)
+            hold += step if step <= 1 else 0
+            total += step if step <= 1 else 0
+            longest = max(longest, hold)
+    return {"rep_peaks": peaks, "fade": fade, "end_range_sec": float(half_up(total * 10) / 10),
+            "longest_hold_sec": float(half_up(longest * 10) / 10)}
+
 def overview(p):
-    ss = sorted(sessions_by_patient[p["id"]], key=lambda s: s["started_at"], reverse=True)
+    target = assignments[p["id"]]["target_angle"]
+    ss = [{**s, "stats": session_stats(samples_by_session[s["id"]], target)}
+          for s in sorted(sessions_by_patient[p["id"]], key=lambda s: s["started_at"], reverse=True)]
     week = [s for s in ss if s["started_at"] >= iso(TODAY - timedelta(days=6))]
     return {"patient": patient_obj(p), "assignment": assignment_obj(p["id"]),
             "adherence_7d": round(len(week) / 5, 2), "sessions": ss,
@@ -161,8 +199,8 @@ api = {
         "/patients/{id}/*": "patient: only own id; therapist: only assigned patients; else 403",
         "/therapist/{id}/dashboard": "therapist only, and only their own id; else 403",
         "POST /sessions, POST /pain-check": "patient only, for their own patient_id / session; else 403",
+        "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient; unknown session 404",
         "POST /summary": "same rule as /patients/{id}",
-        "GET /sessions/{id}/samples": "same rule as /patients/{id}, for the session's patient",
         "PATCH /assignments/{id}": "therapist only, for their assigned patients; else 403"},
     "_note": "Request/response shapes match frontend/src/api/client.ts. Base URL = VITE_API_URL (default http://localhost:8000).",
     "GET /patients/{patient_id}/assignment": {"example_url": "/patients/p-maria/assignment", "response": assignment_obj("p-maria")},
@@ -176,8 +214,8 @@ api = {
         "request_notes": "assignment_id, joint and angle_samples are PROPOSED additions (not yet in the frontend's CreateSessionRequest). angle_samples feed the Tiger Data hypertable; one array per session, ~2–30 samples/sec.",
         "response": {"session_id": "s-3f6c1a2e-7b8d-4c9e-a1f2-0d3e4b5c6a7f"}},
     "GET /sessions/{session_id}/samples": {"example_url": "/sessions/s-p-maria-1/samples",
-        "response": [{"time": r["time"], "angle": r["angle"]} for r in sample_samples],
-        "notes": "The session's angle_samples rows, oldest first, for the therapist's replay."},
+        "response_notes": "The whole session, oldest first, averaged into 100 ms buckets (time_bucket); first rows shown.",
+        "response": [{"time": r["time"], "angle": r["angle"]} for r in sample_samples]},
     "PATCH /assignments/{assignment_id}": {"example_url": "/assignments/a-p-maria",
         "request": {"joint": "shoulder", "target_angle": 140, "reps": 10, "times_per_week": 5},
         "response": {**assignment_obj("p-maria"), "exercise": ex_by_id["ex-shoulder-raise"], "target_angle": 140},

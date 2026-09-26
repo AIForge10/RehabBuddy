@@ -84,7 +84,8 @@ def main():
 
         for stmt in statements((HERE / "schema.sql").read_text()):
             conn.execute(stmt)
-        print("Schema ready ✅ (tables + angle_samples hypertable + continuous aggregate)")
+        print("Schema ready ✅ (tables + angle_samples hypertable + real-time continuous aggregate, "
+              "materialized every minute)")
 
         conn.execute("TRUNCATE " + ", ".join(reversed(TABLES)) + " CASCADE")
         for t in TABLES:

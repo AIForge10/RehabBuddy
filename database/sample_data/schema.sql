@@ -92,6 +92,16 @@ SELECT time_bucket('1 minute', time) AS bucket, session_id,
 FROM angle_samples
 GROUP BY bucket, session_id
 WITH NO DATA;
+-- Real-time: minutes not yet materialized are read from angle_samples, so a session is in
+-- the aggregate the moment POST /sessions commits. (Separate statement so re-running this
+-- file upgrades an aggregate created before this line existed.)
+ALTER MATERIALIZED VIEW session_angle_1m SET (timescaledb.materialized_only = false);
+-- Materialize every minute. A session is posted when it ends, with samples from the last
+-- few minutes, so a day's window catches every late write; end_offset leaves the minute
+-- still filling to the real-time read.
+SELECT add_continuous_aggregate_policy('session_angle_1m',
+  start_offset => INTERVAL '1 day', end_offset => INTERVAL '1 minute',
+  schedule_interval => INTERVAL '1 minute', if_not_exists => TRUE);
 
 -- ★ Access rule, in ONE place: may viewer_id see patient_id's data?
 --   patient   -> only their own data
