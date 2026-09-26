@@ -11,13 +11,15 @@ import { formatDuration } from '../../lib/format'
 import { useLanguage } from '../../lib/language'
 import { useSimulatedPose } from '../../lib/simulatedPose'
 import type { CameraStatus } from '../../lib/useCamera'
-import type { AngleSample, Assignment, SessionResult } from '../../types/session'
+import type { AngleSample, Assignment, LivePoseState, SessionResult } from '../../types/session'
+
+import { usePoseSession, type JointName } from '../../pose'
 
 const SAMPLE_MS = 100 // ~10 Hz into angle_samples
 const COUNTDOWN = 3
 
-// Flip to true once src/pose/usePose is wired in (see the pose-source block below).
-const POSE_READY = false
+// Real MediaPipe Pose Landmarker is wired and active.
+const POSE_READY = true
 
 type Phase = 'countdown' | 'running' | 'saving'
 
@@ -42,15 +44,37 @@ export function Live({
   const [trace, setTrace] = useState<AngleSample[]>([])
   const [best, setBest] = useState(0)
   const [saveError, setSaveError] = useState(false)
+  const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
 
-  // Pose source. Once the real tracker lands:
-  //   const tracked = usePose(videoRef)
-  //   const pose = simulated ? simulatedPose : tracked
-  // Simulation stays as the on-stage fallback when the camera isn't available.
+  const handleVideoRef = useCallback(
+    (el: HTMLVideoElement | null) => {
+      setVideoEl(el)
+      attach(el)
+    },
+    [attach],
+  )
+
   const target = assignment.target_angle
   const goal = assignment.reps
-  const simulated = !POSE_READY || camera !== 'on'
-  const pose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
+
+  const trackedSession = usePoseSession({
+    joint: exercise.part as JointName,
+    targetAngle: target,
+    targetReps: goal,
+    externalVideo: camera === 'on' ? videoEl : null,
+  })
+
+  const simulated = !POSE_READY || camera !== 'on' || !trackedSession.ready
+  const simulatedPose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
+
+  const trackedPose: LivePoseState = {
+    angle: trackedSession.angle,
+    reps: trackedSession.reps,
+    form_warning: trackedSession.lastRep?.warnings[0] ?? null,
+    confidence: trackedSession.confidence,
+  }
+
+  const pose = simulated ? simulatedPose : trackedPose
 
   const poseRef = useRef(pose)
   const langRef = useRef(lang)
@@ -164,7 +188,20 @@ export function Live({
   return (
     <div className="relative h-dvh overflow-hidden bg-stage text-white">
       {/* Feed */}
-      <video ref={attach} muted playsInline className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${camera === 'on' ? '' : 'hidden'}`} />
+      <video
+        ref={handleVideoRef}
+        muted
+        playsInline
+        className={`absolute inset-0 h-full w-full -scale-x-100 object-cover ${camera === 'on' ? '' : 'hidden'}`}
+      />
+      {camera === 'on' && trackedSession.ready && (
+        <canvas
+          ref={trackedSession.canvasRef}
+          width={640}
+          height={480}
+          className="pointer-events-none absolute inset-0 h-full w-full -scale-x-100 object-cover"
+        />
+      )}
       {camera !== 'on' && (
         <div className="absolute inset-0 flex items-center justify-center pb-40 pt-20 lg:pb-8 lg:pr-[360px]">
           <div className="aspect-[16/10] w-full max-w-4xl">
