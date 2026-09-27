@@ -1,7 +1,8 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { AuthProvider, PublicOnly, RequireAuth } from './lib/auth'
-import { LanguageProvider } from './lib/language'
+import { LanguageProvider, useLanguage } from './lib/language'
+import { usePageTitle } from './lib/usePageTitle'
 import Login from './screens/auth/Login'
 import Signup from './screens/auth/Signup'
 import Welcome from './screens/Welcome'
@@ -43,6 +44,7 @@ const PoseDebug = lazy(() => import('./pose/debug/PoseDebug'))
 // must not return one.
 function ScrollToTop() {
   const { pathname } = useLocation()
+  usePageTitle(pathname, useLanguage().lang)
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
