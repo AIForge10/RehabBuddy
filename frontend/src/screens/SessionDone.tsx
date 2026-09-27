@@ -82,7 +82,9 @@ export default function SessionDone() {
           <h1 className={TITLE}>{header === 'rest' ? s.doneRestTitle : header === 'milestone' ? s.milestoneTitle(target) : s.doneTitle}</h1>
           <p className="mt-1.5 min-h-7 text-lg text-ink-2">
             {header === 'rest'
-              ? s.doneRestSub
+              ? flow.demo
+                ? s.doneRestSubLocal
+                : s.doneRestSub
               : [header === 'milestone' && day != null ? s.milestoneDay(day) : '', firstName ? s.doneSub(firstName) : '']
                   .filter(Boolean)
                   .join(' ')}
@@ -138,7 +140,7 @@ export default function SessionDone() {
           </Section>
 
           <div className="space-y-4">
-            {flow.demo && <p className="label-mono text-muted">{s.demoNotSaved}</p>}
+            {flow.demo && <p className="label-mono text-muted">{flow.unsaved ? s.notSaved : s.demoNotSaved}</p>}
             {pain && !flow.demo && (
               <p
                 className={`flex items-center gap-2.5 rounded-xl px-4 py-3 text-[15px] font-bold ring-1 ${
