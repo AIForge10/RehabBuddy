@@ -37,6 +37,14 @@ def create_session(body: CreateSessionRequest, user: CurrentUser = Depends(requi
         raise HTTPException(403, "You can only save your own sessions")
     session_id = f"s-{uuid.uuid4()}"
     with q.connect() as conn:
+        # The app retries a save whose reply it didn't get (a timeout on slow wifi can
+        # land after the save did). A patient starts one session at a time, so the same
+        # start time is the same session: return it rather than saving it twice.
+        same = conn.execute("""SELECT id, (SELECT count(*) FROM angle_samples a WHERE a.session_id = s.id) AS n
+                               FROM sessions s WHERE s.patient_id = %s AND s.started_at = %s""",
+                            (user.id, body.started_at)).fetchone()
+        if same:
+            return {"session_id": same["id"], "angle_samples_saved": same["n"]}
         a = q.assignment(conn, user.id)
         assignment_id = body.assignment_id or (a["id"] if a else None)
         # Only one of this patient's own plans: another's would link the session to

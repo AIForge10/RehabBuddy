@@ -97,9 +97,9 @@ export function onUnauthorized(fn: () => void) {
 export { API_URL }
 export const getAuthToken = () => token
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
@@ -155,9 +155,28 @@ export function getPatientOverview(patientId: UUID, joint?: Joint): Promise<Pati
   return request<PatientOverview>(`/patients/${patientId}/overview${qs}`)
 }
 
-export function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
+// Saving a finished session is the one request a patient can't simply redo: it
+// carries every angle frame (a few hundred KB on a long session), so it gets
+// longer to upload over venue wifi, and two more tries after a network error,
+// a timeout or a server error. The backend keeps one session per start time,
+// so a retry after a save that did land (only the reply was lost) returns that
+// session instead of saving a second.
+const SAVE_TIMEOUT_MS = 20_000
+const SAVE_TRIES = 3
+
+export async function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
   if (USE_MOCKS) return mockBackend.createSession(body)
-  return post<CreateSessionResponse>('/sessions', body)
+  const json = JSON.stringify(body)
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await request<CreateSessionResponse>('/sessions', { method: 'POST', body: json }, SAVE_TIMEOUT_MS)
+    } catch (err) {
+      const retry = !(err instanceof ApiError) || err.status >= 500
+      if (!retry || attempt >= SAVE_TRIES) throw err
+      console.warn(`[api] saving the session failed (try ${attempt} of ${SAVE_TRIES}), trying again`, err)
+      await new Promise((r) => setTimeout(r, 1000 * attempt))
+    }
+  }
 }
 
 export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
