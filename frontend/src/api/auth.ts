@@ -172,6 +172,24 @@ const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1')
 
 export type AuthUser = Account
 
+export async function signupStart(input: SignupRequest): Promise<{ email: string }> {
+  if (USE_MOCKS) {
+    await signUp(input)
+    return { email: input.email }
+  }
+  const email = normalise(input.email)
+  const res = await fetch(`${API_URL}/auth/signup`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...input, full_name: input.full_name.trim(), email }),
+  })
+  if (res.status === 409) throw new AuthError('taken')
+  if (res.status === 422) throw new Error('Please check your details (password: 8+ characters)')
+  if (res.status === 502 || res.status === 503) throw new Error("Couldn't send the code. Try again in a minute")
+  if (!res.ok) throw new Error(`Sign-up failed (${res.status})`)
+  return { email }
+}
+
 export async function verifyOtp(email: string, code: string): Promise<Account> {
   const res = await fetch(`${API_URL}/auth/verify-otp`, {
     method: 'POST',
