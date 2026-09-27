@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     # without it (gemini-2.5-flash, gemini-3.7-flash, ...) need "low".
     GEMINI_THINKING_LEVEL: str = "minimal"
 
+    # Dates the server writes into text ("pain 8/10 on Sep 26") are the clinic's calendar days,
+    # not the server's: DigitalOcean runs in UTC, where an evening in Miami is already tomorrow.
+    CLINIC_TIMEZONE: str = "America/New_York"
+
     ELEVENLABS_API_KEY: str = ""
     ELEVENLABS_VOICE_ID_EN: str = ""
     ELEVENLABS_VOICE_ID_ES: str = ""

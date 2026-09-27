@@ -387,3 +387,11 @@ def test_other_therapists_cannot_ask(client):
 def test_a_patient_without_a_plan_is_404(client, monkeypatch):
     monkeypatch.setattr(service, "load_facts", lambda patient_id: None)
     assert client.post(URL).status_code == 404
+
+
+def test_dates_are_the_clinics_calendar_day_not_utc(monkeypatch):
+    # 10:14 PM in Miami on Sep 26 is already Sep 27 on the server's UTC clock.
+    monkeypatch.setattr(settings, "CLINIC_TIMEZONE", "America/New_York")
+    assert service._day("2026-09-27T02:14:00+00:00") == "Sep 26"
+    monkeypatch.setattr(settings, "CLINIC_TIMEZONE", "UTC")
+    assert service._day("2026-09-27T02:14:00+00:00") == "Sep 27"

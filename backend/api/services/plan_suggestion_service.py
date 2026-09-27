@@ -23,6 +23,7 @@ from dataclasses import asdict
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
 from typing import Optional
+from zoneinfo import ZoneInfo
 
 from google import genai
 from google.genai.types import AutomaticFunctionCallingConfig, GenerateContentConfig, ThinkingConfig
@@ -73,7 +74,7 @@ def _at(iso: str) -> datetime:
 
 
 def _day(iso: str) -> str:
-    d = _at(iso)
+    d = _at(iso).astimezone(ZoneInfo(settings.CLINIC_TIMEZONE))
     return f"{d:%b} {d.day}"
 
 

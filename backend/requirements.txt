@@ -10,3 +10,4 @@ pydantic-settings==2.15.0
 pyjwt==2.15.0
 python-dotenv==1.2.3
 uvicorn[standard]==0.54.0
+tzdata==2026.4  # zoneinfo's time zones where the OS has none (CLINIC_TIMEZONE)
