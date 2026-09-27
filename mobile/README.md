@@ -41,6 +41,10 @@ npm run build
 `npm run build` also installs `../frontend`'s packages if needed, and
 downloads the pose model once into `.cache/`.
 
+**Node 22 or newer.** Capacitor 8's CLI refuses to run on Node 20 (`cap sync`
+fails with "requires NodeJS >=22.0.0"), which silently leaves the native
+projects without any web assets. `nvm use 22` before `npm run build`.
+
 ### iOS
 
 Needs Xcode. `npm run ios` builds and opens the project in Xcode; pick a
@@ -49,9 +53,9 @@ simulator or your phone and press Run. The iOS Simulator has no real camera
 
 ### Android
 
-Needs Android Studio. `npm run android` builds and opens the project. Gradle
-8.14 needs JDK 17 or 21; Android Studio's bundled JDK works. A newer system
-JDK (e.g. Homebrew's 26) fails the Gradle sync. To build from the command line:
+`npm run android` builds and opens the project in Android Studio. Gradle 8.14
+needs JDK 17 or 21; Android Studio's bundled JDK works. A newer system JDK (e.g.
+Homebrew's 26) fails the Gradle sync. To build from the command line:
 
 ```bash
 JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradlew assembleDebug
@@ -60,6 +64,46 @@ JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home" ./gradle
 (run inside `android/`, after creating `android/local.properties` with
 `sdk.dir=/Users/<you>/Library/Android/sdk`, or open the project once in
 Android Studio, which writes it.)
+
+#### Without Android Studio
+
+Android Studio is convenient, not required — a JDK and the command-line SDK are
+enough to build and install. Nothing here needs `sudo`, and it all lives under
+`~/Library`, so `rm -rf` the two directories to undo it. Homebrew's `openjdk@21`
+may refuse to install on a Tier 3 macOS; the Temurin tarball always works.
+
+```bash
+# JDK 21 → ~/Library/Java/JavaVirtualMachines/temurin-21.jdk
+curl -sSL -o /tmp/jdk21.tar.gz \
+  "https://api.adoptium.net/v3/binary/latest/21/ga/mac/aarch64/jdk/hotspot/normal/eclipse"
+mkdir -p ~/Library/Java/JavaVirtualMachines && tar -xzf /tmp/jdk21.tar.gz -C /tmp
+mv /tmp/jdk-21*/ ~/Library/Java/JavaVirtualMachines/temurin-21.jdk
+
+# Android command-line SDK → ~/Library/Android/sdk
+curl -sSL -o /tmp/cmdtools.zip \
+  "https://dl.google.com/android/repository/commandlinetools-mac-13114758_latest.zip"
+mkdir -p ~/Library/Android/sdk/cmdline-tools && unzip -q /tmp/cmdtools.zip -d /tmp/ct
+mv /tmp/ct/cmdline-tools ~/Library/Android/sdk/cmdline-tools/latest
+
+export JAVA_HOME=~/Library/Java/JavaVirtualMachines/temurin-21.jdk/Contents/Home
+export ANDROID_HOME=~/Library/Android/sdk
+yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses
+"$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+  platform-tools "platforms;android-36" "build-tools;36.0.0"   # 36 = compileSdk, see variables.gradle
+
+echo "sdk.dir=$HOME/Library/Android/sdk" > android/local.properties
+(cd android && ./gradlew assembleDebug)                        # → app/build/outputs/apk/debug/
+```
+
+Then, with the phone on USB and **USB debugging** enabled in Developer options
+(approve the prompt on the phone):
+
+```bash
+"$ANDROID_HOME/platform-tools/adb" devices                     # phone should be listed as "device"
+"$ANDROID_HOME/platform-tools/adb" install -r \
+  android/app/build/outputs/apk/debug/app-debug.apk
+"$ANDROID_HOME/platform-tools/adb" logcat -s Capacitor:V chromium:V   # web view logs while you use it
+```
 
 ## Pointing at the real backend
 
