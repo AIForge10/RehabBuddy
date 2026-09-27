@@ -1,8 +1,9 @@
 """POST /auth/google: sign in (or sign up) with a Google account.
 
 The frontend's "Sign in with Google" button hands us Google's ID token (a signed JWT).
-We check its signature, audience (GOOGLE_CLIENT_ID) and expiry with Google's library,
-and trust the email only if Google says it is verified, so no OTP is needed.
+We check its signature, audience (GOOGLE_CLIENT_ID, or GOOGLE_IOS_CLIENT_ID from the iPhone app)
+and expiry with Google's library, and trust the email only if Google says it is verified, so no
+OTP is needed.
 
 Existing email -> logged in (and marked verified when OTP_REQUIRED is on). New email ->
 account created with the role picked on the sign-up screen (patient by default) and no
@@ -34,12 +35,19 @@ class GoogleRequest(BaseModel):
     language: Literal["en", "es"] = "en"
 
 
+def _client_ids() -> list[str]:
+    # The web client (the website, and the Android app, which asks Google for a token for it)
+    # plus the iOS client: on iPhone the token is issued to the iOS app's own client id.
+    ids = [os.getenv("GOOGLE_CLIENT_ID", ""), os.getenv("GOOGLE_IOS_CLIENT_ID", "")]
+    return [i.strip() for i in ids if i.strip()]
+
+
 def _verify(credential: str) -> dict:
-    client_id = os.getenv("GOOGLE_CLIENT_ID")
-    if not client_id:
+    client_ids = _client_ids()
+    if not os.getenv("GOOGLE_CLIENT_ID", "").strip():
         raise HTTPException(503, "Google sign-in is not configured on the server")
     try:
-        claims = id_token.verify_oauth2_token(credential, _transport, client_id)
+        claims = id_token.verify_oauth2_token(credential, _transport, client_ids)
     except ValueError:   # bad signature, wrong audience, expired, wrong issuer
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Invalid Google sign-in")
     if not claims.get("email") or not claims.get("email_verified"):
