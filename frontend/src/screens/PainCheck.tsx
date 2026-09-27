@@ -143,6 +143,8 @@ export default function PainCheck() {
                   type="button"
                   onClick={() => setScore(n)}
                   aria-pressed={selected}
+                  // The ends of the scale carry their meaning, as the labels under it do.
+                  aria-label={n === 0 ? `0, ${s.painNone}` : n === 10 ? `10, ${s.painWorst}` : undefined}
                   className={`relative h-16 rounded-xl text-xl font-bold tabular-nums transition-[background-color,box-shadow,color] duration-200 ${
                     selected ? BAND[band(n)].selected : 'bg-raised text-ink ring-1 ring-line ring-inset hover:ring-line-strong'
                   }`}
