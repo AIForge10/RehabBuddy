@@ -42,7 +42,8 @@ export function Recap({ sessions, target, reps, exercise }: { sessions: SessionR
     )
   }
 
-  const i = hovered ?? pinned ?? n - 1
+  // A picked session from a longer history (another joint's) must not point past this one's end.
+  const i = Math.min(hovered ?? pinned ?? n - 1, n - 1)
   const cur = ordered[i]
   const prev = i > 0 ? ordered[i - 1] : null
   const delta = prev ? cur.max_angle - prev.max_angle : 0

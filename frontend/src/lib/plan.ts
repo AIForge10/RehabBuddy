@@ -52,7 +52,8 @@ const STOCK_REASON = 'Pain score at or above 7'
 type Rule = [PlanAction, Partial<Plan>, string, PlanSuggestion['confidence']]
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
-const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+// The viewer's calendar day, as the backend writes it in the clinic's time zone (CLINIC_TIMEZONE).
+const day = (iso: string) => new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 
 /** Degrees gained per session over `peaks`, oldest first (least squares); null under 3 sessions. */
 function trend(peaks: number[]): number | null {

@@ -167,6 +167,12 @@ export function startListening(language: Language) {
   resume()
 }
 
+/** Turns the microphone off until the next startListening: the patient left the session before it went live. */
+export function stopListening() {
+  armed = false
+  pause()
+}
+
 /**
  * While `active`, calls `onStop` when the patient says it hurts or asks to
  * stop. Returns whether the microphone is listening, for an on-screen hint.

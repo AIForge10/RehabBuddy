@@ -41,7 +41,8 @@ const HOLD_CUE_WINDOW_MS = 700
 // With the pause going well, the coach still mentions it this often, at most.
 const HOLD_REMIND_EVERY = 5
 
-type Phase = 'countdown' | 'running' | 'saving'
+// 'unsaved': the save failed; the session is over and waits on "Try again" or "Continue without saving".
+type Phase = 'countdown' | 'running' | 'saving' | 'unsaved'
 
 /**
  * Whether rep `n` (1-based, in progress) gets a hold cue: the first rep, to
@@ -84,7 +85,6 @@ export function Live({
   const [caption, setCaption] = useState<string | null>(null)
   const [trace, setTrace] = useState<AngleSample[]>([])
   const [best, setBest] = useState(0)
-  const [saveError, setSaveError] = useState(false)
   const [videoEl, setVideoEl] = useState<HTMLVideoElement | null>(null)
 
   const handleVideoRef = useCallback(
@@ -105,7 +105,7 @@ export function Live({
     externalVideo: camera === 'on' ? videoEl : null,
   })
 
-  const finishPose = trackedSession.finish
+  const { finish: finishPose, reset: resetPose } = trackedSession
   const simulated = !POSE_READY || camera !== 'on' || !trackedSession.ready
   const simulatedPose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
 
@@ -145,6 +145,22 @@ export function Live({
     warnings: [] as string[],
   })
 
+  // What the coach has said so far this session, for the per-rep and per-frame
+  // effects below: corrections don't repeat rep after rep.
+  const coached = useRef({
+    reps: 0,
+    streak: 0,
+    missed: true, // so the first rep on target is praised
+    depthAt: -Infinity,
+    speedAt: -Infinity,
+    fastAt: -Infinity,
+    rhythm: false,
+    landedAt: [] as number[],
+    /** The rep the coach last asked for a hold on, and whether the last rep reached the target but left it early. */
+    holdAt: -Infinity,
+    skippedHold: false,
+  })
+
   // The therapist can watch from their dashboard while this runs: angles, reps and cues, never video.
   const { connected: liveShared, end: endLive } = useLivePublisher({
     patientId: assignment.patient_id,
@@ -181,13 +197,16 @@ export function Live({
     if (count === 0) {
       rec.current.startedAt = new Date()
       rec.current.t0 = performance.now()
+      // Reps count from "go": moving into position during the countdown isn't one.
+      resetPose()
+      coached.current.reps = 0
       setPhase('running')
       say('start')
       return
     }
     const id = setTimeout(() => setCount((c) => c - 1), 900)
     return () => clearTimeout(id)
-  }, [phase, count, say])
+  }, [phase, count, say, resetPose])
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -209,19 +228,21 @@ export function Live({
   }, [phase])
 
   const saving = useRef(false)
+  const exited = useRef(false)
+  /** The result that couldn't be saved: "Try again" sends it as it was, "Continue without saving" takes it to the check-in. */
+  const unsaved = useRef<SessionResult | null>(null)
   const finish = useCallback(async () => {
     // The Finish button, the last rep's timer and a pain stop can all land at once: save once.
     if (saving.current) return
     saving.current = true
     const r = rec.current
     setPhase('saving')
-    setSaveError(false)
     // Every tracked frame since "go" goes to the angle_samples hypertable (the
     // tracker also ran through the countdown). Without a camera it saw nothing,
     // so the simulated trace stands in.
     const since = r.startedAt.toISOString()
-    const tracked = finishPose().angle_samples.filter((p) => p.time >= since)
-    const result: SessionResult = {
+    const tracked = unsaved.current ? [] : finishPose().angle_samples.filter((p) => p.time >= since)
+    const result: SessionResult = unsaved.current ?? {
       reps_done: poseRef.current.reps,
       max_angle: Math.round(r.max),
       form_warnings: r.warnings,
@@ -254,13 +275,30 @@ export function Live({
       void warm(painQuestion(exercise, langRef.current, pain), langRef.current)
       // The coach's last line ("Session complete", or stopping for pain) ends before the pain check speaks.
       await untilCoachQuiet()
+      // Left with the X while this was saving: they're already home.
+      if (exited.current) return
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain, demo } })
     } catch {
       saving.current = false
-      setSaveError(true)
-      setPhase('running')
+      unsaved.current = result
+      // The session is over either way: going back to running would keep counting
+      // past the goal, and every rep past it would try the save again.
+      setPhase('unsaved')
     }
   }, [assignment, exercise, navigate, finishPose, endLive])
+  // The save failed even after its retries: the patient can still check in and see
+  // their numbers, on this device only, rather than being stuck on 10 of 10.
+  const continueUnsaved = () => {
+    const result = unsaved.current
+    if (!result || saving.current) return
+    exited.current = true
+    const pain = stoppedForPain.current
+    endLive(pain ? 'pain' : 'finished')
+    navigate('/pain-check', {
+      state: { sessionId: `unsaved-${rec.current.startedAt.getTime()}`, result, assignment, stoppedForPain: pain, demo: true, unsaved: true },
+    })
+  }
+
   // For timers, which would otherwise call the finish of the render that set them.
   const finishRef = useRef(finish)
   useEffect(() => {
@@ -277,7 +315,7 @@ export function Live({
     }
     void finishRef.current()
   }, [say])
-  const listening = useStopRequest(phase === 'running', lang, stopForPain)
+  const listening = useStopRequest(phase === 'running' || phase === 'unsaved', lang, stopForPain)
 
   const getRandomEncouragement = useRandomSelector<CoachCue>([
     'good_rep',
@@ -312,21 +350,29 @@ export function Live({
   ])
   const getRandomHold = useRandomSelector<CoachCue>([...HOLD_CUES])
 
-  // What the coach has said so far this session, for the per-rep and per-frame
-  // effects below: corrections don't repeat rep after rep.
-  const coached = useRef({
-    reps: 0,
-    streak: 0,
-    missed: true, // so the first rep on target is praised
-    depthAt: -Infinity,
-    speedAt: -Infinity,
-    fastAt: -Infinity,
-    rhythm: false,
-    landedAt: [] as number[],
-    /** The rep the coach last asked for a hold on, and whether the last rep reached the target but left it early. */
-    holdAt: -Infinity,
-    skippedHold: false,
-  })
+  // The tracker took over from simulated angles mid-session (the pose model
+  // finished loading after "go"). What the simulation showed wasn't the patient,
+  // so none of it is kept: the reps, the best angle and the trace start again
+  // from the camera, and only the camera's numbers are saved.
+  const wasSimulated = useRef(simulated)
+  useEffect(() => {
+    if (wasSimulated.current && !simulated && phase === 'running') {
+      const r = rec.current
+      r.samples = []
+      r.max = 0
+      r.repPeak = 0
+      r.reachedAt = 0
+      r.inZoneUntil = 0
+      r.holdDone = false
+      r.warnings = []
+      const c = coached.current
+      c.reps = 0
+      resetPose()
+      setTrace([])
+      setBest(0)
+    }
+    wasSimulated.current = simulated
+  }, [simulated, phase, resetPose])
 
   const angle = pose.angle
 
@@ -459,6 +505,7 @@ export function Live({
 
   const reached = angle != null && angle >= target - REACHED_WITHIN
   const exit = () => {
+    exited.current = true
     stopCoach()
     endLive('exited')
     navigate('/')
@@ -574,10 +621,18 @@ export function Live({
               {warningLabel(pose.form_warning, lang)}
             </div>
           )}
-          {saveError && (
-            <p role="alert" className="animate-rise rounded-full bg-critical-soft px-4 py-2 text-sm font-bold text-critical shadow-lg">
-              {s.saveError}
-            </p>
+          {phase === 'unsaved' && (
+            <div role="alert" className="flex animate-rise flex-col items-center gap-2 rounded-2xl bg-critical-soft px-4 py-3 text-center shadow-lg">
+              <p className="text-sm font-bold text-critical">{s.saveError}</p>
+              <div className="flex flex-wrap justify-center gap-2">
+                <button type="button" onClick={finish} className="h-10 rounded-lg bg-critical px-4 text-sm font-bold text-white active:scale-[0.98]">
+                  {s.saveRetry}
+                </button>
+                <button type="button" onClick={continueUnsaved} className="h-10 rounded-lg px-4 text-sm font-bold text-critical ring-1 ring-critical/40 active:scale-[0.98]">
+                  {s.saveSkip}
+                </button>
+              </div>
+            </div>
           )}
           {phase !== 'countdown' && angle == null && <p className="rounded-full bg-black/60 px-4 py-2 text-sm backdrop-blur-md">{copy.hidden}</p>}
           {caption && phase !== 'countdown' && (

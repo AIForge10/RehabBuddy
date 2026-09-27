@@ -81,14 +81,20 @@ function Dashboard() {
   // Poll for the live-update effect; pause while the tab is hidden.
   useEffect(() => {
     let alive = true
+    // Responses can land out of order (a slow poll that began before a plan was
+    // saved finishing after the reload that follows it); an older one is dropped.
+    let sent = 0
+    let shown = 0
     // `quiet` right after a plan edit: it runs even in a hidden tab, and a plan
     // on another joint lists that joint's sessions, which are old even if this
     // dashboard hasn't shown them.
     const load = async (quiet = false) => {
       if (document.hidden && seen.current && !quiet) return
+      const mine = ++sent
       try {
         const res = await getDashboard(therapistId)
-        if (!alive) return
+        if (!alive || mine < shown) return
+        shown = mine
         const ids = res.patients.flatMap((p) => p.sessions.map((s) => ({ id: s.id, patient: p.patient.id })))
         if (seen.current && !quiet) {
           const added = ids.filter((x) => !seen.current!.has(x.id))
@@ -104,7 +110,7 @@ function Dashboard() {
         setError(false)
         setLastOk(Date.now())
       } catch {
-        if (alive) setError(true)
+        if (alive && mine > shown) setError(true)
       }
     }
     load()
@@ -193,7 +199,7 @@ function Dashboard() {
           <section aria-label="Red flags" className="mt-8 animate-rise overflow-hidden rounded-2xl bg-critical-soft ring-1 ring-critical/25">
             {alerts.map((a) => (
               <button
-                key={a.session_id}
+                key={`${a.session_id} ${a.created_at}`}
                 onClick={() => pick(a.patient_id, a.session_id)}
                 className="flex w-full items-center gap-3 border-b border-critical/15 px-5 py-3.5 text-left transition-colors last:border-0 hover:bg-critical/5"
               >
@@ -525,7 +531,7 @@ function PatientDetail({
   const done = Math.round(p.adherence_7d * assignment.times_per_week)
   const gain = latest && first ? Math.round((latest.max_angle - first.max_angle) * 10) / 10 : 0
   const latestPain = sessions.find((s) => s.pain_score != null)
-  const rehabDay = Math.max(1, Math.round((now - Date.parse(patient.start_date)) / DAY_MS))
+  const rehabDay = Math.max(1, Math.floor((now - Date.parse(patient.start_date)) / DAY_MS)) // as the plan suggestion counts it
   const flagged = recentFlags(p, now).length > 0
   const pickedHere = picked && picked.latest === latest?.id ? sessions.find((s) => s.id === picked.id) : undefined
   const replayed = pickedHere ?? latest
@@ -541,7 +547,8 @@ function PatientDetail({
 
   async function regenerate() {
     setRegenerating(true)
-    setSummary(await getSummary(patient.id))
+    const res = await getSummary(patient.id)
+    if (res) setSummary(res)
     setRegenerating(false)
   }
 
@@ -562,8 +569,9 @@ function PatientDetail({
   // A new plan went out, from the editor or an approved suggestion.
   const planSent = () => {
     setSentAt(Date.now())
-    setSummary(null) // the drafted summary quotes the old plan
     onPlanSaved()
+    // The summary on screen quotes the old plan; a fresh one reads the new.
+    void regenerate()
   }
 
   return (

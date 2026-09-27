@@ -9,7 +9,8 @@
 //
 // Plan rule: "every AI call needs a fallback response so a quota error never
 // breaks the demo". painCheck / getSummary / translate therefore never throw;
-// they fall back to a local template if the backend call fails.
+// they fall back to a local template if the backend call fails (getSummary to
+// null, so the dashboard keeps the summary it already shows).
 
 import type {
   AngleSampleRow,
@@ -35,7 +36,7 @@ import type {
   StorageStats,
 } from '../types/session'
 import { saveToken } from '../lib/native'
-import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
+import { mockBackend, fallbackPainCheck, fallbackWeeklyRecap } from './mock'
 import type { PlanSuggestion } from '../types/session'
 import { suggestPlan } from '../lib/plan'
 
@@ -96,9 +97,9 @@ export function onUnauthorized(fn: () => void) {
 export { API_URL }
 export const getAuthToken = () => token
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+async function request<T>(path: string, init?: RequestInit, timeoutMs = TIMEOUT_MS): Promise<T> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
   try {
     const res = await fetch(`${API_URL}${path}`, {
       ...init,
@@ -154,9 +155,28 @@ export function getPatientOverview(patientId: UUID, joint?: Joint): Promise<Pati
   return request<PatientOverview>(`/patients/${patientId}/overview${qs}`)
 }
 
-export function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
+// Saving a finished session is the one request a patient can't simply redo: it
+// carries every angle frame (a few hundred KB on a long session), so it gets
+// longer to upload over venue wifi, and two more tries after a network error,
+// a timeout or a server error. The backend keeps one session per start time,
+// so a retry after a save that did land (only the reply was lost) returns that
+// session instead of saving a second.
+const SAVE_TIMEOUT_MS = 20_000
+const SAVE_TRIES = 3
+
+export async function createSession(body: CreateSessionRequest): Promise<CreateSessionResponse> {
   if (USE_MOCKS) return mockBackend.createSession(body)
-  return post<CreateSessionResponse>('/sessions', body)
+  const json = JSON.stringify(body)
+  for (let attempt = 1; ; attempt++) {
+    try {
+      return await request<CreateSessionResponse>('/sessions', { method: 'POST', body: json }, SAVE_TIMEOUT_MS)
+    } catch (err) {
+      const retry = !(err instanceof ApiError) || err.status >= 500
+      if (!retry || attempt >= SAVE_TRIES) throw err
+      console.warn(`[api] saving the session failed (try ${attempt} of ${SAVE_TRIES}), trying again`, err)
+      await new Promise((r) => setTimeout(r, 1000 * attempt))
+    }
+  }
 }
 
 export function getDashboard(therapistId: UUID): Promise<DashboardResponse> {
@@ -230,13 +250,14 @@ export async function coachLine(text: string, language: Language): Promise<strin
   }
 }
 
-export async function getSummary(patientId: UUID): Promise<SummaryResponse> {
+/** A freshly written summary, or null when the request failed: the one already on screen is better than none. */
+export async function getSummary(patientId: UUID): Promise<SummaryResponse | null> {
   if (USE_MOCKS) return mockBackend.getSummary(patientId)
   try {
     return await post<SummaryResponse>('/summary', { patient_id: patientId })
   } catch (err) {
-    console.warn('[api] /summary failed, using fallback', err)
-    return fallbackSummary()
+    console.warn('[api] /summary failed, keeping the summary shown', err)
+    return null
   }
 }
 

@@ -62,15 +62,30 @@ export default function Welcome() {
   )
 }
 
-/** One-tap demo sign-in; the signed-in account makes the route redirect. */
+/** One-tap demo sign-in; the signed-in account makes the route redirect. A failure says so, rather than the spinner just stopping. */
 function useDemo() {
   const { demoSignIn } = useAuth()
   const [pending, setPending] = useState<Role | null>(null)
+  const [failed, setFailed] = useState(false)
   const start = (role: Role) => {
     setPending(role)
-    demoSignIn(role).catch(() => setPending(null))
+    setFailed(false)
+    demoSignIn(role).catch(() => {
+      setPending(null)
+      setFailed(true)
+    })
   }
-  return { pending, start }
+  return { pending, failed, start }
+}
+
+function DemoFailed({ onDark = false }: { onDark?: boolean }) {
+  const { s } = useLanguage()
+  // On the dark closing band the page's red is too dim to read; the band's own ink is used there.
+  return (
+    <p role="alert" className={`mt-4 text-[15px] font-semibold ${onDark ? 'text-on-hero' : 'text-critical'}`}>
+      {s.demoFailed}
+    </p>
+  )
 }
 
 /** Splash: the leg swings in, the wordmark wipes on, then the page shows through. Tap to skip. */
@@ -202,6 +217,7 @@ function Hero() {
             </span>
           </span>
         </button>
+        {demo.failed && <DemoFailed />}
         <p className="mt-4 text-[15px] text-ink-2 sm:hidden">
           {s.haveAccount}{' '}
           <Link to="/login" className="font-bold text-brand-ink underline-offset-4 hover:underline">
@@ -430,6 +446,7 @@ function Finale() {
               {s.ctaTherapist}
               <ArrowRight size={15} className="transition-transform duration-200 group-hover:translate-x-0.5" />
             </button>
+            {demo.failed && <DemoFailed onDark />}
           </div>
         </div>
       </div>

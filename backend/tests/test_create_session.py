@@ -29,12 +29,16 @@ class FakeDb:
         # Maria's current plan, and an older one of hers from before a plan change.
         self.owned = {("a-maria", "p-maria"), ("a-maria-old", "p-maria"), ("a-james", "p-james")}
         self.saved = None
+        self.stored = []  # (session id, patient id, started_at, samples) already in the database
 
     @contextmanager
     def connect(self):
         yield self
 
     def execute(self, sql, params=None):
+        if "FROM sessions s WHERE" in sql:
+            return Rows([{"id": sid, "n": n} for sid, pid, at, n in self.stored
+                         if (pid, at) == (params[0], params[1].isoformat())])
         if "FROM assignments" in sql:
             return Rows([{"?column?": 1}] if tuple(params) in self.owned else [])
         if "INSERT INTO sessions" in sql:
@@ -79,3 +83,18 @@ def test_a_session_is_only_linked_to_the_patients_own_plan(client, db, sent, kep
 def test_an_unknown_joint_is_refused(client, db):
     assert client.post("/api/v1/sessions", json={**BODY, "joint": "ankle"}).status_code == 422
     assert db.saved is None
+
+
+def test_a_retried_save_returns_the_session_already_saved(client, db):
+    db.stored.append(("s-first", "p-maria", "2026-09-26T18:00:00+00:00", 600))
+    res = client.post("/api/v1/sessions", json=BODY)
+    assert res.status_code == 200
+    assert res.json() == {"session_id": "s-first", "angle_samples_saved": 600}
+    assert db.saved is None  # nothing inserted a second time
+
+
+def test_another_start_time_is_a_new_session(client, db):
+    db.stored.append(("s-first", "p-maria", "2026-09-26T17:00:00+00:00", 600))
+    res = client.post("/api/v1/sessions", json=BODY)
+    assert res.status_code == 200 and res.json()["session_id"] != "s-first"
+    assert db.saved is not None

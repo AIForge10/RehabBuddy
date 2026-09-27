@@ -17,8 +17,10 @@ export interface SessionFlowState {
   assignment: Assignment
   /** The patient stopped mid-way by saying it hurts (Live). The check-in leads with it and it's always flagged. */
   stoppedForPain?: boolean
-  /** A demo-mode session (simulated angles): nothing was saved, so the check-in stays on this device too. */
+  /** A demo-mode session (simulated angles), or one that couldn't be saved: the check-in stays on this device too. */
   demo?: boolean
+  /** The session was real but its save failed and the patient carried on without it. */
+  unsaved?: boolean
   pain?: { score: number; response: PainCheckResponse }
 }
 
@@ -123,7 +125,7 @@ export default function PainCheck() {
           )
         }
         title={painTitle}
-        sub={stopped ? s.painStoppedSub : mic ? s.painSubVoice : s.painSub}
+        sub={stopped ? (demo ? s.painStoppedSubLocal : s.painStoppedSub) : mic ? s.painSubVoice : demo ? s.painSubLocal : s.painSub}
       />
 
       <fieldset className="mt-8" disabled={locked}>
@@ -199,7 +201,7 @@ export default function PainCheck() {
 
       {!response ? (
         <Button onClick={submit} disabled={score == null || sending} className="mt-6 w-full">
-          {sending ? s.painSending : s.painSubmit}
+          {sending ? s.painSending : demo ? s.continue : s.painSubmit}
         </Button>
       ) : (
         <div aria-live="polite" className="mt-8 animate-rise">
@@ -209,7 +211,7 @@ export default function PainCheck() {
                 <circle cx="8" cy="8" r="7" fill="currentColor" />
                 <path d="M8 4.5v4.2M8 11v.3" className="stroke-critical-soft" strokeWidth="1.8" strokeLinecap="round" />
               </svg>
-              {s.painFlagged}
+              {demo ? s.painFlaggedLocal : s.painFlagged}
             </p>
           )}
           <div className="flex gap-3">

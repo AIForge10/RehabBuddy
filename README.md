@@ -30,7 +30,7 @@ database/   Tiger Data (PostgreSQL + TimescaleDB): schema, demo data, the SQL be
 ml/         The angle prototype and accuracy validation notes.
 scripts/    Pre-generates the coach's voice clips; smoke-tests a deployed backend.
 docs/       Auth rules, the Devpost text, the pitch.
-.do/        DigitalOcean App Platform spec: API service + static site on bendwith.us.
+.do/        DigitalOcean App Platform spec: the API service and the static site.
 ```
 
 ### Sponsor technology, and exactly where it runs
@@ -40,7 +40,7 @@ docs/       Auth rules, the Devpost text, the pitch.
 | **Gemini API** | `backend/api/services/*`, `backend/api/data/plan_suggestion.py`, `backend/api/prompts/` | Plan suggestion with structured output and a rules layer that can override it; weekly summary; weekly recap; pain-check reply; pain-voice extraction (score, symptoms, note from a transcript); translation. Every call has a template fallback so the demo never 500s. |
 | **ElevenLabs** | `scripts/generate_audio.py`, `backend/api/services/tts_service.py`, `backend/api/services/stt_service.py`, `frontend/src/lib/coach.ts` | 130 pre-generated multilingual cue clips (`eleven_multilingual_v2`), streaming replies that play before synthesis finishes (`eleven_flash_v2_5`), Scribe speech-to-text for the spoken pain check. One voice speaks both languages. |
 | **Tiger Data** | `database/sample_data/schema.sql`, `backend/api/data/queries.py`, `backend/api/data/storage.py` | Every angle frame of every session in an `angle_samples` hypertable; a real-time continuous aggregate (`session_angle_1m`) the plan suggestion reads; `time_bucket` at 100 ms, 1 min and 1 day; columnstore compression on chunks older than a day (about 7 to 1); the access rule as one SQL function. The clinic dashboard's Data card shows the live numbers. |
-| **DigitalOcean** | `.do/app.yaml` | API on App Platform (single instance, in-memory live hub) and the web app as a static site, both on bendwith.us. |
+| **DigitalOcean** | `.do/app.yaml` | The API on App Platform (single instance, in-memory live hub) and the web app as a static site on bendwith.us. |
 | **GoDaddy Registry** | bendwith.us | The `.us` zone is run by GoDaddy Registry. |
 
 ## Run it
@@ -60,7 +60,10 @@ Web app (`VITE_USE_MOCKS=true` in `frontend/.env` runs the whole UI with no back
 cd frontend && cp .env.example .env && npm install && npm run dev
 ```
 
-Tests: `cd backend && pytest`. Smoke-test a deployment: `python scripts/smoke_test.py <url>`.
+Tests: `pip install pytest && cd backend && python -m pytest` (no database, Gemini or ElevenLabs
+needed). Two more run against the database in `DATABASE_URL` and write to it: `RUN_DB_TESTS=1`
+turns them on, so point it at a scratch database, not the live demo. Smoke-test a deployment:
+`python scripts/smoke_test.py <url>`.
 Phone apps: see [mobile/README.md](mobile/README.md).
 
 Rehearsing on the live app leaves rows behind (a session from a camera test, a plan left on

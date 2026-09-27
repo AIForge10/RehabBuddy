@@ -64,7 +64,8 @@ CREATE INDEX IF NOT EXISTS angle_samples_session ON angle_samples (session_id, t
 -- ★ Columnstore compression. A session's samples are written once, when it ends, and never
 -- change, so chunks older than a day are compressed: segmented by session, so a replay
 -- reads one session's compressed rows without touching the others, and ordered by time,
--- so the angle deltas pack tightly (a 30 fps trace compresses about 10 to 1). Reads and
+-- so the angle deltas pack tightly (about 7 to 1 on the demo data; the clinic dashboard's
+-- Data card shows the live figure). Reads and
 -- new inserts work on compressed chunks; the policy runs hourly.
 ALTER TABLE angle_samples SET (timescaledb.compress,
   timescaledb.compress_segmentby = 'session_id', timescaledb.compress_orderby = 'time');

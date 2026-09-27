@@ -5,7 +5,7 @@ import { useAuth } from '../lib/auth'
 import { unlockAudio } from '../lib/coach'
 import { assignmentFor, exerciseFor, type BodyPart } from '../lib/exercises'
 import { useLanguage } from '../lib/language'
-import { startListening } from '../lib/listen'
+import { startListening, stopListening } from '../lib/listen'
 import { keepAwake } from '../lib/native'
 import { useCamera } from '../lib/useCamera'
 import { preloadPose } from '../pose'
@@ -54,6 +54,10 @@ export default function ExerciseSession() {
     window.scrollTo(0, 0)
   }, [step])
 
+  // The tap into setup opened the microphone; leaving the flow (or going back to
+  // the brief) closes it, even if the session never went live.
+  useEffect(() => stopListening, [])
+
   if (!assignment) return null
   const exercise = exerciseFor(part ?? assignment.exercise.joint)
   const session = assignmentFor(assignment, exercise)
@@ -74,6 +78,10 @@ export default function ExerciseSession() {
     unlock()
     setStep('live')
   }
-  if (step === 'setup') return <Setup exercise={exercise} camera={status} attach={attach} onStart={start} onBack={() => setStep('brief')} />
+  const back = () => {
+    stopListening()
+    setStep('brief')
+  }
+  if (step === 'setup') return <Setup exercise={exercise} camera={status} attach={attach} onStart={start} onBack={back} />
   return <Live assignment={session} exercise={exercise} camera={status} attach={attach} />
 }

@@ -44,8 +44,8 @@ by clinical rules. Nothing reaches the patient until the therapist approves it.
   serves the 10 Hz replay and the daily trend chart, columnstore compression shrinks finished sessions
   about 7 to 1, and the who-can-see-whom rule is one SQL function the backend calls on every request.
   The clinic dashboard's Data card shows those numbers live from the database's own catalog.
-- **DigitalOcean App Platform** runs the FastAPI backend and serves the web app, from the app spec in
-  the repo, on **bendwith.us**, a `.us` domain from GoDaddy Registry.
+- **DigitalOcean App Platform** runs the FastAPI backend and serves the web app on **bendwith.us**, a
+  `.us` domain from GoDaddy Registry.
 - FastAPI backend with JWT auth, WebSocket in and Server-Sent Events out for live sessions.
 
 ## Challenges we ran into
