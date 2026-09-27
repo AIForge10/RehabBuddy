@@ -54,9 +54,19 @@ function greeting() {
   return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'
 }
 
+/**
+ * Keyed by the signed-in therapist: switching accounts in place (the empty
+ * caseload's "Open the demo clinic") starts the dashboard over, rather than
+ * treating the new caseload's sessions as ones that just arrived.
+ */
 export default function TherapistDashboard() {
   const { account } = useAuth()
-  const therapistId = account!.id // RequireAuth only renders this screen signed in
+  return <Dashboard key={account!.id} /> // RequireAuth only renders this screen signed in
+}
+
+function Dashboard() {
+  const { account } = useAuth()
+  const therapistId = account!.id
   const [data, setData] = useState<DashboardResponse | null>(null)
   const [error, setError] = useState(false)
   const [lastOk, setLastOk] = useState<number | null>(null)
@@ -216,6 +226,7 @@ export default function TherapistDashboard() {
               <PatientList patients={patients} selectedId={selected?.patient.id} onSelect={selectPatient} now={now} fresh={fresh} live={live} />
               <DataCard therapistId={therapistId} sessionCount={patients.reduce((n, p) => n + p.sessions.length, 0)} />
             </div>
+            {patients.length === 0 && <EmptyCaseload />}
             {selected && (
               <PatientDetail
                 key={selected.patient.id}
@@ -261,6 +272,37 @@ function LiveIndicator({ error, lastOk, now }: { error: boolean; lastOk: number 
       {error ? 'Reconnecting…' : 'Live'}
       {secs != null && !error && <span className="tabular-nums text-muted">· {secs}s ago</span>}
     </span>
+  )
+}
+
+/**
+ * A therapist who just signed up has nobody yet (patient sign-ups join the
+ * therapist in SIGNUP_THERAPIST_ID, if any), so offer the demo clinic.
+ */
+function EmptyCaseload() {
+  const { demoSignIn } = useAuth()
+  const [pending, setPending] = useState(false)
+  const [failed, setFailed] = useState(false)
+  const open = () => {
+    setPending(true)
+    setFailed(false)
+    demoSignIn('therapist').catch(() => {
+      setPending(false)
+      setFailed(true)
+    })
+  }
+  return (
+    <section className="animate-rise rounded-3xl bg-surface p-7 ring-1 ring-line sm:p-9">
+      <h2 className="text-2xl font-bold tracking-tight">No patients yet</h2>
+      <p className="mt-3 max-w-xl text-lg leading-relaxed text-ink-2">
+        Patients show up here once they’re on your caseload, with every session measured to the degree. To see what that looks like,
+        open the demo clinic: three patients with two weeks of sessions, with trends, replays, a pain red flag and a plan to review.
+      </p>
+      <button type="button" onClick={open} disabled={pending} className={`mt-6 ${buttonClass('primary', 'md')}`}>
+        {pending ? 'Opening…' : 'Open the demo clinic'}
+      </button>
+      {failed && <p className="mt-3 text-[15px] text-critical">Couldn’t open the demo clinic. Try again.</p>}
+    </section>
   )
 }
 
