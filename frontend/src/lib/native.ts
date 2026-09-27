@@ -40,3 +40,15 @@ export async function darkStatusBar(_on: boolean): Promise<void> {}
 export function speechRecognizer(): RecognizerClass | undefined {
   return undefined
 }
+
+/**
+ * Listen for the native hardware/gesture back button (Android / Capacitor).
+ * On the web, this is a no-op.
+ * Returns an unregister function.
+ */
+export function onNativeBackButton(_onBack: (event: { canGoBack: boolean }) => void | Promise<void>): () => void {
+  return () => {}
+}
+
+/** Close or minimize the app when at the root of the navigation stack. */
+export async function exitNativeApp(): Promise<void> {}

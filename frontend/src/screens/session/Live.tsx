@@ -508,7 +508,7 @@ export function Live({
     exited.current = true
     stopCoach()
     endLive('exited')
-    navigate('/')
+    navigate('/', { replace: true })
   }
 
   return (

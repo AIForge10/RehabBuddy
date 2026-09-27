@@ -24,11 +24,13 @@ export function Brief({
   exercise,
   onPick,
   onNext,
+  onBack,
 }: {
   assignment: Assignment
   exercise: Exercise
   onPick: (part: BodyPart) => void
   onNext: () => void
+  onBack?: () => void
 }) {
   const { s, lang } = useLanguage()
   const copy = exercise.copy[lang]
@@ -47,7 +49,7 @@ export function Brief({
 
   return (
     <PatientScreen wide>
-      <StepHeader step={1} title={copy.name} sub={copy.briefSub(assignment.reps, target)} />
+      <StepHeader step={1} title={copy.name} sub={copy.briefSub(assignment.reps, target)} onBack={onBack} />
 
       <div className="mt-7">
         <JointPicker value={exercise.part} onChange={onPick} />

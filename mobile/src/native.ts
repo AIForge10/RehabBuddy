@@ -5,6 +5,7 @@
 // plugin that fails leaves the app working as the website would.
 
 import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle, type PluginListenerHandle } from '@capacitor/core'
+import { App } from '@capacitor/app'
 import { KeepAwake } from '@capacitor-community/keep-awake'
 import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage'
 import type { Recognizer, RecognizerClass } from '../../frontend/src/lib/recognizer'
@@ -123,4 +124,28 @@ class NativeRecognizer implements Recognizer {
 
 export function speechRecognizer(): RecognizerClass | undefined {
   return Capacitor.getPlatform() === 'ios' ? NativeRecognizer : undefined
+}
+
+export function onNativeBackButton(onBack: (event: { canGoBack: boolean }) => void | Promise<void>): () => void {
+  const handlePromise = App.addListener('backButton', (event) => {
+    console.log('[native] backButton event from Capacitor:', event)
+    void onBack(event)
+  })
+
+  return () => {
+    void handlePromise.then((handle) => handle.remove())
+  }
+}
+
+export async function exitNativeApp(): Promise<void> {
+  if (Capacitor.getPlatform() === 'ios') {
+    console.log('[native] exitNativeApp skipped: iOS manages app lifecycle via system gestures')
+    return
+  }
+  try {
+    console.log('[native] exitNativeApp calling App.exitApp()')
+    await App.exitApp()
+  } catch (err) {
+    console.warn('[native] exitApp failed:', err)
+  }
 }
