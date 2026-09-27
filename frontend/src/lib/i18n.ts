@@ -262,6 +262,7 @@ const strings = {
     ctaBody: 'Create an account in a minute, or look around with the demo.',
     ctaDemo: 'Try the demo',
     ctaTherapist: 'Or open the therapist dashboard',
+    demoFailed: 'Couldn’t open the demo. Check your connection and try again.',
     builtWith: 'Built with MediaPipe, ElevenLabs, Gemini and Tiger Data.',
     sources: 'Sources',
     sourceList: [
@@ -555,6 +556,7 @@ const strings = {
     ctaBody: 'Crea una cuenta en un minuto o explora la demostración.',
     ctaDemo: 'Probar la demo',
     ctaTherapist: 'O abre el panel del terapeuta',
+    demoFailed: 'No se pudo abrir la demo. Revisa tu conexión e inténtalo de nuevo.',
     builtWith: 'Hecho con MediaPipe, ElevenLabs, Gemini y Tiger Data.',
     sources: 'Fuentes',
     sourceList: [
