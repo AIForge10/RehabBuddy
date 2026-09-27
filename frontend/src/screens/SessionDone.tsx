@@ -130,7 +130,7 @@ export default function SessionDone() {
           <Section title={s.doneProgress} aside={<span className="font-medium text-muted">{copy.bestSub}</span>} className="flex-1">
             {history && history.sessions.length > 1 ? (
               <div className="mt-5 animate-rise">
-                <RomChart sessions={history.sessions} target={target} targetLabel={`${s.target} ${target}°`} compact highlightLatest />
+                <RomChart sessions={history.sessions} target={target} targetLabel={`${s.target} ${target}°`} locale={s.locale} compact highlightLatest />
               </div>
             ) : (
               <p className="mt-4 max-w-[36ch] text-lg text-ink-2">{history ? s.oneMore : ''}</p>

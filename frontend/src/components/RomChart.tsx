@@ -49,16 +49,19 @@ export function RomChart({
   targetLabel = `Target ${target}°`,
   compact = false,
   highlightLatest = false,
+  locale,
 }: {
   sessions: SessionRecord[]
   target: number
   targetLabel?: string
   compact?: boolean
   highlightLatest?: boolean
+  /** For the dates on the axis; the therapist's dashboard is in English. */
+  locale?: string
 }) {
   const c = useThemeColors()
   const sorted = [...sessions].sort((a, b) => a.started_at.localeCompare(b.started_at))
-  const data: Point[] = sorted.map((s, i) => ({ ...s, label: shortDate(s.started_at), latest: i === sorted.length - 1 }))
+  const data: Point[] = sorted.map((s, i) => ({ ...s, label: shortDate(s.started_at, locale), latest: i === sorted.length - 1 }))
 
   const values = data.map((d) => d.max_angle)
   const lo = Math.floor((Math.min(target, ...values) - 10) / 10) * 10

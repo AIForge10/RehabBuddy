@@ -13,6 +13,7 @@ export function timeAgo(iso: string, now = Date.now()): string {
   return days === 1 ? 'yesterday' : `${days} days ago`
 }
 
-export function shortDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+/** "Sep 26", or "26 sept" in Spanish (es-ES). */
+export function shortDate(iso: string, locale = 'en-US'): string {
+  return new Date(iso).toLocaleDateString(locale, { month: 'short', day: 'numeric' })
 }
