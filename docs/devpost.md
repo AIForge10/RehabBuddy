@@ -35,7 +35,7 @@ by clinical rules. Nothing reaches the patient until the therapist approves it.
   answers the pain check-in, and extracts the score and symptoms from a spoken answer. A rules layer
   overrides any suggestion that would progress a patient after a red flag. Every call has a template
   fallback, so the app never shows an error during a session.
-- **ElevenLabs** gives the coach one voice in English and Spanish: 122 cue lines pre-generated with
+- **ElevenLabs** gives the coach one voice in English and Spanish: 130 cue lines pre-generated with
   `eleven_multilingual_v2`, live replies streamed with `eleven_flash_v2_5` so audio starts before
   synthesis finishes, and Scribe speech-to-text for the spoken pain check-in. The audio is transcribed
   once and never stored.
