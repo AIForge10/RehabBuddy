@@ -60,7 +60,10 @@ Web app (`VITE_USE_MOCKS=true` in `frontend/.env` runs the whole UI with no back
 cd frontend && cp .env.example .env && npm install && npm run dev
 ```
 
-Tests: `cd backend && pytest`. Smoke-test a deployment: `python scripts/smoke_test.py <url>`.
+Tests: `pip install pytest && cd backend && python -m pytest` (no database, Gemini or ElevenLabs
+needed). Two more run against the database in `DATABASE_URL` and write to it: `RUN_DB_TESTS=1`
+turns them on, so point it at a scratch database, not the live demo. Smoke-test a deployment:
+`python scripts/smoke_test.py <url>`.
 Phone apps: see [mobile/README.md](mobile/README.md).
 
 Rehearsing on the live app leaves rows behind (a session from a camera test, a plan left on
