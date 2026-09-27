@@ -282,7 +282,8 @@ const delay = <T>(value: T, ms = 150) => new Promise<T>((r) => setTimeout(() => 
 // Keyword + score rule shared by the mock and the offline fallback.
 const RED_FLAG_WORDS = ['sharp', 'swelling', 'swollen', 'pop', 'numb', 'agudo', 'hinchado', 'hinchazón']
 
-export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
+/** `told`: the flag reached the therapist (the mock backend stores it); the offline fallback and demo sessions don't send anything. */
+export function fallbackPainCheck(body: PainCheckRequest, told = false): PainCheckResponse {
   const notes = body.notes.toLowerCase()
   const word = RED_FLAG_WORDS.find((w) => notes.includes(w))
   // A session stopped for pain is flagged whatever the score, as in the backend's rule.
@@ -291,9 +292,13 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
   if (flagged) {
     return {
       flagged: true,
-      reply: es
-        ? 'Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy.'
-        : "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today.",
+      reply: told
+        ? es
+          ? 'Gracias por decírmelo. He avisado a tu terapeuta. Descansa y no hagas más ejercicios hoy.'
+          : "Thanks for telling me. I've let your therapist know. Rest now and skip any more exercises today."
+        : es
+          ? 'Gracias por decírmelo. Descansa, no hagas más ejercicios hoy y llama a tu terapeuta si sigue doliendo.'
+          : 'Thanks for telling me. Rest now, skip any more exercises today, and call your therapist if it still hurts.',
       flag_reason: body.stopped_for_pain
         ? `Stopped the session mid-way for pain${body.notes ? `: “${body.notes}”` : ''}`
         : body.notes ? `“${body.notes}”` : word ? `Mentioned “${word}”` : 'Pain score at or above 7',
@@ -491,7 +496,7 @@ export const mockBackend = {
 
   async painCheck(body: PainCheckRequest): Promise<PainCheckResponse> {
     const db = load()
-    const res = fallbackPainCheck(body)
+    const res = fallbackPainCheck(body, true)
     const s = db.sessions.find((x) => x.id === body.session_id)
     if (s) {
       s.pain_score = body.pain_score
