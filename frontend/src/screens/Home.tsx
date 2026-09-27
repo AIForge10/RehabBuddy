@@ -154,7 +154,8 @@ export default function Home() {
             {other && <p className="mt-3 text-sm text-ink-2">{s.offPlanNote}</p>}
           </div>
         )}
-        <Recap sessions={history.sessions} target={historyTarget} reps={assignment.reps} exercise={historyExercise} />
+        {/* Keyed on the joint: a session picked on one joint's chart means nothing on another's. */}
+        <Recap key={historyJoint} sessions={history.sessions} target={historyTarget} reps={assignment.reps} exercise={historyExercise} />
       </div>
 
     </PatientScreen>
