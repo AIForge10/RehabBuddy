@@ -29,10 +29,3 @@ dist/
 .vscode/
 .idea/
 
-# ---------- React Native Android port (BendwithRN/) ----------
-BendwithRN/android/.gradle/
-BendwithRN/android/app/build/
-BendwithRN/android/build/
-BendwithRN/android/local.properties
-BendwithRN/android/app/src/main/assets/*.task
-BendwithRN/.bundle/
