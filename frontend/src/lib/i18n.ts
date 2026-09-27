@@ -145,7 +145,7 @@ const strings = {
     painSub: 'Tap a number. Your therapist sees this.',
     painNone: 'No pain',
     painWorst: 'Worst pain',
-    painLevel: (n: number): string => (n <= 3 ? 'Mild' : n <= 6 ? 'Moderate' : 'Severe'),
+    painLevel: (n: number): string => (n === 0 ? 'None' : n <= 3 ? 'Mild' : n <= 6 ? 'Moderate' : 'Severe'),
     painChips: ['Sharp pain', 'Swelling', 'Stiffness', 'Clicking', 'Felt good'],
     painNotes: 'Add a note (optional)',
     painPlaceholder: 'Anything else your therapist should know?',
@@ -158,7 +158,7 @@ const strings = {
     painSubVoice: 'Tell me, or tap a number. Your therapist sees this.',
     /** What the coach asks as the pain check opens; `title` is the exercise's painTitle. */
     painAsk: (title: string, mic: boolean, stopped: boolean) =>
-      `${stopped ? 'You stopped because it hurt. ' : ''}${title.replace(/\?$/, '')}, from 1 to 10? ${
+      `${stopped ? 'You stopped because it hurt. ' : ''}${title.replace(/\?$/, '')}, from 0 to 10? ${
         mic ? (stopped ? 'Tap the microphone and tell me what you felt.' : 'Tap the microphone and tell me.') : 'Tap a number.'
       }`,
     painStopped: 'Session stopped for pain',
@@ -440,7 +440,7 @@ const strings = {
     painSub: 'Toca un número. Tu terapeuta lo verá.',
     painNone: 'Sin dolor',
     painWorst: 'Dolor máximo',
-    painLevel: (n: number): string => (n <= 3 ? 'Leve' : n <= 6 ? 'Moderado' : 'Fuerte'),
+    painLevel: (n: number): string => (n === 0 ? 'Ninguno' : n <= 3 ? 'Leve' : n <= 6 ? 'Moderado' : 'Fuerte'),
     painChips: ['Dolor agudo', 'Hinchazón', 'Rigidez', 'Chasquidos', 'Me sentí bien'],
     painNotes: 'Añade una nota (opcional)',
     painPlaceholder: '¿Algo más que deba saber tu terapeuta?',
@@ -451,7 +451,7 @@ const strings = {
     continue: 'Continuar',
     painSubVoice: 'Cuéntamelo o toca un número. Tu terapeuta lo verá.',
     painAsk: (title: string, mic: boolean, stopped: boolean) =>
-      `${stopped ? 'Paraste porque te dolía. ' : ''}${title.replace(/\?$/, '')}, del 1 al 10? ${
+      `${stopped ? 'Paraste porque te dolía. ' : ''}${title.replace(/\?$/, '')}, del 0 al 10? ${
         mic ? (stopped ? 'Toca el micrófono y cuéntame qué sentiste.' : 'Toca el micrófono y cuéntamelo.') : 'Toca un número.'
       }`,
     painStopped: 'Sesión detenida por dolor',

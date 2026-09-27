@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 class PainCheckRequest(BaseModel):
     session_id: str
-    pain_score: int = Field(..., ge=1, le=10, description="Pain score 1-10 after the session")
+    pain_score: int = Field(..., ge=0, le=10, description="Pain score 0-10 after the session (0 = no pain)")
     notes: str = ""
     language: Literal["en", "es"] = "en"
     stopped_for_pain: bool = Field(
@@ -36,7 +36,7 @@ Symptom = Literal["sharp", "swelling", "stiffness", "clicking", "felt_good"]
 class PainVoiceExtract(BaseModel):
     """What Gemini pulls out of the patient's spoken answer."""
     pain_score: Optional[int] = Field(
-        None, description="The pain score the patient said, 1 to 10; null if they didn't say a number for it"
+        None, description="The pain score the patient said, 0 to 10; null if they didn't say a number for it"
     )
     symptoms: list[Symptom] = Field(description="Each symptom from the list that the patient described; empty if none")
     notes: str = Field(
@@ -47,7 +47,7 @@ class PainVoiceExtract(BaseModel):
 class PainVoiceResponse(BaseModel):
     """A spoken answer to the pain check, for the patient to review before they send it."""
     transcript: str = Field(description="What the patient said, as speech-to-text heard it; empty when they said nothing")
-    pain_score: Optional[int] = Field(None, ge=1, le=10, description="null when no score was heard; the patient taps one")
+    pain_score: Optional[int] = Field(None, ge=0, le=10, description="null when no score was heard; the patient taps one")
     symptoms: list[Symptom] = []
     notes: str = ""
 

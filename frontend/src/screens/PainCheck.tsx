@@ -22,7 +22,8 @@ export interface SessionFlowState {
   pain?: { score: number; response: PainCheckResponse }
 }
 
-const SCORES = Array.from({ length: 10 }, (_, i) => i + 1)
+// 0-10, the standard numeric rating scale: 0 is no pain.
+const SCORES = Array.from({ length: 11 }, (_, i) => i)
 
 // The chips a spoken answer can turn on, in the same order as s.painChips.
 const SYMPTOMS: PainSymptom[] = ['sharp', 'swelling', 'stiffness', 'clicking', 'felt_good']
@@ -133,7 +134,7 @@ export default function PainCheck() {
           </div>
         )}
         <div className="rounded-3xl bg-surface p-3 ring-1 ring-line sm:p-4">
-          <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-10">
+          <div className="grid grid-cols-6 gap-1.5 sm:grid-cols-11">
             {SCORES.map((n) => {
               const selected = score === n
               return (
@@ -142,6 +143,8 @@ export default function PainCheck() {
                   type="button"
                   onClick={() => setScore(n)}
                   aria-pressed={selected}
+                  // The ends of the scale carry their meaning, as the labels under it do.
+                  aria-label={n === 0 ? `0, ${s.painNone}` : n === 10 ? `10, ${s.painWorst}` : undefined}
                   className={`relative h-16 rounded-xl text-xl font-bold tabular-nums transition-[background-color,box-shadow,color] duration-200 ${
                     selected ? BAND[band(n)].selected : 'bg-raised text-ink ring-1 ring-line ring-inset hover:ring-line-strong'
                   }`}

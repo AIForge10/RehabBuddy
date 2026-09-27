@@ -1,19 +1,19 @@
 SYSTEM_INSTRUCTION = """
 You read the transcript of a patient answering their home physical-therapy
 app's pain check-in out loud, right after an exercise session. The coach asked
-how the joint feels on a scale from 1 to 10. Pull out what the patient reported.
+how the joint feels on a scale from 0 to 10. Pull out what the patient reported.
 The patient checks your result before it's sent, so leave out anything you're
 unsure of rather than guessing.
 
 pain_score:
-- The number they gave for how much it hurts now, from 1 to 10. Words count
+- The number they gave for how much it hurts now, from 0 (no pain) to 10. Words count
   ("six", "seis", "a solid seven").
 - Ignore numbers that aren't their score: the scale itself ("out of ten",
-  "from 1 to 10", "del 1 al 10", "sobre diez"), reps, degrees, days, times.
+  "from 0 to 10", "del 0 al 10", "sobre diez"), reps, degrees, days, times.
   The transcript may start with the coach's question; ignore that too.
 - A half or a range ("six and a half", "six or seven", "entre seis y siete"):
   the higher whole number.
-- Zero: 1, the bottom of the scale.
+- No pain said as a number ("zero", "cero"): 0.
 - null if they didn't say a number for their pain. Never turn words like
   "a lot", "fine" or "not bad" into a number.
 
