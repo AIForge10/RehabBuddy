@@ -57,10 +57,21 @@ export default function ExerciseSession() {
   if (!assignment) return null
   const exercise = exerciseFor(part ?? assignment.exercise.joint)
   const session = assignmentFor(assignment, exercise)
-  if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={() => setStep('setup')} />
+  // Setup can start the session by itself once its checks pass, with no tap to
+  // hang these on, so the tap into setup does them too. The coach's first cue
+  // plays after the countdown, outside any tap; and some browsers only open the
+  // microphone (for "it hurts") from a tap. Nothing listens to it until live.
+  const unlock = () => {
+    unlockAudio()
+    startListening(lang)
+  }
+  const next = () => {
+    unlock()
+    setStep('setup')
+  }
+  if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={next} />
   const start = () => {
-    unlockAudio() // the coach's first cue plays after the countdown, outside this tap
-    startListening(lang) // for "it hurts": some browsers only open the microphone from a tap
+    unlock()
     setStep('live')
   }
   if (step === 'setup') return <Setup exercise={exercise} camera={status} attach={attach} onStart={start} onBack={() => setStep('brief')} />

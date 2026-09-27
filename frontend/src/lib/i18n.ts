@@ -96,6 +96,9 @@ const strings = {
     checked: (n: number, total: number) => `${n} of ${total} checked`,
     setupCta: 'I’m ready, start',
     setupCtaDemo: 'Start in demo mode',
+    // Once every check is ticked the session starts by itself, so the patient needn't walk back to the screen.
+    setupStarting: (n: number) => `Starting in ${n}…`,
+    setupWait: 'Not yet',
     // Setup when the camera checks itself (lib/setupChecks.ts): what it sees wrong right now.
     setupSubAuto: 'Three quick checks. The camera ticks them off as you get into position, or tap one to tick it yourself.',
     setupByCamera: 'Checked by the camera',
@@ -394,6 +397,8 @@ const strings = {
     checked: (n: number, total: number) => `${n} de ${total} listos`,
     setupCta: 'Todo listo, empezar',
     setupCtaDemo: 'Empezar en modo demo',
+    setupStarting: (n: number) => `Empezamos en ${n}…`,
+    setupWait: 'Todavía no',
     setupSubAuto: 'Tres comprobaciones rápidas. La cámara las marca mientras te colocas, o tócalas para marcarlas tú.',
     setupByCamera: 'Comprobado por la cámara',
     dataFlowsTitle: 'Qué sale de tu dispositivo',
