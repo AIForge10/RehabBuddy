@@ -10,6 +10,8 @@ const strings = {
     weekStartsOn: 0,
     thisWeek: 'This week',
     weekCount: (done: number, plan: number) => `${done} of ${plan} sessions`,
+    /** Under the greeting before any session: a first week isn't "0 of 5" yet. */
+    firstLede: 'Your first session is ready whenever you are.',
     /** One sentence under the greeting: where the week stands and what's left. */
     weekLede: (done: number, plan: number, daysLeft: number) => {
       const left = plan - done
@@ -316,6 +318,7 @@ const strings = {
     weekStartsOn: 1,
     thisWeek: 'Esta semana',
     weekCount: (done: number, plan: number) => `${done} de ${plan} sesiones`,
+    firstLede: 'Tu primera sesión está lista cuando quieras.',
     weekLede: (done: number, plan: number, daysLeft: number) => {
       const left = plan - done
       if (done > plan) return `${done} sesiones esta semana, ${done - plan} más de lo previsto. ¡Buen trabajo!`
