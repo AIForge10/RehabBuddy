@@ -1,9 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthError, signupStart } from '../../api/auth'
-import OtpStep from '../../components/OtpStep'
+import { AuthError } from '../../api/auth'
 import { ArmMark, LegMark } from '../../components/Logo'
 import { Button } from '../../components/Screen'
+import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
 import { useLanguage } from '../../lib/language'
 import type { Role } from '../../types/session'
@@ -15,13 +15,13 @@ const ROLES: Role[] = ['patient', 'therapist']
 
 export default function Signup() {
   const { s, lang } = useLanguage()
+  const { signUp } = useAuth()
   const [role, setRole] = useState<Role>('patient')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ name?: ErrKey; email?: ErrKey; password?: ErrKey; form?: ErrKey }>({})
   const [pending, setPending] = useState(false)
-  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -33,40 +33,15 @@ export default function Signup() {
     if (next.name || next.email || next.password) return
     setPending(true)
     try {
-      const res = await signupStart({ full_name: name, email, password, role, language: lang })
-      setPendingEmail(res.email)
+      const user = await signUp({ full_name: name, email, password, role, language: lang })
+      window.location.assign(user.role === 'therapist' ? '/therapist' : '/')
     } catch (err) {
       if (err instanceof AuthError && err.code === 'taken') setErrors({ email: 'errTaken' })
       else setErrors({ form: 'errGeneric' })
-    } finally {
       setPending(false)
     }
   }
 
-  if (pendingEmail) {
-    return (
-      <AuthLayout
-        title="Verify your email"
-        sub={`We sent a 6-digit code to ${pendingEmail}. Enter it below to start your rehab plan.`}
-        footer={
-          <button
-            type="button"
-            onClick={() => setPendingEmail(null)}
-            className="font-bold text-brand-ink underline-offset-4 hover:underline"
-          >
-            ← Back to sign up
-          </button>
-        }
-      >
-        <OtpStep
-          email={pendingEmail}
-          onVerified={(user) => {
-            window.location.assign(user.role === 'therapist' ? '/therapist' : '/')
-          }}
-        />
-      </AuthLayout>
-    )
-  }
 
 
   return (
