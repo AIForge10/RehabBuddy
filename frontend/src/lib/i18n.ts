@@ -96,6 +96,7 @@ const strings = {
     checked: (n: number, total: number) => `${n} of ${total} checked`,
     setupCta: 'I’m ready, start',
     setupCtaDemo: 'Start in demo mode',
+    cameraSlow: 'Camera not starting? Allow it in the browser’s prompt, or',
     // Setup when the camera checks itself (lib/setupChecks.ts): what it sees wrong right now.
     setupSubAuto: 'Three quick checks. The camera ticks them off as you get into position, or tap one to tick it yourself.',
     setupByCamera: 'Checked by the camera',
@@ -394,6 +395,7 @@ const strings = {
     checked: (n: number, total: number) => `${n} de ${total} listos`,
     setupCta: 'Todo listo, empezar',
     setupCtaDemo: 'Empezar en modo demo',
+    cameraSlow: '¿La cámara no arranca? Permítela en el aviso del navegador, o',
     setupSubAuto: 'Tres comprobaciones rápidas. La cámara las marca mientras te colocas, o tócalas para marcarlas tú.',
     setupByCamera: 'Comprobado por la cámara',
     dataFlowsTitle: 'Qué sale de tu dispositivo',
