@@ -35,6 +35,16 @@ export function useCamera(enabled: boolean) {
     }
   }, [enabled, stream])
 
+  // Back to a step that doesn't film (setup → brief): the camera goes off, and on again after.
+  useEffect(() => {
+    if (enabled || !stream) return
+    stream.getTracks().forEach((tr) => tr.stop())
+    queueMicrotask(() => {
+      setStream(null)
+      setStatus('idle')
+    })
+  }, [enabled, stream])
+
   // Stop the camera when the flow unmounts.
   useEffect(() => () => stream?.getTracks().forEach((tr) => tr.stop()), [stream])
 
