@@ -125,7 +125,7 @@ export default function Home() {
         <div className="max-w-xl">
           <p className="label-mono text-muted">{now.toLocaleDateString(s.locale, { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           <h1 className={`mt-3 ${TITLE}`}>{s.greeting((account?.full_name ?? patient.full_name).split(' ')[0], now.getHours())}</h1>
-          <p className="mt-3 text-lg text-ink-2 sm:text-xl">{s.weekLede(week.done, plan, week.daysLeft)}</p>
+          <p className="mt-3 text-lg text-ink-2 sm:text-xl">{data.joints_with_history.length === 0 ? s.firstLede : s.weekLede(week.done, plan, week.daysLeft)}</p>
         </div>
         <WeekStrip week={week} plan={plan} />
       </div>

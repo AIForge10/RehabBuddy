@@ -132,7 +132,7 @@ def test_no_number_heard_leaves_the_score_to_the_patient(client, monkeypatch):
     assert res["symptoms"] == ["stiffness"]
 
 
-@pytest.mark.parametrize("said, kept", [(0, 1), (10, 10), (45, None), (-1, None)])
+@pytest.mark.parametrize("said, kept", [(0, 0), (10, 10), (45, None), (-1, None)])
 def test_scores_off_the_scale_are_fixed_or_dropped(client, monkeypatch, said, kept):
     use_scribe(monkeypatch, text="something")
     use_gemini(monkeypatch, PainVoiceExtract(pain_score=said, symptoms=[], notes=""))
@@ -192,7 +192,11 @@ def test_coach_line_is_voiced_once_and_reused(client):
         ("How does your knee feel, from 1 to 10? Uh, four.", 4),
         ("¿Cómo sientes la rodilla, del 1 al 10? Tres, está hinchada", 3),
         ("Ocho. Muy rígida.", 8),
-        ("zero", 1),
+        ("zero", 0),
+        ("cero, no me duele", 0),
+        ("How does your knee feel, from 0 to 10? Uh, four.", 4),
+        ("From zero to ten, maybe a two", 2),
+        ("¿Cómo sientes la rodilla, del 0 al 10? Tres", 3),
         ("one of those days, maybe a four", 4),
         ("no pain at all", None),
         ("I got to ninety degrees today", None),

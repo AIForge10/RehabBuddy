@@ -10,6 +10,8 @@ const strings = {
     weekStartsOn: 0,
     thisWeek: 'This week',
     weekCount: (done: number, plan: number) => `${done} of ${plan} sessions`,
+    /** Under the greeting before any session: a first week isn't "0 of 5" yet. */
+    firstLede: 'Your first session is ready whenever you are.',
     /** One sentence under the greeting: where the week stands and what's left. */
     weekLede: (done: number, plan: number, daysLeft: number) => {
       const left = plan - done
@@ -96,6 +98,7 @@ const strings = {
     checked: (n: number, total: number) => `${n} of ${total} checked`,
     setupCta: 'I’m ready, start',
     setupCtaDemo: 'Start in demo mode',
+    cameraSlow: 'Camera not starting? Allow it in the browser’s prompt, or',
     // Once every check is ticked the session starts by itself, so the patient needn't walk back to the screen.
     setupStarting: (n: number) => `Starting in ${n}…`,
     setupWait: 'Not yet',
@@ -148,7 +151,7 @@ const strings = {
     painSub: 'Tap a number. Your therapist sees this.',
     painNone: 'No pain',
     painWorst: 'Worst pain',
-    painLevel: (n: number): string => (n <= 3 ? 'Mild' : n <= 6 ? 'Moderate' : 'Severe'),
+    painLevel: (n: number): string => (n === 0 ? 'None' : n <= 3 ? 'Mild' : n <= 6 ? 'Moderate' : 'Severe'),
     painChips: ['Sharp pain', 'Swelling', 'Stiffness', 'Clicking', 'Felt good'],
     painNotes: 'Add a note (optional)',
     painPlaceholder: 'Anything else your therapist should know?',
@@ -161,7 +164,7 @@ const strings = {
     painSubVoice: 'Tell me, or tap a number. Your therapist sees this.',
     /** What the coach asks as the pain check opens; `title` is the exercise's painTitle. */
     painAsk: (title: string, mic: boolean, stopped: boolean) =>
-      `${stopped ? 'You stopped because it hurt. ' : ''}${title.replace(/\?$/, '')}, from 1 to 10? ${
+      `${stopped ? 'You stopped because it hurt. ' : ''}${title.replace(/\?$/, '')}, from 0 to 10? ${
         mic ? (stopped ? 'Tap the microphone and tell me what you felt.' : 'Tap the microphone and tell me.') : 'Tap a number.'
       }`,
     painStopped: 'Session stopped for pain',
@@ -319,6 +322,7 @@ const strings = {
     weekStartsOn: 1,
     thisWeek: 'Esta semana',
     weekCount: (done: number, plan: number) => `${done} de ${plan} sesiones`,
+    firstLede: 'Tu primera sesión está lista cuando quieras.',
     weekLede: (done: number, plan: number, daysLeft: number) => {
       const left = plan - done
       if (done > plan) return `${done} sesiones esta semana, ${done - plan} más de lo previsto. ¡Buen trabajo!`
@@ -397,6 +401,7 @@ const strings = {
     checked: (n: number, total: number) => `${n} de ${total} listos`,
     setupCta: 'Todo listo, empezar',
     setupCtaDemo: 'Empezar en modo demo',
+    cameraSlow: '¿La cámara no arranca? Permítela en el aviso del navegador, o',
     setupStarting: (n: number) => `Empezamos en ${n}…`,
     setupWait: 'Todavía no',
     setupSubAuto: 'Tres comprobaciones rápidas. La cámara las marca mientras te colocas, o tócalas para marcarlas tú.',
@@ -445,7 +450,7 @@ const strings = {
     painSub: 'Toca un número. Tu terapeuta lo verá.',
     painNone: 'Sin dolor',
     painWorst: 'Dolor máximo',
-    painLevel: (n: number): string => (n <= 3 ? 'Leve' : n <= 6 ? 'Moderado' : 'Fuerte'),
+    painLevel: (n: number): string => (n === 0 ? 'Ninguno' : n <= 3 ? 'Leve' : n <= 6 ? 'Moderado' : 'Fuerte'),
     painChips: ['Dolor agudo', 'Hinchazón', 'Rigidez', 'Chasquidos', 'Me sentí bien'],
     painNotes: 'Añade una nota (opcional)',
     painPlaceholder: '¿Algo más que deba saber tu terapeuta?',
@@ -456,7 +461,7 @@ const strings = {
     continue: 'Continuar',
     painSubVoice: 'Cuéntamelo o toca un número. Tu terapeuta lo verá.',
     painAsk: (title: string, mic: boolean, stopped: boolean) =>
-      `${stopped ? 'Paraste porque te dolía. ' : ''}${title.replace(/\?$/, '')}, del 1 al 10? ${
+      `${stopped ? 'Paraste porque te dolía. ' : ''}${title.replace(/\?$/, '')}, del 0 al 10? ${
         mic ? (stopped ? 'Toca el micrófono y cuéntame qué sentiste.' : 'Toca el micrófono y cuéntamelo.') : 'Toca un número.'
       }`,
     painStopped: 'Sesión detenida por dolor',
@@ -611,6 +616,7 @@ export type Strings = (typeof strings)['en']
 const inApp: Record<Language, Partial<Strings>> = {
   en: {
     cameraDenied: 'Camera is blocked. Allow it for bendwith.us in your phone’s Settings, or use demo mode.',
+    cameraSlow: 'Camera not starting? Allow it when your phone asks, or',
     heroSub: 'Knee, hip, shoulder, elbow or wrist: prop up your phone and do your exercises in front of it. We measure every movement to the degree, coach you out loud, and send your therapist the results.',
     heroPoints: ['Free', 'No video uploaded', 'Just your phone'],
     forPatientsList: strings.en.forPatientsList.map((line, i) => (i === 1 ? 'Three minutes, just your phone' : line)),
@@ -619,6 +625,7 @@ const inApp: Record<Language, Partial<Strings>> = {
   },
   es: {
     cameraDenied: 'La cámara está bloqueada. Permite el acceso a bendwith.us en los Ajustes del teléfono, o usa el modo demo.',
+    cameraSlow: '¿La cámara no arranca? Permítela cuando el teléfono te lo pida, o',
     heroSub: 'Rodilla, cadera, hombro, codo o muñeca: apoya tu teléfono y haz tus ejercicios frente a él. Medimos cada movimiento al grado, te guiamos en voz alta y enviamos los resultados a tu terapeuta.',
     heroPoints: ['Gratis', 'Sin subir video', 'Solo tu teléfono'],
     forPatientsList: strings.es.forPatientsList.map((line, i) => (i === 1 ? 'Tres minutos, solo tu teléfono' : line)),

@@ -167,6 +167,20 @@ def test_a_new_session_or_red_flag_gets_a_new_recap(client, db, monkeypatch):
     assert gemini.calls[-1][0].red_flags_7d == ["pain 8/10, “Dolor agudo”"]
 
 
+def test_a_plan_change_gets_a_new_recap(client, db, monkeypatch):
+    gemini = use_gemini(monkeypatch, FakeGemini("A 5° de tu meta de 90°."))
+    use_elevenlabs(monkeypatch)
+
+    client.get(RECAP, params={"language": "es"})
+    # The therapist raises the target: the cached recap would still name 90°.
+    raised = overview()
+    raised["assignment"]["target_angle"] = 95.0
+    db["overview"] = raised
+    client.get(RECAP, params={"language": "es"})
+    assert len(gemini.calls) == 2
+    assert gemini.calls[-1][0].target == 95
+
+
 def test_each_language_is_written_in_that_language(client, monkeypatch):
     gemini = use_gemini(monkeypatch, FakeGemini())
     use_elevenlabs(monkeypatch)

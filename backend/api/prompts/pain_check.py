@@ -28,7 +28,7 @@ LANGUAGE_NAMES = {"en": "English", "es": "Spanish"}
 def build_pain_check_prompt(pain_score: int, notes: str, language: str, rule_reason: Optional[str]) -> str:
     prompt = f"""
 Reply language: {LANGUAGE_NAMES.get(language, "English")}
-Pain score (1-10): {pain_score}
+Pain score (0-10): {pain_score}
 Patient's notes: {notes.strip() or "(none)"}
 """
     if rule_reason:

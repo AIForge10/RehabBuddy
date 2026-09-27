@@ -30,6 +30,9 @@ function guide({ view }: Exercise) {
 }
 
 /** Offsets (in stage units at k = 1) for each joint's name. */
+/** How long "Starting camera…" may last before demo mode is offered beside it. */
+const CAMERA_SLOW_MS = 6000
+
 const LABEL_AT = {
   above: { dx: 0, dy: -22, anchor: 'middle' },
   below: { dx: 0, dy: 42, anchor: 'middle' },
@@ -56,6 +59,14 @@ export function Setup({
   const checks = [copy.camera, copy.frame, s.setup[2]]
   const total = checks.length
   const denied = camera === 'denied'
+  // A permission prompt nobody answers leaves the camera "starting" for good,
+  // and the start button waits on it; after a while, offer demo mode too.
+  const [slow, setSlow] = useState(false)
+  useEffect(() => {
+    if (camera !== 'starting') return
+    const id = setTimeout(() => setSlow(true), CAMERA_SLOW_MS)
+    return () => clearTimeout(id)
+  }, [camera])
 
   // `attach` gives this preview the session's camera stream; the checks watch the same element.
   const [video, setVideo] = useState<HTMLVideoElement | null>(null)
@@ -207,6 +218,14 @@ export function Setup({
             <Button onClick={onStart} disabled={camera === 'starting'} className="w-full">
               {denied ? s.setupCtaDemo : counting ? s.setupStarting(left) : s.setupCta}
             </Button>
+            {camera === 'starting' && slow && (
+              <p className="animate-rise text-center text-[15px] text-ink-2">
+                {s.cameraSlow}{' '}
+                <button type="button" onClick={onStart} className="font-bold text-brand-ink underline underline-offset-4">
+                  {s.setupCtaDemo.toLowerCase()}
+                </button>
+              </p>
+            )}
             {counting ? (
               <Button variant="ghost" size="md" onClick={() => setHeld(true)} className="w-full">
                 {s.setupWait}

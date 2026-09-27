@@ -94,11 +94,11 @@ async def answer(audio: bytes, filename: str, content_type: str, language: str) 
 
 
 def on_scale(score: Optional[int]) -> Optional[int]:
-    """A score the 1-10 buttons can show. Zero is the bottom of the scale; anything
-    past 10 was never a pain score (degrees, reps), so it's dropped, not capped."""
+    """A score the 0-10 buttons can show. Anything past 10 was never a pain
+    score (degrees, reps), so it's dropped, not capped."""
     if score is None or score < 0 or score > 10:
         return None
-    return max(1, score)
+    return score
 
 
 # --- Gemini ------------------------------------------------------------------
@@ -157,11 +157,11 @@ NUMBER_WORDS = {
 }
 _NUM = r"(?:\d+|" + "|".join(NUMBER_WORDS) + r")"
 
-# The scale itself isn't a score: "out of 10", "from 1 to 10", "del 1 al 10", "6/10".
+# The scale itself isn't a score: "out of 10", "from 0 to 10", "del 1 al 10", "6/10".
 SCALE = re.compile(
     rf"\b(?:out of|of|over|sobre|de)\s+(?:10|ten|diez)\b"
-    rf"|\b(?:1|one|uno)\s+(?:to|through|al?)\s+(?:10|ten|diez)\b"
-    rf"|\bentre\s+(?:1|uno)\s+y\s+(?:10|diez)\b"
+    rf"|\b(?:0|1|zero|one|cero|uno)\s+(?:to|through|al?)\s+(?:10|ten|diez)\b"
+    rf"|\bentre\s+(?:0|1|cero|uno)\s+y\s+(?:10|diez)\b"
     rf"|/\s*10\b"
 )
 # A number that counts something else ("10 reps", "90 degrees", "tres días"),

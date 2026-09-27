@@ -172,7 +172,8 @@ def evidence(f: PlanFacts) -> list[str]:
         traced = [s for s in f.recent[-3:] if s.rep_peaks]
         if traced:
             reached = sum(s.reps_reached or 0 for s in traced)
-            out.append(f"{reached} of {sum(len(s.rep_peaks) for s in traced)} reps reached {target}°, last {len(traced)}")
+            last = "last session" if len(traced) == 1 else f"last {len(traced)} sessions"
+            out.append(f"{reached} of {sum(len(s.rep_peaks) for s in traced)} reps reached {target}°, {last}")
     out.append(f"{f.sessions_7d} of {f.times_per_week} sessions, past 7 days")
     if f.red_flags:
         out.append("Red flag" if len(f.red_flags) == 1 else f"{len(f.red_flags)} red flags")
