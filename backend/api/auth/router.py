@@ -11,8 +11,10 @@ from pydantic import BaseModel, Field
 from .db import connect
 from .deps import CurrentUser, get_current_user
 from .security import create_token, hash_password, verify_password
+from .otp import otp_router, start_verification   # OTP
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+router.include_router(otp_router)   # OTP: /auth/verify-otp, /auth/resend-otp
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
@@ -53,15 +55,19 @@ class LoginResponse(BaseModel):
 def login(body: LoginRequest):
     with connect() as conn:
         row = conn.execute(
-            "SELECT id, full_name, role, language, password_hash FROM profiles WHERE lower(email) = lower(%s)",
+            "SELECT id, full_name, role, language, password_hash, email_verified FROM profiles WHERE lower(email) = lower(%s)",
             (body.email.strip(),)).fetchone()
-    if not row or not verify_password(body.password, row["password_hash"]):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
+        if not row or not verify_password(body.password, row["password_hash"]):
+            raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Wrong email or password")
+        if not row["email_verified"]:                                              # OTP
+            start_verification(conn, body.email)                                   # OTP
+            conn.commit()   # keep the new code even though we raise an error      # OTP
+            raise HTTPException(status.HTTP_403_FORBIDDEN, "email_not_verified")   # OTP
     user = UserOut(**{k: row[k] for k in ("id", "full_name", "role", "language")})
     return LoginResponse(access_token=create_token(user.id, user.role), user=user)
 
 
-@router.post("/signup", response_model=LoginResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/signup", status_code=status.HTTP_202_ACCEPTED)   # OTP: no token until the code is verified
 def signup(body: SignupRequest):
     """Creates the account and signs it in. A patient starts on STARTER_PLAN."""
     name, email = body.full_name.strip(), body.email.strip().lower()
@@ -74,14 +80,15 @@ def signup(body: SignupRequest):
         with connect() as conn:
             if conn.execute("SELECT 1 FROM profiles WHERE lower(email) = %s", (email,)).fetchone():
                 raise taken
-            conn.execute("""INSERT INTO profiles (id, full_name, role, language, email, password_hash)
-                            VALUES (%s, %s, %s, %s, %s, %s)""",
+            conn.execute("""INSERT INTO profiles (id, full_name, role, language, email, password_hash, email_verified)
+                            VALUES (%s, %s, %s, %s, %s, %s, FALSE)""",
                          (user.id, name, user.role, user.language, email, hash_password(body.password)))
             if user.role == "patient":
                 _start_plan(conn, user.id)
+            start_verification(conn, email, respect_cooldown=False)   # OTP: email the code
     except psycopg.errors.UniqueViolation:  # the same email signing up twice at once
         raise taken
-    return LoginResponse(access_token=create_token(user.id, user.role), user=user)
+    return {"status": "verification_required", "email": email}   # OTP
 
 
 def _start_plan(conn, patient_id: str) -> None:

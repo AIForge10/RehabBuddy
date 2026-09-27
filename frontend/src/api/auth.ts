@@ -167,3 +167,39 @@ export function signOut() {
   setAuthToken(null)
   remember(null)
 }
+
+const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1').replace(/\/$/, '')
+
+export type AuthUser = Account
+
+export async function verifyOtp(email: string, code: string): Promise<Account> {
+  const res = await fetch(`${API_URL}/auth/verify-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+  })
+  if (res.status === 429) throw new Error('Too many attempts. Request a new code')
+  if (!res.ok) throw new Error('That code is wrong or has expired')
+  const data = (await res.json()) as LoginResponse
+  setAuthToken(data.access_token)
+  const account: Account = {
+    id: data.user.id,
+    full_name: data.user.full_name,
+    email: email.trim().toLowerCase(),
+    role: data.user.role,
+    language: data.user.language,
+  }
+  remember(account)
+  return account
+}
+
+export async function resendOtp(email: string): Promise<void> {
+  const res = await fetch(`${API_URL}/auth/resend-otp`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: email.trim().toLowerCase() }),
+  })
+  if (res.status === 429) throw new Error('Please wait a minute before asking for a new code')
+  if (!res.ok) throw new Error(`Couldn't send a new code (${res.status})`)
+}
+
