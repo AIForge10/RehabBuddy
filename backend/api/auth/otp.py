@@ -28,6 +28,12 @@ MAX_ATTEMPTS = 5
 otp_router = APIRouter()   # included into the /auth router
 
 
+def otp_required() -> bool:
+    """OTP_REQUIRED=true turns the email code step on. Off (the default): sign-up logs in at once,
+    exactly as before OTP existed, so a server without an email provider keeps working."""
+    return os.getenv("OTP_REQUIRED", "").lower() == "true"
+
+
 def _pepper() -> bytes:
     return (os.getenv("JWT_SECRET") or "dev-pepper").encode()
 

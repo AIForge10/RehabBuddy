@@ -290,6 +290,7 @@ const strings = {
     noAccount: 'New here?',
     createAccount: 'Create an account',
     orDemo: 'or try the demo',
+    orEmail: 'or use email',
     demoAs: {
       patient: { title: 'Patient', sub: 'Maria · ACL rehab' },
       therapist: { title: 'Therapist', sub: 'Dr. Lee · therapist dashboard' },
@@ -313,6 +314,7 @@ const strings = {
     errPasswordEmpty: 'Enter your password.',
     errName: 'Tell us your name.',
     errGeneric: 'Something went wrong. Try again.',
+    errGoogle: 'Google sign-in didn’t work. Try again.',
     localNote: 'Preview: accounts are kept in this browser only.',
     panelQuote: 'Between visits, your therapist can finally see how your recovery is going, and you have a coach counting every degree.',
     panelStats: [
@@ -590,6 +592,7 @@ const strings = {
     noAccount: '¿Eres nuevo?',
     createAccount: 'Crea una cuenta',
     orDemo: 'o prueba la demo',
+    orEmail: 'o usa tu correo',
     demoAs: {
       patient: { title: 'Paciente', sub: 'Maria · rehabilitación de LCA' },
       therapist: { title: 'Terapeuta', sub: 'Dr. Lee · panel de terapeuta' },
@@ -613,6 +616,7 @@ const strings = {
     errPasswordEmpty: 'Escribe tu contraseña.',
     errName: 'Dinos tu nombre.',
     errGeneric: 'Algo salió mal. Inténtalo de nuevo.',
+    errGoogle: 'No se pudo entrar con Google. Inténtalo de nuevo.',
     localNote: 'Vista previa: las cuentas se guardan solo en este navegador.',
     panelQuote: 'Entre citas, tu terapeuta por fin ve cómo va tu recuperación, y tú tienes un entrenador que cuenta cada grado.',
     panelStats: [

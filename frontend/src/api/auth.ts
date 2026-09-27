@@ -16,7 +16,8 @@
 // tab there logs in again.
 
 import type { Language, LoginResponse, Role, SignupRequest, UUID } from '../types/session'
-import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, hasAuthToken, login, setAuthToken, signup } from './client'
+import { isNativeApp } from '../lib/native'
+import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, googleLogin, hasAuthToken, login, setAuthToken, signup } from './client'
 
 export interface Account {
   id: UUID
@@ -156,6 +157,23 @@ export async function signUp(input: SignupRequest): Promise<Account> {
   return account
 }
 
+/** The web client id from Google Cloud. Unset: the Google button is hidden. */
+export const GOOGLE_CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+
+/** Off in mock mode, and in the iOS/Android app: Google refuses sign-in inside embedded web views. */
+export const googleEnabled = Boolean(GOOGLE_CLIENT_ID) && !USE_MOCKS && !isNativeApp
+
+/**
+ * "Sign in with Google": the backend checks Google's ID token, so the email is
+ * already verified and no code is needed. `role` only applies to a new account.
+ */
+export async function googleSignIn(credential: string, role: Role, language: Language): Promise<Account> {
+  // The token's middle part is Google's claims; we only read the email for display.
+  // The backend is what verifies the signature.
+  const claims = JSON.parse(atob(credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))) as { email: string }
+  return start(await googleLogin({ credential, role, language }), normalise(claims.email))
+}
+
 export async function demoSignIn(role: Role): Promise<Account> {
   if (!USE_MOCKS) return backendSignIn(DEMO_ACCOUNTS[role].email, DEMO_PASSWORD)
   await settle()
@@ -172,10 +190,13 @@ const API_URL = (import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/v1')
 
 export type AuthUser = Account
 
-export async function signupStart(input: SignupRequest): Promise<{ email: string }> {
+/**
+ * Creates the account. The backend either signs it in at once (OTP off: `account`
+ * is set) or emails a code first (OTP on: show OtpStep for `email`).
+ */
+export async function signupStart(input: SignupRequest): Promise<{ email: string; account?: Account }> {
   if (USE_MOCKS) {
-    await signUp(input)
-    return { email: input.email }
+    return { email: input.email, account: await signUp(input) }
   }
   const email = normalise(input.email)
   const res = await fetch(`${API_URL}/auth/signup`, {
@@ -187,7 +208,8 @@ export async function signupStart(input: SignupRequest): Promise<{ email: string
   if (res.status === 422) throw new Error('Please check your details (password: 8+ characters)')
   if (res.status === 502 || res.status === 503) throw new Error("Couldn't send the code. Try again in a minute")
   if (!res.ok) throw new Error(`Sign-up failed (${res.status})`)
-  return { email }
+  if (res.status === 202) return { email }   // OTP on: the code is on its way
+  return { email, account: start((await res.json()) as LoginResponse, email) }
 }
 
 export async function verifyOtp(email: string, code: string): Promise<Account> {

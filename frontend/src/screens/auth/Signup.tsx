@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthError, signupStart } from '../../api/auth'
+import { AuthError, googleEnabled, signupStart } from '../../api/auth'
+import GoogleButton from '../../components/GoogleButton'
 import OtpStep from '../../components/OtpStep'
 import { ArmMark, LegMark } from '../../components/Logo'
 import { Button } from '../../components/Screen'
@@ -9,7 +10,7 @@ import { useLanguage } from '../../lib/language'
 import type { Role } from '../../types/session'
 import { AuthLayout, EMAIL_RE, Field, FormError, PasswordField, Spinner } from './AuthLayout'
 
-type ErrKey = keyof Pick<Strings, 'errName' | 'errEmail' | 'errPassword' | 'errTaken' | 'errGeneric'>
+type ErrKey = keyof Pick<Strings, 'errName' | 'errEmail' | 'errPassword' | 'errTaken' | 'errGeneric' | 'errGoogle'>
 const MIN_PASSWORD = 8
 const ROLES: Role[] = ['patient', 'therapist']
 
@@ -34,7 +35,9 @@ export default function Signup() {
     setPending(true)
     try {
       const res = await signupStart({ full_name: name, email, password, role, language: lang })
-      setPendingEmail(res.email)
+      // Signed in straight away (no code step): load the app as the new account.
+      if (res.account) window.location.assign(res.account.role === 'therapist' ? '/therapist' : '/')
+      else setPendingEmail(res.email)
     } catch (err) {
       if (err instanceof AuthError && err.code === 'taken') setErrors({ email: 'errTaken' })
       else setErrors({ form: 'errGeneric' })
@@ -117,6 +120,18 @@ export default function Signup() {
             ))}
           </div>
         </fieldset>
+
+        {googleEnabled && (
+          <>
+            {/* Google already verified the email, so this path skips the code step. */}
+            <GoogleButton role={role} onError={() => setErrors({ form: 'errGoogle' })} onPending={setPending} />
+            <div className="label-mono flex items-center gap-4 text-muted">
+              <span className="h-px flex-1 bg-line" />
+              {s.orEmail}
+              <span className="h-px flex-1 bg-line" />
+            </div>
+          </>
+        )}
 
         <Field label={s.fullName} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name && s[errors.name]} />
         <Field

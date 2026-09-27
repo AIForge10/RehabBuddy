@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthError } from '../../api/auth'
+import { AuthError, googleEnabled } from '../../api/auth'
+import GoogleButton from '../../components/GoogleButton'
 import { ArrowRight, Button } from '../../components/Screen'
 import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
@@ -9,7 +10,7 @@ import type { Role } from '../../types/session'
 import { AuthLayout, EMAIL_RE, Field, FormError, PasswordField, Spinner } from './AuthLayout'
 
 // Errors are kept as string keys, not text, so flipping EN/ES re-translates them.
-type ErrKey = keyof Pick<Strings, 'errEmail' | 'errPasswordEmpty' | 'errInvalid' | 'errGeneric'>
+type ErrKey = keyof Pick<Strings, 'errEmail' | 'errPasswordEmpty' | 'errInvalid' | 'errGeneric' | 'errGoogle'>
 const ROLES: Role[] = ['patient', 'therapist']
 
 export default function Login() {
@@ -18,7 +19,7 @@ export default function Login() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: ErrKey; password?: ErrKey; form?: ErrKey }>({})
-  const [pending, setPending] = useState<'form' | Role | null>(null)
+  const [pending, setPending] = useState<'form' | 'google' | Role | null>(null)
 
   // Success needs no navigation here: the signed-in account makes the route redirect.
   const submit = async (e: FormEvent) => {
@@ -58,6 +59,21 @@ export default function Login() {
         </>
       }
     >
+      {googleEnabled && (
+        <>
+          <GoogleButton
+            role="patient"
+            onError={() => setErrors({ form: 'errGoogle' })}
+            onPending={(on) => setPending(on ? 'google' : null)}
+          />
+          <div className="label-mono my-6 flex items-center gap-4 text-muted">
+            <span className="h-px flex-1 bg-line" />
+            {s.orEmail}
+            <span className="h-px flex-1 bg-line" />
+          </div>
+        </>
+      )}
+
       <form noValidate onSubmit={submit} className="flex flex-col gap-5">
         {errors.form && <FormError>{s[errors.form]}</FormError>}
         <Field

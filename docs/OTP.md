@@ -13,6 +13,11 @@ Existing accounts (the demo users) are treated as verified.
 Random 6-digit codes · stored only as an HMAC hash · expire after 10 min · 5 wrong attempts max ·
 60 s resend cooldown · one-time use · resend gives the same answer for unknown emails.
 
+## On/off switch
+The code step only runs with `OTP_REQUIRED=true`. Unset (the default, and the live site today),
+sign-up logs in at once exactly as before, and the backend never touches `email_verified` or `email_otps`.
+Turn it on only where an email provider is configured.
+
 ## Setup (local)
 1. **Test database only.** Create a second Tiger service (or local Postgres), load it with
    `python database/sample_data/load_to_tiger.py`, and point your LOCAL `.env` `DATABASE_URL` at it.

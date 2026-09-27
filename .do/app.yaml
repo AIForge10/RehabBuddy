@@ -63,6 +63,9 @@ services:
         type: SECRET
       - key: JWT_SECRET
         type: SECRET
+      # "Sign in with Google" (api/auth/google.py). Not a secret; same value as the web's VITE_GOOGLE_CLIENT_ID.
+      # - key: GOOGLE_CLIENT_ID
+      #   value: <id>.apps.googleusercontent.com
 
 static_sites:
   - name: web
@@ -90,3 +93,6 @@ static_sites:
         value: p-maria
       - key: VITE_DEMO_THERAPIST_ID
         value: t-lee
+      # Shows the "Continue with Google" button; same value as the api's GOOGLE_CLIENT_ID.
+      # - key: VITE_GOOGLE_CLIENT_ID
+      #   value: <id>.apps.googleusercontent.com

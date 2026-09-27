@@ -2,6 +2,7 @@
 import os, pathlib, sys
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 os.environ["OTP_DEV_MODE"] = "true"
+os.environ["OTP_REQUIRED"] = "true"   # the code step is off unless asked for
 from datetime import datetime, timedelta, timezone
 from fastapi.testclient import TestClient
 import api.auth.otp as otp
