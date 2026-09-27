@@ -11,8 +11,8 @@
 // band along with the patient rather than putting the rest inside it. The
 // target moves with it too: "lift to 115°" means 29° above wherever they sit.
 //
-// A rep also ends wherever the limb comes to rest below the top of the lift,
-// even above the finish line: a patient who leans forward to lift and then
+// For such a joint a rep also ends wherever the limb comes to rest below the
+// top of the lift, even above the finish line: a patient who leans forward to lift and then
 // sits that way (a dozen degrees of hip flexion) used to be stuck mid-rep
 // until they stood up. The rest is then re-learned from where they settled.
 export interface RepCounterConfig {
@@ -157,7 +157,10 @@ export class RepCounter {
     } else if (this.bent) {
       this.repPeak = Math.max(this.repPeak, angle)
       const back = angle < straightAt
-      if (back || this.settled(angle, nowMs)) {
+      // Coming to rest mid-lift ends a rep only for a joint that starts bent (the seated hip). A limb
+      // that starts straight has somewhere to go back to, and stopping short of it is a hold: a knee
+      // held at 88° after a 100° peak would otherwise count once there and again on the way down.
+      if (back || (this.cfg.restAngle > 0 && this.settled(angle, nowMs))) {
         const duration = nowMs - this.repStart
         // Judged against the rest the rep started from, before any new one is learned below.
         const deepEnough = this.repPeak >= this.target - 10
