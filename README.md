@@ -1,4 +1,4 @@
-# bendwith.us
+![bendwith.us](docs/banner.jpg)
 
 **Home rehab that bends with you.** An AI physical-therapy coach: the patient does their prescribed
 exercise in front of any webcam or phone camera, the app measures the joint angle to the degree,
