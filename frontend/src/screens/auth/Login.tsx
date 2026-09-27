@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { AuthError, googleEnabled } from '../../api/auth'
 import GoogleButton from '../../components/GoogleButton'
+import OtpStep from '../../components/OtpStep'
 import { ArrowRight, Button } from '../../components/Screen'
 import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
@@ -20,6 +21,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ email?: ErrKey; password?: ErrKey; form?: ErrKey }>({})
   const [pending, setPending] = useState<'form' | 'google' | Role | null>(null)
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   // Success needs no navigation here: the signed-in account makes the route redirect.
   const submit = async (e: FormEvent) => {
@@ -33,8 +35,10 @@ export default function Login() {
     try {
       await signIn(email, password)
     } catch (err) {
-      setErrors({ form: err instanceof AuthError ? 'errInvalid' : 'errGeneric' })
       setPending(null)
+      // Signed up but never entered the code: the backend just emailed a new one.
+      if (err instanceof AuthError && err.code === 'unverified') setPendingEmail(email.trim().toLowerCase())
+      else setErrors({ form: err instanceof AuthError ? 'errInvalid' : 'errGeneric' })
     }
   }
 
@@ -44,6 +48,31 @@ export default function Login() {
       setErrors({ form: 'errGeneric' })
       setPending(null)
     })
+  }
+
+  if (pendingEmail) {
+    return (
+      <AuthLayout
+        title="Verify your email"
+        sub={`Your email isn't confirmed yet. We sent a 6-digit code to ${pendingEmail}. Enter it below to log in.`}
+        footer={
+          <button
+            type="button"
+            onClick={() => setPendingEmail(null)}
+            className="font-bold text-brand-ink underline-offset-4 hover:underline"
+          >
+            ← Back to log in
+          </button>
+        }
+      >
+        <OtpStep
+          email={pendingEmail}
+          onVerified={(user) => {
+            window.location.assign(user.role === 'therapist' ? '/therapist' : '/')
+          }}
+        />
+      </AuthLayout>
+    )
   }
 
   return (

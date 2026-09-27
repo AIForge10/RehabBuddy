@@ -79,14 +79,15 @@ export default function GoogleButton({ role, onError, onPending }: Props) {
           },
         })
         el.replaceChildren()
+        const width = Math.min(400, Math.round(el.clientWidth))
         id.renderButton(el, {
+          ...(width >= 200 && { width }),   // Google's minimum; without it the button sizes itself
           type: 'standard',
           theme: matchMedia('(prefers-color-scheme: dark)').matches ? 'filled_black' : 'outline',
           size: 'large',
           shape: 'pill',
           text: 'continue_with',
           logo_alignment: 'center',
-          width: Math.min(400, Math.round(el.clientWidth)),
           locale: lang,
         })
       })

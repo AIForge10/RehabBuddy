@@ -76,9 +76,16 @@ class ResendRequest(BaseModel):
     email: str
 
 
+def _require_otp() -> None:
+    # Switched off, these routes don't exist: the database may not even have email_otps.
+    if not otp_required():
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Not Found")
+
+
 @otp_router.post("/verify-otp")
 def verify_otp(body: VerifyRequest):
     from .router import LoginResponse, UserOut   # local import avoids a circular import
+    _require_otp()
     email = body.email.strip().lower()
     code = body.code.strip()
     bad = HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid or expired code")
@@ -107,6 +114,7 @@ def verify_otp(body: VerifyRequest):
 
 @otp_router.post("/resend-otp")
 def resend_otp(body: ResendRequest):
+    _require_otp()
     email = body.email.strip().lower()
     with connect() as conn:
         row = conn.execute("SELECT email_verified FROM profiles WHERE lower(email) = %s", (email,)).fetchone()

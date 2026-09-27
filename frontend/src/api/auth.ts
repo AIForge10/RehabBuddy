@@ -45,8 +45,8 @@ const DEMO_PASSWORD = 'demo1234'
 
 /** Machine-readable failure; screens map it to translated copy. */
 export class AuthError extends Error {
-  code: 'invalid' | 'taken'
-  constructor(code: 'invalid' | 'taken') {
+  code: 'invalid' | 'taken' | 'unverified'
+  constructor(code: 'invalid' | 'taken' | 'unverified') {
     super(code)
     this.code = code
   }
@@ -114,7 +114,10 @@ async function backendSignIn(email: string, password: string): Promise<Account> 
   try {
     return start(await login({ email: normalise(email), password }), normalise(email))
   } catch (err) {
-    throw err instanceof ApiError && err.status === 401 ? new AuthError('invalid') : err
+    if (err instanceof ApiError && err.status === 401) throw new AuthError('invalid')
+    // Right password but the email isn't confirmed yet (OTP on): the backend has just emailed a code.
+    if (err instanceof ApiError && err.status === 403) throw new AuthError('unverified')
+    throw err
   }
 }
 
