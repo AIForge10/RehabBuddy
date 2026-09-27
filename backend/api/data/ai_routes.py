@@ -57,7 +57,8 @@ def summary(body: SummaryRequest, user: CurrentUser = Depends(get_current_user))
         ai = gemini.generate(
             "Write a 3-sentence progress note for the patient's physical therapist. Mention adherence this week, "
             "the range-of-motion trend in degrees versus target, form warnings, and any pain red flags with a "
-            f"recommended action. Be factual; use only this data: {facts}",
+            f"recommended action. Plain text in one paragraph: no markdown, headings or lists. Be factual; "
+            f"use only this data: {facts}",
             system="You are a concise clinical assistant for physical therapists.", max_tokens=220)
         text = ai or _template_summary(o)
         conn.execute("""INSERT INTO ai_summaries (id, patient_id, week_start, summary_text, source)
