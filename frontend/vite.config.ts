@@ -1,10 +1,10 @@
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, type Plugin } from 'vite'
+import { defineConfig, normalizePath, type Plugin } from 'vite'
 
-const WEB_NATIVE = fileURLToPath(new URL('./src/lib/native.ts', import.meta.url))
-const APP_NATIVE = fileURLToPath(new URL('../mobile/src/native.ts', import.meta.url))
+const WEB_NATIVE = normalizePath(fileURLToPath(new URL('./src/lib/native.ts', import.meta.url)))
+const APP_NATIVE = normalizePath(fileURLToPath(new URL('../mobile/src/native.ts', import.meta.url)))
 
 /** The iOS/Android build (`--mode native`, run by ../mobile) swaps src/lib/native.ts for the Capacitor version. */
 function nativeApp(): Plugin {
@@ -14,7 +14,7 @@ function nativeApp(): Plugin {
     async resolveId(source, importer, options) {
       if (!source.endsWith('/native')) return null
       const resolved = await this.resolve(source, importer, { ...options, skipSelf: true })
-      return resolved?.id === WEB_NATIVE ? APP_NATIVE : null
+      return resolved && normalizePath(resolved.id) === WEB_NATIVE ? APP_NATIVE : null
     },
   }
 }
