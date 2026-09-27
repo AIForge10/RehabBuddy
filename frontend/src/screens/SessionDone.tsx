@@ -158,7 +158,7 @@ export default function SessionDone() {
                 {pain.response.flagged ? s.painFlagged : s.doneSent}
               </p>
             )}
-            <Button onClick={() => navigate('/')} className="w-full sm:w-auto sm:px-10">
+            <Button onClick={() => navigate('/', { replace: true })} className="w-full sm:w-auto sm:px-10">
               {s.backHome}
             </Button>
           </div>

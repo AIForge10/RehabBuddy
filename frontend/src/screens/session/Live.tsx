@@ -461,7 +461,7 @@ export function Live({
   const exit = () => {
     stopCoach()
     endLive('exited')
-    navigate('/')
+    navigate('/', { replace: true })
   }
 
   return (
