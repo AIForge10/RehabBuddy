@@ -138,6 +138,10 @@ export function onNativeBackButton(onBack: (event: { canGoBack: boolean }) => vo
 }
 
 export async function exitNativeApp(): Promise<void> {
+  if (Capacitor.getPlatform() === 'ios') {
+    console.log('[native] exitNativeApp skipped: iOS manages app lifecycle via system gestures')
+    return
+  }
   try {
     console.log('[native] exitNativeApp calling App.exitApp()')
     await App.exitApp()
