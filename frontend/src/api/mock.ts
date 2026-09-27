@@ -310,15 +310,6 @@ export function fallbackPainCheck(body: PainCheckRequest): PainCheckResponse {
   }
 }
 
-export function fallbackSummary(): SummaryResponse {
-  return {
-    summary_text:
-      'AI summary is temporarily unavailable. Review the range-of-motion chart and session list below for this week’s progress.',
-    week_start: new Date(Date.now() - 7 * DAY_MS).toISOString(),
-    is_fallback: true,
-  }
-}
-
 // Same wording as TEMPLATE in backend/api/services/weekly_recap_service.py.
 const RECAP_TEMPLATE = {
   en: {

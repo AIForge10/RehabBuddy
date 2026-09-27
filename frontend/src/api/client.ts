@@ -9,7 +9,8 @@
 //
 // Plan rule: "every AI call needs a fallback response so a quota error never
 // breaks the demo". painCheck / getSummary / translate therefore never throw;
-// they fall back to a local template if the backend call fails.
+// they fall back to a local template if the backend call fails (getSummary to
+// null, so the dashboard keeps the summary it already shows).
 
 import type {
   AngleSampleRow,
@@ -35,7 +36,7 @@ import type {
   StorageStats,
 } from '../types/session'
 import { saveToken } from '../lib/native'
-import { mockBackend, fallbackPainCheck, fallbackSummary, fallbackWeeklyRecap } from './mock'
+import { mockBackend, fallbackPainCheck, fallbackWeeklyRecap } from './mock'
 import type { PlanSuggestion } from '../types/session'
 import { suggestPlan } from '../lib/plan'
 
@@ -230,13 +231,14 @@ export async function coachLine(text: string, language: Language): Promise<strin
   }
 }
 
-export async function getSummary(patientId: UUID): Promise<SummaryResponse> {
+/** A freshly written summary, or null when the request failed: the one already on screen is better than none. */
+export async function getSummary(patientId: UUID): Promise<SummaryResponse | null> {
   if (USE_MOCKS) return mockBackend.getSummary(patientId)
   try {
     return await post<SummaryResponse>('/summary', { patient_id: patientId })
   } catch (err) {
-    console.warn('[api] /summary failed, using fallback', err)
-    return fallbackSummary()
+    console.warn('[api] /summary failed, keeping the summary shown', err)
+    return null
   }
 }
 
