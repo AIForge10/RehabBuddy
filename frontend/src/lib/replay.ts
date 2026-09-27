@@ -188,15 +188,18 @@ export function findingsFor(reps: Rep[], target: number, stats?: SessionStats | 
     out.push({ tone: 'warn', text: `Last ${FADE_REPS} reps averaged ${drop}° below the first ${FADE_REPS}.` })
   }
 
-  const reached = reps.filter((r) => r.peak >= target - REACHED_WITHIN).length
+  const hits = reps.filter((r) => r.peak >= target - REACHED_WITHIN)
+  const reached = hits.length
+  // A peak of 89° counts for a 90° target; say so, or the bars below read as a contradiction.
+  const within = hits.some((r) => r.peak < target) ? ` (within ${REACHED_WITHIN}°)` : ''
   out.push({
     tone: reached === reps.length ? 'good' : 'neutral',
     text:
       reached === reps.length
-        ? `Every rep reached the ${target}° target.`
+        ? `Every rep reached the ${target}° target${within}.`
         : reached === 0
           ? `No rep reached the ${target}° target; deepest was ${Math.max(...peaks)}°.`
-          : `${reached} of ${plural(reps.length, 'rep')} reached the ${target}° target.`,
+          : `${reached} of ${plural(reps.length, 'rep')} reached the ${target}° target${within}.`,
   })
 
   if (stats) {
