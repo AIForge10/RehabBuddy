@@ -73,7 +73,7 @@ export default function ExerciseSession() {
     unlock()
     setStep('setup')
   }
-  if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={next} />
+  if (step === 'brief') return <Brief assignment={session} exercise={exercise} onPick={setPart} onNext={next} onBack={() => navigate('/', { replace: true })} />
   const start = () => {
     unlock()
     setStep('live')
