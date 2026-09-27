@@ -8,11 +8,15 @@ dashboard shows only the story the seed tells.
 
     python scripts/reset_demo_data.py          # report what is extra, change nothing
     python scripts/reset_demo_data.py --yes    # delete the extras and restore the plans
+    python scripts/reset_demo_data.py --detach-signups   # also take sign-ups off the demo caseloads
 
 Scope: ONLY the demo patients the seed defines (p-maria, p-james, p-aisha). Accounts that
 signed up through the app are real people -- teammates, and anyone who tries it at the table --
-so their profiles and their sessions are never touched, only listed at the end. Rows the seed
-itself defines are never touched either, so this is safe to re-run.
+so their profiles and their sessions are never touched, only listed at the end. With
+--detach-signups they are taken off the seeded therapists' caseloads (sign-up puts new patients on
+Dr. Lee's, SIGNUP_THERAPIST_ID), so the dashboard shows only the demo patients; the accounts and
+their data stay, and they can still log in. Rows the seed itself defines are never touched either,
+so this is safe to re-run.
 
 Reads DATABASE_URL from the root .env, the same as database/sample_data/load_to_tiger.py.
 """
@@ -36,6 +40,8 @@ def seed(name: str) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--yes", action="store_true", help="actually delete; without it this only reports")
+    ap.add_argument("--detach-signups", action="store_true",
+                    help="take signed-up patients off the seeded therapists' caseloads (accounts are kept)")
     args = ap.parse_args()
 
     seed_sessions = {r["id"] for r in seed("sessions")}
@@ -78,10 +84,10 @@ def main() -> int:
 
         if not (extra_sessions or extra_summaries or drifted):
             print("\nDemo patients already match the seed. Nothing to do.")
-            return report_real_accounts(conn, demo_patients)
+            return report_real_accounts(conn, args.detach_signups)
         if not args.yes:
             print("\nReport only. Re-run with --yes to apply.")
-            return report_real_accounts(conn, demo_patients)
+            return report_real_accounts(conn, args.detach_signups)
 
         if extra_sessions:
             for t, col in (("angle_samples", "session_id"), ("pain_checkins", "session_id"), ("sessions", "id")):
@@ -116,12 +122,28 @@ def main() -> int:
             print("Demo data is NOT clean -- reload it: python database/sample_data/load_to_tiger.py --reset")
             return 1
         print("Demo patients match the seed.")
-        return report_real_accounts(conn, demo_patients)
+        return report_real_accounts(conn, args.detach_signups)
 
 
-def report_real_accounts(conn, demo_patients: list[str]) -> int:
-    """List accounts that signed up through the app. Listed only -- never deleted."""
+def report_real_accounts(conn, detach: bool) -> int:
+    """List accounts that signed up through the app. Never deleted; with `detach`, taken off the
+    seeded therapists' caseloads."""
     seeded = {r["id"] for r in seed("profiles")}
+    therapists = [r["id"] for r in seed("profiles") if r["role"] == "therapist"]
+    on_caseload = conn.execute("""SELECT therapist_id, patient_id FROM therapist_patients
+                                  WHERE therapist_id = ANY(%s) AND NOT (patient_id = ANY(%s))""",
+                               (therapists, list(seeded))).fetchall()
+    if on_caseload:
+        print(f"\nSigned-up patients on a demo caseload: {len(on_caseload)}")
+        for r in on_caseload:
+            print(f"    {r['therapist_id']} <- {r['patient_id']}")
+        if detach:
+            conn.execute("""DELETE FROM therapist_patients
+                            WHERE therapist_id = ANY(%s) AND NOT (patient_id = ANY(%s))""",
+                         (therapists, list(seeded)))
+            print("    Detached: the demo dashboards show only the seeded patients.")
+        else:
+            print("    Re-run with --detach-signups to take them off (their accounts stay).")
     rows = [r for r in conn.execute("SELECT id, full_name, role FROM profiles ORDER BY id").fetchall()
             if r["id"] not in seeded]
     if rows:
