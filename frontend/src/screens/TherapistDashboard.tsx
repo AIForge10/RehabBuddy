@@ -276,8 +276,8 @@ function LiveIndicator({ error, lastOk, now }: { error: boolean; lastOk: number 
 }
 
 /**
- * A therapist who just signed up has nobody yet: patient sign-ups join the
- * demo clinic (SIGNUP_THERAPIST_ID on the backend), so say so and offer it.
+ * A therapist who just signed up has nobody yet (patient sign-ups join the
+ * therapist in SIGNUP_THERAPIST_ID, if any), so offer the demo clinic.
  */
 function EmptyCaseload() {
   const { demoSignIn } = useAuth()
@@ -295,8 +295,8 @@ function EmptyCaseload() {
     <section className="animate-rise rounded-3xl bg-surface p-7 ring-1 ring-line sm:p-9">
       <h2 className="text-2xl font-bold tracking-tight">No patients yet</h2>
       <p className="mt-3 max-w-xl text-lg leading-relaxed text-ink-2">
-        Patients show up here once they’re on your caseload, with every session measured to the degree. In this preview, new patient
-        sign-ups join the demo clinic, where three patients have two weeks of sessions: trends, replays, a pain red flag and a plan to review.
+        Patients show up here once they’re on your caseload, with every session measured to the degree. To see what that looks like,
+        open the demo clinic: three patients with two weeks of sessions, with trends, replays, a pain red flag and a plan to review.
       </p>
       <button type="button" onClick={open} disabled={pending} className={`mt-6 ${buttonClass('primary', 'md')}`}>
         {pending ? 'Opening…' : 'Open the demo clinic'}
