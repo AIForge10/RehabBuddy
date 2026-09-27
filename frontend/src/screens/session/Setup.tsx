@@ -14,7 +14,12 @@ import { StepHeader } from './StepHeader'
 // and the next unticked check drives what the preview shows, the way the
 // demo drives the steps on the briefing screen. The camera ticks the checks
 // itself as the patient gets into position (lib/useSetupChecks), and says
-// what's still wrong; a tap ticks or unticks any of them by hand.
+// what's still wrong; a tap ticks or unticks any of them by hand. Once all
+// three are ticked the session starts itself after a short countdown, so the
+// patient can stay in their chair instead of walking up to press Start.
+
+/** Seconds from the last tick to the session starting by itself. */
+const AUTO_START_S = 3
 
 /** Where the alignment ghost sits: the exercise's own framing, scaled to fit inside the frame brackets. */
 function guide({ view }: Exercise) {
@@ -88,6 +93,26 @@ export function Setup({
   const done = count === total
   const current = done ? null : checked.indexOf(false)
 
+  // Counts down while everything's ticked; unticking a check, or "Not yet", stops
+  // it. "Not yet" lasts until a check is unticked, then the next full set counts down again.
+  const [held, setHeld] = useState(false)
+  if (held && !done) setHeld(false)
+  const counting = done && camera === 'on' && !held
+  const [left, setLeft] = useState(AUTO_START_S)
+  const [wasCounting, setWasCounting] = useState(counting)
+  if (counting !== wasCounting) {
+    setWasCounting(counting)
+    setLeft(AUTO_START_S)
+  }
+  useEffect(() => {
+    if (!counting) return
+    const id = setInterval(() => setLeft((n) => n - 1), 1000)
+    return () => clearInterval(id)
+  }, [counting])
+  useEffect(() => {
+    if (counting && left <= 0) onStart()
+  }, [counting, left, onStart])
+
   return (
     <PatientScreen wide>
       <StepHeader step={2} title={s.setupTitle} sub={denied ? s.setupSub : s.setupSubAuto} />
@@ -101,13 +126,14 @@ export function Setup({
           canvasRef={auto.canvasRef}
           step={current}
           hint={current == null ? null : hints[current]}
+          starting={counting ? left : null}
         />
 
         <div className="flex flex-col p-4 sm:p-5">
           <div className="flex items-center justify-between gap-3 px-1.5">
             <h2 className="label-mono pt-1 text-muted">{s.setupChecks}</h2>
             <p aria-live="polite" className={`label-mono pt-1 transition-colors ${done ? 'text-brand-ink' : 'text-muted'}`}>
-              {s.checked(count, total)}
+              {counting ? s.setupStarting(left) : s.checked(count, total)}
             </p>
           </div>
           <div className="mt-2.5 flex gap-1.5 px-1.5" aria-hidden="true">
@@ -190,7 +216,7 @@ export function Setup({
 
           <div className="mt-auto space-y-2 pt-4">
             <Button onClick={onStart} disabled={camera === 'starting'} className="w-full">
-              {denied ? s.setupCtaDemo : s.setupCta}
+              {denied ? s.setupCtaDemo : counting ? s.setupStarting(left) : s.setupCta}
             </Button>
             {camera === 'starting' && slow && (
               <p className="animate-rise text-center text-[15px] text-ink-2">
@@ -200,9 +226,15 @@ export function Setup({
                 </button>
               </p>
             )}
-            <Button variant="ghost" size="md" onClick={onBack} className="w-full">
-              {s.backToDemo}
-            </Button>
+            {counting ? (
+              <Button variant="ghost" size="md" onClick={() => setHeld(true)} className="w-full">
+                {s.setupWait}
+              </Button>
+            ) : (
+              <Button variant="ghost" size="md" onClick={onBack} className="w-full">
+                {s.backToDemo}
+              </Button>
+            )}
           </div>
         </div>
       </section>
@@ -213,7 +245,8 @@ export function Setup({
 /**
  * Live preview with the alignment ghost, marked up for whichever check is
  * current (null = all done). `hint` is what the camera sees wrong for that
- * check, shown in place of its tip.
+ * check, shown in place of its tip. `starting` is the countdown to the
+ * session starting by itself, if it's running.
  */
 function Stage({
   exercise,
@@ -223,6 +256,7 @@ function Stage({
   canvasRef,
   step,
   hint,
+  starting,
 }: {
   exercise: Exercise
   checks: { tip: string }[]
@@ -231,6 +265,7 @@ function Stage({
   canvasRef: RefObject<HTMLCanvasElement | null>
   step: number | null
   hint: string | null
+  starting: number | null
 }) {
   const { s, lang } = useLanguage()
   const copy = exercise.copy[lang]
@@ -369,7 +404,9 @@ function Stage({
           <span className="grid size-7 shrink-0 place-items-center rounded-full bg-brand-glow text-stage [&>svg]:size-4">
             {step == null ? <Check size={14} /> : SETUP_ICONS[step]}
           </span>
-          <span className="text-[15px] font-semibold leading-tight sm:text-lg">{step == null ? s.setupAllSet : (hint ?? checks[step].tip)}</span>
+          <span className="text-[15px] font-semibold leading-tight sm:text-lg">
+            {step != null ? (hint ?? checks[step].tip) : starting != null ? `${s.setupAllSet}. ${s.setupStarting(starting)}` : s.setupAllSet}
+          </span>
         </p>
       )}
     </div>
