@@ -608,6 +608,7 @@ export type Strings = (typeof strings)['en']
 const inApp: Record<Language, Partial<Strings>> = {
   en: {
     cameraDenied: 'Camera is blocked. Allow it for bendwith.us in your phone’s Settings, or use demo mode.',
+    cameraSlow: 'Camera not starting? Allow it when your phone asks, or',
     heroSub: 'Knee, hip, shoulder, elbow or wrist: prop up your phone and do your exercises in front of it. We measure every movement to the degree, coach you out loud, and send your therapist the results.',
     heroPoints: ['Free', 'No video uploaded', 'Just your phone'],
     forPatientsList: strings.en.forPatientsList.map((line, i) => (i === 1 ? 'Three minutes, just your phone' : line)),
@@ -616,6 +617,7 @@ const inApp: Record<Language, Partial<Strings>> = {
   },
   es: {
     cameraDenied: 'La cámara está bloqueada. Permite el acceso a bendwith.us en los Ajustes del teléfono, o usa el modo demo.',
+    cameraSlow: '¿La cámara no arranca? Permítela cuando el teléfono te lo pida, o',
     heroSub: 'Rodilla, cadera, hombro, codo o muñeca: apoya tu teléfono y haz tus ejercicios frente a él. Medimos cada movimiento al grado, te guiamos en voz alta y enviamos los resultados a tu terapeuta.',
     heroPoints: ['Gratis', 'Sin subir video', 'Solo tu teléfono'],
     forPatientsList: strings.es.forPatientsList.map((line, i) => (i === 1 ? 'Tres minutos, solo tu teléfono' : line)),
