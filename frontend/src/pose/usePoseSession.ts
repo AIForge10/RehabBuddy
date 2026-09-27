@@ -130,6 +130,11 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     return buildResult()
   }, [buildResult])
 
+  /** Undoes finish() when the result couldn't be saved and the session carries on. */
+  const resume = useCallback(() => {
+    done.current = false
+  }, [])
+
   const reset = useCallback(() => {
     counter.current = makeCounter()
     samples.current = []
@@ -160,6 +165,7 @@ export function usePoseSession(opts: PoseSessionOptions = {}) {
     targetAngle,
     tip: cfg.tip,
     finish,
+    resume,
     reset,
   }
 }

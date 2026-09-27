@@ -105,7 +105,7 @@ export function Live({
     externalVideo: camera === 'on' ? videoEl : null,
   })
 
-  const finishPose = trackedSession.finish
+  const { finish: finishPose, resume: resumePose, reset: resetPose } = trackedSession
   const simulated = !POSE_READY || camera !== 'on' || !trackedSession.ready
   const simulatedPose = useSimulatedPose(phase === 'running' && simulated, exercise, target)
 
@@ -145,6 +145,22 @@ export function Live({
     warnings: [] as string[],
   })
 
+  // What the coach has said so far this session, for the per-rep and per-frame
+  // effects below: corrections don't repeat rep after rep.
+  const coached = useRef({
+    reps: 0,
+    streak: 0,
+    missed: true, // so the first rep on target is praised
+    depthAt: -Infinity,
+    speedAt: -Infinity,
+    fastAt: -Infinity,
+    rhythm: false,
+    landedAt: [] as number[],
+    /** The rep the coach last asked for a hold on, and whether the last rep reached the target but left it early. */
+    holdAt: -Infinity,
+    skippedHold: false,
+  })
+
   // The therapist can watch from their dashboard while this runs: angles, reps and cues, never video.
   const { connected: liveShared, end: endLive } = useLivePublisher({
     patientId: assignment.patient_id,
@@ -181,13 +197,16 @@ export function Live({
     if (count === 0) {
       rec.current.startedAt = new Date()
       rec.current.t0 = performance.now()
+      // Reps count from "go": moving into position during the countdown isn't one.
+      resetPose()
+      coached.current.reps = 0
       setPhase('running')
       say('start')
       return
     }
     const id = setTimeout(() => setCount((c) => c - 1), 900)
     return () => clearTimeout(id)
-  }, [phase, count, say])
+  }, [phase, count, say, resetPose])
 
   useEffect(() => {
     if (phase !== 'running') return
@@ -209,6 +228,7 @@ export function Live({
   }, [phase])
 
   const saving = useRef(false)
+  const exited = useRef(false)
   const finish = useCallback(async () => {
     // The Finish button, the last rep's timer and a pain stop can all land at once: save once.
     if (saving.current) return
@@ -254,13 +274,17 @@ export function Live({
       void warm(painQuestion(exercise, langRef.current, pain), langRef.current)
       // The coach's last line ("Session complete", or stopping for pain) ends before the pain check speaks.
       await untilCoachQuiet()
+      // Left with the X while this was saving: they're already home.
+      if (exited.current) return
       navigate('/pain-check', { state: { sessionId: session_id, result, assignment, stoppedForPain: pain, demo } })
     } catch {
       saving.current = false
       setSaveError(true)
+      // The session carries on: the tracker keeps counting from where it was.
+      resumePose()
       setPhase('running')
     }
-  }, [assignment, exercise, navigate, finishPose, endLive])
+  }, [assignment, exercise, navigate, finishPose, resumePose, endLive])
   // For timers, which would otherwise call the finish of the render that set them.
   const finishRef = useRef(finish)
   useEffect(() => {
@@ -312,21 +336,29 @@ export function Live({
   ])
   const getRandomHold = useRandomSelector<CoachCue>([...HOLD_CUES])
 
-  // What the coach has said so far this session, for the per-rep and per-frame
-  // effects below: corrections don't repeat rep after rep.
-  const coached = useRef({
-    reps: 0,
-    streak: 0,
-    missed: true, // so the first rep on target is praised
-    depthAt: -Infinity,
-    speedAt: -Infinity,
-    fastAt: -Infinity,
-    rhythm: false,
-    landedAt: [] as number[],
-    /** The rep the coach last asked for a hold on, and whether the last rep reached the target but left it early. */
-    holdAt: -Infinity,
-    skippedHold: false,
-  })
+  // The tracker took over from simulated angles mid-session (the pose model
+  // finished loading after "go"). What the simulation showed wasn't the patient,
+  // so none of it is kept: the reps, the best angle and the trace start again
+  // from the camera, and only the camera's numbers are saved.
+  const wasSimulated = useRef(simulated)
+  useEffect(() => {
+    if (wasSimulated.current && !simulated && phase === 'running') {
+      const r = rec.current
+      r.samples = []
+      r.max = 0
+      r.repPeak = 0
+      r.reachedAt = 0
+      r.inZoneUntil = 0
+      r.holdDone = false
+      r.warnings = []
+      const c = coached.current
+      c.reps = 0
+      resetPose()
+      setTrace([])
+      setBest(0)
+    }
+    wasSimulated.current = simulated
+  }, [simulated, phase, resetPose])
 
   const angle = pose.angle
 
@@ -459,6 +491,7 @@ export function Live({
 
   const reached = angle != null && angle >= target - REACHED_WITHIN
   const exit = () => {
+    exited.current = true
     stopCoach()
     endLive('exited')
     navigate('/')
