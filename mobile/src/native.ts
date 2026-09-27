@@ -8,6 +8,7 @@ import { Capacitor, registerPlugin, SystemBars, SystemBarsStyle, type PluginList
 import { App } from '@capacitor/app'
 import { KeepAwake } from '@capacitor-community/keep-awake'
 import { KeychainAccess, SecureStorage } from '@aparajita/capacitor-secure-storage'
+import { SocialLogin } from '@capgo/capacitor-social-login'
 import type { Recognizer, RecognizerClass } from '../../frontend/src/lib/recognizer'
 
 export const isNativeApp: boolean = true
@@ -34,6 +35,36 @@ export async function saveToken(token: string | null): Promise<void> {
     else await SecureStorage.remove(TOKEN_KEY)
   } catch {
     /* the token still lives for this launch (api/client.ts) */
+  }
+}
+
+// --- Sign in with Google ------------------------------------------------------------
+// Android asks Google for a token for the WEB client id (its own Android client only
+// registers the package name + SHA-1). iOS signs in with the iOS client id, and the
+// backend accepts both (GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID).
+const GOOGLE_WEB_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
+const GOOGLE_IOS_ID: string = import.meta.env.VITE_GOOGLE_IOS_CLIENT_ID ?? ''
+
+export const nativeGoogleAvailable: boolean =
+  Boolean(GOOGLE_WEB_ID) && (Capacitor.getPlatform() !== 'ios' || Boolean(GOOGLE_IOS_ID))
+
+let googleReady: Promise<unknown> | null = null
+
+export async function nativeGoogleSignIn(): Promise<string | null> {
+  googleReady ??= SocialLogin.initialize({
+    google: { webClientId: GOOGLE_WEB_ID, iOSClientId: GOOGLE_IOS_ID, iOSServerClientId: GOOGLE_WEB_ID, mode: 'online' },
+  }).catch((err: unknown) => {
+    googleReady = null   // try again next tap
+    throw err
+  })
+  await googleReady
+  try {
+    const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } })
+    return 'idToken' in res.result ? res.result.idToken : null
+  } catch (err) {
+    // Closing the account picker isn't an error worth showing.
+    if (/cancel/i.test(String((err as { message?: string })?.message ?? err))) return null
+    throw err
   }
 }
 

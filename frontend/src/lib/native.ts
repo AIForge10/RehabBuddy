@@ -27,6 +27,18 @@ export async function loadToken(): Promise<string | null> {
 
 export async function saveToken(_token: string | null): Promise<void> {}
 
+/**
+ * Sign in with Google through the phone's own account picker, since Google refuses
+ * sign-in inside an app's web view. Resolves to Google's ID token, or null when the
+ * person closes the picker. The website uses Google's button instead
+ * (components/GoogleButton.tsx), so here it is never available.
+ */
+export const nativeGoogleAvailable: boolean = false
+
+export async function nativeGoogleSignIn(): Promise<string | null> {
+  return null
+}
+
 /** Stop the screen dimming and locking while the phone films a session from across the room. */
 export async function keepAwake(_on: boolean): Promise<void> {}
 

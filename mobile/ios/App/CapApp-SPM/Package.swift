@@ -15,7 +15,8 @@ let package = Package(
         .package(name: "AparajitaCapacitorSecureStorage", path: "../../../node_modules/@aparajita/capacitor-secure-storage"),
         .package(name: "CapacitorCommunityKeepAwake", path: "../../../node_modules/@capacitor-community/keep-awake"),
         .package(name: "CapacitorApp", path: "../../../node_modules/@capacitor/app"),
-        .package(name: "CapacitorSplashScreen", path: "../../../node_modules/@capacitor/splash-screen")
+        .package(name: "CapacitorSplashScreen", path: "../../../node_modules/@capacitor/splash-screen"),
+        .package(name: "CapgoCapacitorSocialLogin", path: "../../../node_modules/@capgo/capacitor-social-login")
     ],
     targets: [
         .target(
@@ -26,7 +27,8 @@ let package = Package(
                 .product(name: "AparajitaCapacitorSecureStorage", package: "AparajitaCapacitorSecureStorage"),
                 .product(name: "CapacitorCommunityKeepAwake", package: "CapacitorCommunityKeepAwake"),
                 .product(name: "CapacitorApp", package: "CapacitorApp"),
-                .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen")
+                .product(name: "CapacitorSplashScreen", package: "CapacitorSplashScreen"),
+                .product(name: "CapgoCapacitorSocialLogin", package: "CapgoCapacitorSocialLogin")
             ]
         )
     ]

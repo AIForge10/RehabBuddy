@@ -16,7 +16,7 @@
 // tab there logs in again.
 
 import type { Language, LoginResponse, Role, SignupRequest, UUID } from '../types/session'
-import { isNativeApp } from '../lib/native'
+import { isNativeApp, nativeGoogleAvailable } from '../lib/native'
 import { ApiError, DEMO_PATIENT_ID, DEMO_THERAPIST_ID, USE_MOCKS, googleLogin, hasAuthToken, login, setAuthToken, signup } from './client'
 
 export interface Account {
@@ -163,8 +163,11 @@ export async function signUp(input: SignupRequest): Promise<Account> {
 /** The web client id from Google Cloud. Unset: the Google button is hidden. */
 export const GOOGLE_CLIENT_ID: string = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''
 
-/** Off in mock mode, and in the iOS/Android app: Google refuses sign-in inside embedded web views. */
-export const googleEnabled = Boolean(GOOGLE_CLIENT_ID) && !USE_MOCKS && !isNativeApp
+/**
+ * Off in mock mode. In the iOS/Android app Google refuses sign-in inside the web view,
+ * so there it goes through the phone's account picker (lib/native.ts) once configured.
+ */
+export const googleEnabled = Boolean(GOOGLE_CLIENT_ID) && !USE_MOCKS && (!isNativeApp || nativeGoogleAvailable)
 
 /**
  * "Sign in with Google": the backend checks Google's ID token, so the email is

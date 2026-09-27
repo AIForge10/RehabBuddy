@@ -291,6 +291,7 @@ const strings = {
     createAccount: 'Create an account',
     orDemo: 'or try the demo',
     orEmail: 'or use email',
+    continueGoogle: 'Continue with Google',
     demoAs: {
       patient: { title: 'Patient', sub: 'Maria · ACL rehab' },
       therapist: { title: 'Therapist', sub: 'Dr. Lee · therapist dashboard' },
@@ -593,6 +594,7 @@ const strings = {
     createAccount: 'Crea una cuenta',
     orDemo: 'o prueba la demo',
     orEmail: 'o usa tu correo',
+    continueGoogle: 'Continuar con Google',
     demoAs: {
       patient: { title: 'Paciente', sub: 'Maria · rehabilitación de LCA' },
       therapist: { title: 'Terapeuta', sub: 'Dr. Lee · panel de terapeuta' },
