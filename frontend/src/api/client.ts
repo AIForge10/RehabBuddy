@@ -27,6 +27,7 @@ import type {
   PainTranscriptResponse,
   CoachLineResponse,
   PatientOverview,
+  Role,
   SignupRequest,
   SummaryResponse,
   TranslateResponse,
@@ -130,6 +131,14 @@ const post = <T>(path: string, body: unknown) =>
 /** Throws ApiError 401 on a wrong email or password. */
 export function login(body: LoginRequest): Promise<LoginResponse> {
   return post<LoginResponse>('/auth/login', body)
+}
+
+/**
+ * Signs in with Google's ID token from the "Sign in with Google" button. A new
+ * email becomes an account with `role`; an existing one just logs in.
+ */
+export function googleLogin(body: { credential: string; role: Role; language: Language }): Promise<LoginResponse> {
+  return post<LoginResponse>('/auth/google', body)
 }
 
 /** Throws ApiError 409 when the email already has an account. */

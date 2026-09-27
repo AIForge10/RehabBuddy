@@ -1,4 +1,4 @@
-"""Two test modules run against a real database: whatever DATABASE_URL points at, which in the
+"""Three test modules run against a real database: whatever DATABASE_URL points at, which in the
 root .env is the live demo on Tiger Data. test_data_routes.py writes to it (a Maria session with
 a pain-8 red flag, two sign-ups, Gemini summaries) and cleans up only if every step gets that far.
 So they run only when asked for, against a database you mean them to touch:
@@ -15,4 +15,11 @@ import sys
 # so `pytest` and `pytest backend/tests` both work from either directory.
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 
-collect_ignore = [] if os.environ.get("RUN_DB_TESTS") == "1" else ["test_auth_access.py", "test_data_routes.py"]
+collect_ignore = [] if os.environ.get("RUN_DB_TESTS") == "1" else ["test_auth_access.py", "test_data_routes.py", "test_otp_flow.py"]
+
+# Without RUN_DB_TESTS, no test may reach a database, even by accident: a stub patched onto the
+# wrong object (e.g. `from api.auth import router` is the APIRouter, not the router module) would
+# otherwise fall through to the real DATABASE_URL. An empty value set here wins over .env,
+# because load_dotenv never overrides a variable that is already set.
+if os.environ.get("RUN_DB_TESTS") != "1":
+    os.environ["DATABASE_URL"] = ""

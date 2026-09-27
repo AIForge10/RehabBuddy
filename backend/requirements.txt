@@ -1,5 +1,6 @@
 elevenlabs==2.69.0
 fastapi==0.141.1
+google-auth==2.58.1  # checks "Sign in with Google" ID tokens (api/auth/google.py)
 google-genai==2.25.0
 httpx==0.28.1
 psycopg[binary]==3.3.6
@@ -9,5 +10,6 @@ pydantic==2.13.5
 pydantic-settings==2.15.0
 pyjwt==2.15.0
 python-dotenv==1.2.3
+requests==2.34.2  # google-auth fetches Google's signing keys with it
 uvicorn[standard]==0.54.0
 tzdata==2026.4  # zoneinfo's time zones where the OS has none (CLINIC_TIMEZONE)

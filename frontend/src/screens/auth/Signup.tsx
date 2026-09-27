@@ -1,27 +1,28 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
-import { AuthError } from '../../api/auth'
+import { AuthError, googleEnabled, signupStart } from '../../api/auth'
+import GoogleButton from '../../components/GoogleButton'
+import OtpStep from '../../components/OtpStep'
 import { ArmMark, LegMark } from '../../components/Logo'
 import { Button } from '../../components/Screen'
-import { useAuth } from '../../lib/auth'
 import type { Strings } from '../../lib/i18n'
 import { useLanguage } from '../../lib/language'
 import type { Role } from '../../types/session'
 import { AuthLayout, EMAIL_RE, Field, FormError, PasswordField, Spinner } from './AuthLayout'
 
-type ErrKey = keyof Pick<Strings, 'errName' | 'errEmail' | 'errPassword' | 'errTaken' | 'errGeneric'>
+type ErrKey = keyof Pick<Strings, 'errName' | 'errEmail' | 'errPassword' | 'errTaken' | 'errGeneric' | 'errGoogle'>
 const MIN_PASSWORD = 8
 const ROLES: Role[] = ['patient', 'therapist']
 
 export default function Signup() {
   const { s, lang } = useLanguage()
-  const { signUp } = useAuth()
   const [role, setRole] = useState<Role>('patient')
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [errors, setErrors] = useState<{ name?: ErrKey; email?: ErrKey; password?: ErrKey; form?: ErrKey }>({})
   const [pending, setPending] = useState(false)
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null)
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
@@ -33,13 +34,45 @@ export default function Signup() {
     if (next.name || next.email || next.password) return
     setPending(true)
     try {
-      await signUp({ full_name: name, email, password, role, language: lang })
+      const res = await signupStart({ full_name: name, email, password, role, language: lang })
+      // Signed in straight away (no code step): load the app as the new account.
+      if (res.account) window.location.assign(res.account.role === 'therapist' ? '/therapist' : '/')
+      else setPendingEmail(res.email)
     } catch (err) {
       if (err instanceof AuthError && err.code === 'taken') setErrors({ email: 'errTaken' })
       else setErrors({ form: 'errGeneric' })
+    } finally {
       setPending(false)
     }
   }
+
+  if (pendingEmail) {
+    return (
+      <AuthLayout
+        title="Verify your email"
+        sub={`We sent a 6-digit code to ${pendingEmail}. Enter it below to start your rehab plan.`}
+        footer={
+          <button
+            type="button"
+            onClick={() => setPendingEmail(null)}
+            className="font-bold text-brand-ink underline-offset-4 hover:underline"
+          >
+            ← Back to sign up
+          </button>
+        }
+      >
+        <OtpStep
+          email={pendingEmail}
+          onVerified={(user) => {
+            window.location.assign(user.role === 'therapist' ? '/therapist' : '/')
+          }}
+        />
+      </AuthLayout>
+    )
+  }
+
+
+
 
   return (
     <AuthLayout
@@ -87,6 +120,18 @@ export default function Signup() {
             ))}
           </div>
         </fieldset>
+
+        {googleEnabled && (
+          <>
+            {/* Google already verified the email, so this path skips the code step. */}
+            <GoogleButton role={role} onError={() => setErrors({ form: 'errGoogle' })} onPending={setPending} />
+            <div className="label-mono flex items-center gap-4 text-muted">
+              <span className="h-px flex-1 bg-line" />
+              {s.orEmail}
+              <span className="h-px flex-1 bg-line" />
+            </div>
+          </>
+        )}
 
         <Field label={s.fullName} autoComplete="name" value={name} onChange={(e) => setName(e.target.value)} error={errors.name && s[errors.name]} />
         <Field

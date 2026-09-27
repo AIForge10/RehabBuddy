@@ -12,6 +12,7 @@ interface AuthCtx {
   signIn: typeof api.signIn
   signUp: typeof api.signUp
   demoSignIn: typeof api.demoSignIn
+  googleSignIn: typeof api.googleSignIn
   signOut: () => void
 }
 
@@ -45,6 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     demoSignIn: async (role) => {
       const a = await api.demoSignIn(role)
+      setAccount(a)
+      return a
+    },
+    googleSignIn: async (credential, role, language) => {
+      const a = await api.googleSignIn(credential, role, language)
       setAccount(a)
       return a
     },
