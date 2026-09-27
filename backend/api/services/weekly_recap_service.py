@@ -154,9 +154,12 @@ def template_recap(f: RecapFacts, language: str) -> str:
 def _cache_key(o: dict, language: str, today: date) -> tuple:
     # A new session means a new recap. So does a new red flag: a pain check-in
     # is saved just after its session, and a recap written in between would
-    # keep cheering. The date keeps "the past 7 days" true days later.
+    # keep cheering. So does a plan change: the recap names the goal and the
+    # sessions a week. The date keeps "the past 7 days" true days later.
     latest = max(o["sessions"], key=lambda s: _at(s["started_at"]))["id"] if o["sessions"] else None
-    return (o["patient"]["id"], language, latest, len(o["red_flags"]), today)
+    a = o["assignment"]
+    plan = (a["exercise"]["id"], a["target_angle"], a["times_per_week"])
+    return (o["patient"]["id"], language, latest, len(o["red_flags"]), plan, today)
 
 
 async def _ask_gemini(key: tuple, facts: RecapFacts, language: str) -> Optional[str]:

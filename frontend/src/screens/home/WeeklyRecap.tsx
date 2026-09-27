@@ -32,8 +32,9 @@ export function WeeklyRecap({ overview }: { overview: PatientOverview }) {
   const { s, lang } = useLanguage()
   const latest = overview.sessions[0]?.id // most recent first
   // Home refreshes the overview every few seconds. The recap only changes with
-  // a new session, a new red flag or another language, so only those refetch it.
-  const key = `${overview.patient.id}|${lang}|${latest}|${overview.red_flags.length}`
+  // a new session, a new red flag, a plan change or another language, so only those refetch it.
+  const a = overview.assignment
+  const key = `${overview.patient.id}|${lang}|${latest}|${overview.red_flags.length}|${a.exercise.id}|${a.target_angle}|${a.times_per_week}`
   // Kept with the key it was fetched for, so a language switch shows the loading
   // state rather than the old language's recap.
   const [recap, setRecap] = useState<{ key: string; res: WeeklyRecapResponse } | null>(null)
