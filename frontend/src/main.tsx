@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { hasAuthToken, setAuthToken } from './api/client'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { loadToken } from './lib/native'
 
 // The mobile app keeps the sign-in token across launches (lib/native.ts). It
@@ -13,7 +14,9 @@ async function start() {
   if (saved && !hasAuthToken()) setAuthToken(saved)
   createRoot(document.getElementById('root')!).render(
     <StrictMode>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </StrictMode>,
   )
 }
