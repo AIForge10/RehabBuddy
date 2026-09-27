@@ -18,8 +18,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
 collect_ignore = [] if os.environ.get("RUN_DB_TESTS") == "1" else ["test_auth_access.py", "test_data_routes.py", "test_otp_flow.py"]
 
 # Without RUN_DB_TESTS, no test may reach a database, even by accident: a stub patched onto the
-# wrong object (e.g. `from api.auth import router` is the APIRouter, not the router module) would
-# otherwise fall through to the real DATABASE_URL. An empty value set here wins over .env,
+# wrong object would otherwise fall through to the real DATABASE_URL. An empty value set here wins over .env,
 # because load_dotenv never overrides a variable that is already set.
 if os.environ.get("RUN_DB_TESTS") != "1":
     os.environ["DATABASE_URL"] = ""

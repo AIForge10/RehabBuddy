@@ -1,11 +1,11 @@
 import sys; sys.path.insert(0, str(__import__("pathlib").Path(__file__).resolve().parents[1]))
 from fastapi import Depends, FastAPI
 from fastapi.testclient import TestClient
-from api.auth import (router, CurrentUser, require_patient, require_patient_access,
+from api.auth import (auth_router, CurrentUser, require_patient, require_patient_access,
                       require_therapist_self, require_session_owner)
 
 app = FastAPI()
-app.include_router(router)
+app.include_router(auth_router)
 
 @app.get("/patients/{patient_id}/overview")
 def overview(patient_id: str, user: CurrentUser = Depends(require_patient_access)):

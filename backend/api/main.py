@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from api.core.config import settings
 from api.routers.v1.api import api_router
-from api.auth import router as auth_router
+from api.auth import auth_router
 from api.data import router as data_router 
 
 
