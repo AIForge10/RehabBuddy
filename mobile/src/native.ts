@@ -59,7 +59,9 @@ export async function nativeGoogleSignIn(): Promise<string | null> {
   })
   await googleReady
   try {
-    const res = await SocialLogin.login({ provider: 'google', options: { scopes: ['email', 'profile'] } })
+    // No custom scopes: the default sign-in already returns the email and name in the ID
+    // token, and on Android any `scopes` option needs a modified MainActivity.
+    const res = await SocialLogin.login({ provider: 'google', options: {} })
     return 'idToken' in res.result ? res.result.idToken : null
   } catch (err) {
     // Closing the account picker isn't an error worth showing.
